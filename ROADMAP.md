@@ -18,7 +18,7 @@ Before planning forward, we need an unflinching look at where we are. The existi
 
 3. **Damage tracking** (`damage.mbt`) - Wagner-Graham algorithm correctly identifies damaged ranges after edits. The algorithm is sound.
 
-4. **Position adjustment** (`incremental_parser.mbt:144-186`) - Correctly shifts tree node positions after edits. Handles before/after/overlapping cases.
+4. **Position adjustment** (`incremental_parser.mbt:144-186`) - Shifts tree node positions after edits. Handles before/after/overlapping cases. **Caveat:** When a node overlaps the edit, the code adjusts children recursively but does NOT adjust the overlapping node's own `end` by the edit delta (lines 172-184). This is harmless today because overlapping nodes are always fully reparsed, but it would be a bug if Phase 4's subtree reuse tried to use the adjusted tree for granular decisions. The green tree architecture (Phase 2) makes this moot by using widths instead of absolute positions.
 
 5. **Data structures** - `TermNode`, `TermKind`, `Edit`, `Range` are well-designed and tested.
 
@@ -142,7 +142,7 @@ The end state is a parser where every layer earns its existence. No dead infrast
 
 4. **Incremental lexing is the first real win.** Re-tokenizing only the damaged region, then splicing into the existing token buffer, gives the parser unchanged tokens for free.
 
-5. **Subtree reuse at grammar boundaries.** Recursive descent can't validate arbitrary nodes like LR parsers, but it CAN check: "at this grammar boundary, do the leading tokens match what produced this old subtree?" If yes, skip parsing and reuse.
+5. **Subtree reuse at grammar boundaries.** Recursive descent can't validate arbitrary nodes like LR parsers, but it CAN check: "at this grammar boundary, does the old subtree's kind match, and are both the leading and trailing token contexts unchanged?" If all checks pass, skip parsing and reuse. The trailing context check is essential because a node's parse can depend on what follows it (see Phase 4, section 4.2.1).
 
 6. **Error recovery is part of the parser, not around it.** The parser must be able to record an error, synchronize to a known point, and continue parsing the rest of the input.
 
@@ -212,13 +212,22 @@ Replace the current "tokenize from scratch every time" approach with a persisten
 
 ```
 pub struct TokenBuffer {
-  tokens : Array[TokenInfo]       // All tokens, contiguous
+  tokens : Array[TokenInfo]       // All tokens
   source : String                 // Current source text
   mut version : Int               // Edit counter
 }
 ```
 
-The token buffer is the single source of truth for tokens. It is modified in-place by the incremental lexer.
+The token buffer is the single source of truth for tokens. It is updated incrementally by re-lexing the damaged region and splicing new tokens in.
+
+**Data structure consideration:** Splicing into the middle of a contiguous `Array` is O(N) because all subsequent elements must be shifted. For a file with 10,000 tokens, an edit near the beginning shifts ~10,000 entries. This is still cheaper than full re-tokenization (which scans every character), because an array splice is a `memcpy` while re-tokenization involves character classification, keyword lookup, and `TokenInfo` construction per token. But for very large files, the splice cost may dominate.
+
+**Options if splice becomes a bottleneck** (measure first):
+- **Gap buffer:** Maintain a gap at the last edit point. Splices near the gap are O(splice_size). Moving the gap is O(distance).
+- **Chunked array:** Store tokens in fixed-size chunks (e.g., 256 tokens). Splice only affects one chunk.
+- **Accept O(N) splice:** For lambda calculus files under 1000 tokens, O(N) splice is sub-microsecond. This is the pragmatic starting point.
+
+**Recommendation:** Start with a plain `Array` and add benchmarks. Only switch to gap buffer or chunks if profiling shows splice cost exceeds re-lex cost on realistic inputs.
 
 ### 1.2 Incremental Tokenization
 
@@ -247,7 +256,7 @@ The margin for re-lexing needs to be conservative:
 - Extend right to the end of the token containing `edit.old_end`, plus one more token (for lookahead effects like keyword boundaries)
 - If the edit is at a whitespace/token boundary, extend to include the adjacent tokens
 
-For lambda calculus with single-character operators and short keywords (`if`, `then`, `else`), a context of 6 characters on each side is sufficient.
+The token-boundary rules above (extend to enclosing token starts/ends) are the correct approach. Do not use a fixed character margin — an identifier can be arbitrarily long, and a fixed margin could split it.
 
 ### 1.4 Integration
 
@@ -302,6 +311,14 @@ pub struct GreenNode {
 ```
 
 **Key property:** `GreenNode` has no positions. Two `GreenNode`s with the same kind and children are structurally identical regardless of where they appear in the source.
+
+**Note on `text: String` in `GreenToken`:** Green tokens store the text directly rather than referencing into the source. This is fundamental to the architecture — if tokens stored `(source_offset, length)`, they would be tied to a specific source string, defeating structural sharing. Two identical tokens at different positions would not be equal.
+
+For the current lambda calculus grammar, all tokens are short (max 4 characters for `then`/`else`), so copying text is cheap. However, when Phase 5 adds comments and string literals, long text could be expensive to duplicate. Production systems address this with:
+- **Roslyn:** String interning so identical tokens share the same String object
+- **rust-analyzer:** `SmolStr` (inline for ≤22 bytes, reference-counted for longer)
+
+MoonBit's string interning behavior should be investigated before Phase 5. If identical string literals are already interned by the runtime, duplicate tokens like `x` appearing 100 times would share backing memory automatically. If not, an explicit interning table or small-string type will be needed.
 
 ### 2.2 Syntax Kind Enum
 
@@ -384,19 +401,34 @@ When the incremental parser determines a subtree is unchanged (Phase 4), it reus
 
 This is O(depth) allocation for a leaf change, not O(tree_size).
 
-### 2.6 Migration Path
+### 2.6 Parser Change: `ParenExpr` Node Kind
+
+The current parser absorbs parentheses — `(42)` produces a node of kind `Int(42)` with the outer positions, losing the structural information that parentheses were present (`parser.mbt:201-217`). This must change for three reasons:
+
+1. **Lossless CST:** Without `ParenExpr`, `x` and `(x)` and `((x))` are indistinguishable in the tree. Source round-tripping is impossible.
+
+2. **Correct structural identity:** In the green tree, structural identity is based on kind + children. If `(x + y)` is stored as `BinaryExpr` (parens absorbed), removing the parentheses wouldn't change the node kind, causing the reuse cursor to incorrectly treat them as the same structure.
+
+3. **Error recovery:** A missing `)` can only be reported if the parser knows it's inside a `ParenExpr`. Without a distinct node kind, there's no partially-parsed state to represent.
+
+**Action:** Modify `parse_atom` to emit `ParenExpr` wrapping the inner expression instead of copying the inner expression's kind. The `ParenExpr` node contains `LeftParenToken`, the inner expression, and `RightParenToken` as children.
+
+### 2.7 Migration Path
 
 1. Implement `GreenNode`, `GreenToken`, `GreenElement`, `SyntaxKind`
 2. Implement `TreeBuilder`
 3. Modify parser to use `TreeBuilder` instead of direct `TermNode` construction
-4. Implement `RedNode` for position queries
-5. Provide `green_to_term()` conversion to maintain backward compatibility
-6. Migrate tests incrementally
+4. **Change parenthesis handling to emit `ParenExpr` nodes** (see 2.6)
+5. Implement `RedNode` for position queries
+6. Provide `green_to_term()` conversion to maintain backward compatibility (note: `ParenExpr` maps to its inner expression in the semantic `Term`)
+7. Migrate tests incrementally
 
 **Exit criteria:**
 - Green tree correctly represents all parsed programs
+- `ParenExpr` nodes are present for all parenthesized expressions
 - Red node positions match current `TermNode` positions for all test cases
 - Structural sharing verified: unchanged subtrees are pointer-equal
+- CST distinguishes `x` from `(x)` from `((x))`
 - No performance regression on current benchmarks
 - All existing semantic tests pass through compatibility layer
 
@@ -406,9 +438,13 @@ This is O(depth) allocation for a leaf change, not O(tree_size).
 
 **Goal:** The parser continues past errors, producing a tree with error nodes interspersed among correctly parsed nodes. Multiple errors in a single parse.
 
-### Why Before Subtree Reuse
+### Relationship to Subtree Reuse (Phase 4)
 
-Subtree reuse (Phase 4) depends on knowing where grammar boundaries are. Error recovery defines those boundaries. If the parser can't recover from errors, it can't establish the stable points needed for reuse decisions.
+Error recovery and subtree reuse are **independent capabilities with a soft dependency.** Grammar boundaries for reuse exist in well-formed input regardless of error recovery — every call to `parse_atom()`, `parse_application()`, `parse_expression()` IS a grammar boundary. Subtree reuse can be implemented and validated on well-formed inputs without error recovery.
+
+Error recovery becomes necessary for reuse to work on **malformed** inputs: without it, a parse error means no old tree exists, so there is nothing to reuse on the next edit. In practice, most edits in an editor are to valid code that produces valid code, so Phase 4 can deliver value before Phase 3 is complete.
+
+**Recommended approach:** Implement Phase 4 (subtree reuse on valid input) in parallel with Phase 3 (error recovery). Then integrate them: error recovery produces partial trees that subtree reuse can operate on for malformed inputs.
 
 ### 3.1 Synchronization Points
 
@@ -562,8 +598,11 @@ fn try_reuse(p : Parser, cursor : ReuseCursor, expected_kind : SyntaxKind) -> Gr
   guard !damaged_range.overlaps(Range::new(cursor.offset, node_end))
 
   // Check 4: Do the leading tokens match?
-  // (Catches cases where context change makes old parse invalid)
   guard p.current_token_text() == first_token_text(candidate)
+
+  // Check 5: Does the trailing context match? (See 4.2.1)
+  let next_token_after = token_at_offset(p.token_buffer, node_end)
+  guard next_token_after == old_token_after(cursor, candidate)
 
   // Reuse! Skip the parser ahead by this node's width
   p.advance_by(candidate.text_len)
@@ -571,6 +610,30 @@ fn try_reuse(p : Parser, cursor : ReuseCursor, expected_kind : SyntaxKind) -> Gr
   Some(candidate)
 }
 ```
+
+#### 4.2.1 Why Trailing Context Matters
+
+The leading-token check alone is **not sufficient** for correctness. A node can have the same leading token and kind but require a different parse due to changes in the tokens that follow it.
+
+**Concrete example:**
+
+```
+Old source:  "x + y z"
+Parsed as:   Bop(Plus, Var("x"), App(Var("y"), Var("z")))
+
+Edit: change space between y and z to " - "
+
+New source:  "x + y - z"
+Should be:   Bop(Minus, Bop(Plus, Var("x"), Var("y")), Var("z"))
+```
+
+The old `App(Var("y"), Var("z"))` subtree starts at `y`, has leading token `y`, kind `AppExpr`, and its span `[4, 7)` does not overlap the edit (which is at position 5, replacing one byte). The leading-token check passes. The damage-range check may pass depending on how tight the damage boundary is. But reuse would be incorrect — `y` should now be a standalone `VarRef`, not the left side of an `App`, because the `z` that followed it is no longer an application argument but a separate operand of `-`.
+
+The trailing-context check catches this: the token after the old `App` node was `EOF` (or end of input), but the token after position 7 in the new source is `-`. The mismatch rejects the reuse.
+
+**Rule:** A node's parse can depend on what comes after it (the "follow set" in grammar terms). Left-associative application in lambda calculus is particularly sensitive: `parse_application` greedily consumes atoms as long as the next token could start an atom. If the next token changes from atom-starting to non-atom-starting (or vice versa), the old subtree's span is wrong.
+
+**Check 5 is conservative but correct:** If the token immediately after the old node's span is different in the new source, reject the reuse. This may reject some valid reuses (false negatives), but it never accepts an invalid reuse (no false positives).
 
 ### 4.3 Integration Points
 
@@ -617,14 +680,39 @@ test "incremental matches full reparse" {
 }
 ```
 
-### 4.6 Performance Target
+### 4.6 Performance Analysis
 
 For a localized edit (changing a single token) in a file with N tokens:
 - **Current:** O(N) tokenization + O(N) parsing = O(N) total
 - **After Phase 1:** O(1) tokenization + O(N) parsing = O(N) total
-- **After Phase 4:** O(1) tokenization + O(depth) tree construction = O(log N) typical
+- **After Phase 4:** O(1) tokenization + O(depth) tree construction
 
-The improvement comes from reusing O(N - depth) subtrees and only constructing O(depth) new nodes along the path from root to the edited leaf.
+The improvement comes from reusing subtrees off the edit path and only constructing new nodes along the path from root to the edited leaf.
+
+**Complexity depends on tree shape, not just tree size:**
+
+Lambda calculus trees are **not balanced**. Left-associative application and nested lambdas produce left-leaning spines:
+
+```
+f a b c d e    →  App(App(App(App(App(f, a), b), c), d), e)
+                  depth = O(N)
+
+\a.\b.\c.\d.x  →  Lam(a, Lam(b, Lam(c, Lam(d, x))))
+                  depth = O(N)
+```
+
+For these structures, editing the rightmost leaf still requires O(N) new nodes because every ancestor is on the spine. **Subtree reuse helps with siblings (the `a`, `b`, `c` atoms are reused), but the spine itself must be rebuilt.**
+
+| Tree Shape | Depth | Edit Cost | Example |
+|-----------|-------|-----------|---------|
+| Application chain | O(N) | O(N) | `f a b c d e` |
+| Nested lambdas | O(N) | O(N) | `\a.\b.\c.\d.\e.x` |
+| Binary expression chain | O(N) | O(N) | `a + b + c + d` |
+| Multi-definition file (Phase 5) | O(K) | O(K) | `let x = ... let y = ...` |
+
+Where K = size of the edited definition, N = total file size.
+
+**The real win from subtree reuse is not asymptotic for single expressions** — it is that editing one top-level definition (after Phase 5 adds let bindings) does not require re-parsing other definitions. For a file with M definitions of average size K, editing one definition costs O(K) instead of O(M * K). This is the practical case where incremental parsing matters.
 
 **Exit criteria:**
 - Incremental parse matches full reparse for all test inputs and edits
@@ -718,44 +806,75 @@ This makes the CST fully lossless - you can reconstruct the original source exac
 
 ---
 
-## Phase 6: CRDT Integration (Genuine)
+## Phase 6: CRDT Exploration (Research)
 
-**Goal:** Connect the incremental parser to actual CRDT operations for collaborative editing.
+**Goal:** Investigate how the incremental parser integrates with CRDT-based collaborative editing. This phase is exploratory — the CRDT design space is large and the right approach depends on decisions not yet made.
 
-### 6.1 Operation-Based Updates
+**Status: This is a research phase, not an implementation plan.** The existing `crdt_integration.mbt` provides AST↔CRDTNode conversion functions but contains no actual CRDT logic (no conflict resolution, no causal ordering, no concurrent edit handling). Building genuine CRDT integration requires answering fundamental design questions first.
 
-Instead of the current "convert entire AST to CRDT node" approach, generate minimal CRDT operations from tree diffs:
+### 6.1 Open Design Questions
+
+**Q1: What layer does the CRDT operate on?**
+
+| Layer | CRDT Type | Pros | Cons |
+|-------|-----------|------|------|
+| Characters | RGA / Fugue | Well-studied, text CRDTs work | No structural awareness; parser must re-parse after every merge |
+| Tokens | Custom sequence CRDT | Preserves token boundaries | Token identity is fragile (edits create/destroy tokens) |
+| AST nodes | Tree CRDT (e.g., MRDT) | Structural edits are first-class | Complex; AST changes are derived from text changes, not direct |
+| Source text + parse on merge | Text CRDT + incremental parser | Simplest; leverages Phases 1-4 | No semantic merge (text conflicts may produce invalid syntax) |
+
+The simplest viable approach is likely **text-level CRDT + incremental parser on merge**. Each peer maintains source text via a text CRDT (e.g., Fugue or RGA). After merging remote operations into the local text, the incremental parser re-parses the affected region. This requires no custom tree CRDT and fully leverages the incremental parsing infrastructure.
+
+**Q2: What does "tree diff" mean for green trees?**
+
+The green tree enables efficient structural comparison via pointer equality (unchanged subtrees are the same object). A diff algorithm can skip pointer-equal subtrees in O(1). But the output of a diff is a sequence of tree edits (insert node, delete node, replace node), and it's not yet clear whether these map cleanly to CRDT operations or whether they're even needed. If using a text-level CRDT, tree diffs are informational (for UI updates), not operational.
+
+**Q3: What convergence guarantees are needed?**
+
+- **Text convergence:** All peers see the same source text after merging all operations. This is provided by the text CRDT.
+- **Parse convergence:** All peers produce the same parse tree for the same source text. This is provided by the parser being deterministic.
+- **Semantic convergence:** Concurrent edits to different declarations don't interfere. This is provided by text convergence + incremental parsing (editing one let binding doesn't affect others).
+
+### 6.2 Recommended Starting Point
 
 ```
-fn diff_trees(old : GreenNode, new : GreenNode) -> Array[CRDTOp] {
-  if old == new { return [] }  // Pointer equality! (green tree sharing)
-
-  // Only generate operations for structurally different subtrees
-  ...
-}
+Peer A                          Peer B
+  |                               |
+  | local edit                    | local edit
+  v                               v
+Text CRDT  ---sync operations-->  Text CRDT
+  |                               |
+  | merged text                   | merged text
+  v                               v
+Incremental Parser              Incremental Parser
+  |                               |
+  | green tree                    | green tree (identical)
+  v                               v
+UI update                       UI update
 ```
 
-The green tree architecture makes this efficient: pointer-equal subtrees are identical, so diff can skip them in O(1).
+This avoids the complexity of tree CRDTs entirely. The incremental parser provides the "structure-aware" layer — it knows which subtrees changed and can update the UI efficiently. The CRDT handles text convergence, which is well-solved.
 
-### 6.2 Edit Reconciliation
+### 6.3 What to Build
 
-When a remote CRDT operation arrives:
-1. Apply the operation to the source text
-2. Construct an `Edit` from the text change
-3. Feed through the incremental parser
-4. Diff the new tree against the old to confirm convergence
+1. **Green tree diff utility:** Given old and new green trees, produce a list of changed subtrees with their positions. Uses pointer equality for O(1) skip of unchanged subtrees. This is useful for UI updates regardless of CRDT choice.
 
-### 6.3 Conflict Resolution
+2. **Text CRDT adapter:** Translate CRDT text operations (insert character at position, delete range) into the `Edit` type that the incremental parser accepts. This is a thin mapping layer.
 
-For concurrent edits that affect the same syntactic region:
-- Text-level: CRDT handles character ordering
-- Parse-level: re-parse the affected region after CRDT merge
-- Tree-level: the incremental parser naturally produces the correct tree for the merged text
+3. **Integration test harness:** Simulate two peers making concurrent edits. Verify that after sync, both peers have identical source text and identical parse trees.
 
-**Exit criteria:**
-- Concurrent edits produce converging parse trees
-- Operation generation is proportional to edit size, not file size
-- Integration tests with simulated concurrent editing scenarios
+### 6.4 What NOT to Build (Yet)
+
+- Custom tree CRDT for AST nodes (premature — text CRDT may be sufficient)
+- Semantic merge (resolving conflicts at the declaration level — research problem)
+- Real-time operational transformation (CRDT handles this at the text layer)
+
+**Exit criteria for this phase:**
+- Design document answering Q1-Q3 with evidence from prototyping
+- Green tree diff utility implemented and tested
+- Text CRDT adapter producing valid `Edit` objects
+- Integration test: two simulated peers converge on same parse tree
+- Clear recommendation on whether to pursue tree-level CRDT or stay with text-level
 
 ---
 
@@ -764,21 +883,92 @@ For concurrent edits that affect the same syntactic region:
 ```
 Phase 0: Reckoning          (no dependencies - cleanup)
     |
-Phase 1: Incremental Lexer  (depends on Phase 0)
+    +------ Phase 1: Incremental Lexer  (depends on Phase 0)
     |
-Phase 2: Green Tree         (depends on Phase 0, parallel with Phase 1)
-    |
-Phase 3: Error Recovery     (depends on Phase 2)
-    |
-Phase 4: Subtree Reuse      (depends on Phase 1, 2, 3)
-    |
-Phase 5: Grammar Expansion  (depends on Phase 2, 3)
-    |
-Phase 6: CRDT Integration   (depends on Phase 2, 4)
+    +------ Phase 2: Green Tree         (depends on Phase 0, parallel with Phase 1)
+                |
+                +------ Phase 3: Error Recovery     (depends on Phase 2)
+                |
+                +------ Phase 4: Subtree Reuse      (depends on Phase 1, 2)
+                |
+                +------ Phase 3 + 4 combined: reuse on malformed input
+                |
+                +------ Phase 5: Grammar Expansion  (depends on Phase 2, 3)
+                |
+                +------ Phase 6: CRDT Exploration   (depends on Phase 2, 4)
 ```
 
 Phases 1 and 2 can proceed in parallel after Phase 0.
+Phases 3 and 4 can proceed in parallel after Phase 2 (Phase 4 also needs Phase 1).
+Phase 4 works on well-formed input without Phase 3. Full incremental reuse on malformed input requires both.
 Phases 5 and 6 can proceed in parallel after their dependencies.
+
+---
+
+## Cross-Cutting Concern: Incremental Correctness Testing
+
+The fundamental correctness property — **for any edit, incremental parse produces a tree structurally identical to a full reparse** — must be continuously verified across all phases. This is not a Phase 4 concern alone; it applies from the moment the first incremental operation is introduced (Phase 1's incremental lexer).
+
+### Differential Testing Oracle
+
+Every incremental operation must be shadow-verified against its non-incremental equivalent:
+
+```
+fn verify_incremental_correctness(
+  source : String,
+  edit : Edit,
+  new_source : String,
+) -> Bool {
+  // Path 1: Incremental
+  let parser = IncrementalParser::new(source)
+  parser.parse()
+  let incremental_result = parser.edit(edit, new_source)
+
+  // Path 2: Full reparse (oracle)
+  let full_result = parse(new_source)
+
+  // Compare structure, ignoring node IDs and other metadata
+  structurally_equal(incremental_result, full_result)
+}
+```
+
+This oracle runs in CI on every commit. It is not optional.
+
+### Property-Based Fuzzing
+
+Use QuickCheck (already a dependency) to generate random test cases:
+
+1. **Random source generation:** Generate random well-formed lambda calculus expressions. The grammar is small enough that a recursive generator with size bounds produces good coverage.
+
+2. **Random edit generation:** For a given source string, generate random edits: insertions, deletions, and replacements at random positions with random content.
+
+3. **Edit sequence testing:** Apply sequences of 10-100 random edits, verifying the correctness invariant after each one. This catches state accumulation bugs that single-edit tests miss.
+
+4. **Adversarial edits:** Specifically target edit boundaries: edits that split tokens, create keywords from identifiers (`i` → `if`), remove parentheses, insert at position 0, append at end, delete everything, etc.
+
+### Phase-Specific Testing Requirements
+
+| Phase | What to verify | Oracle |
+|-------|---------------|--------|
+| Phase 1 (Incremental Lexer) | Incremental tokenization == full tokenization | `incremental_lex(edit) == tokenize(new_source)` |
+| Phase 2 (Green Tree) | Green tree → Term matches old parser's Term | `green_to_term(green_parse(s)) == parse(s)` |
+| Phase 3 (Error Recovery) | Parser terminates on all inputs; valid inputs unchanged | Fuzzing with random bytes; regression suite |
+| Phase 4 (Subtree Reuse) | Incremental parse == full reparse | Full differential oracle |
+| Phase 5 (Grammar Expansion) | New constructs parse correctly; old constructs unchanged | Existing test suite + new construct tests |
+
+### Regression Suite
+
+Every bug found during development becomes a permanent regression test. The test captures:
+- The source before the edit
+- The edit
+- The expected tree after the edit
+- A comment explaining what went wrong
+
+This suite grows monotonically — tests are never removed.
+
+### CI Integration
+
+The full test suite (including property-based fuzzing with 10,000+ random cases) runs on every push. Benchmarks run on tagged commits to detect performance regressions. The differential oracle is always enabled, even in release builds during testing.
 
 ---
 
@@ -816,21 +1006,22 @@ Known risk: Lambda calculus has less syntactic structure than typical programmin
 This is the most novel part. Checkpoint-based reuse in hand-written recursive descent is less established than LR-based reuse. The approach is sound in principle (the call stack provides parser state), but the implementation details matter.
 
 Known risks:
-- Context sensitivity: An expression that parses as application in one context might parse as something else in another. The leading-token check mitigates this but may need refinement.
-- Reuse cursor synchronization: Keeping the cursor aligned with the parser requires careful bookkeeping.
-- Edge cases at edit boundaries.
+- **Trailing context sensitivity:** A node's parse can depend on what follows it. Left-associative application is particularly sensitive — `parse_application` greedily consumes atoms based on the next token. The trailing-context check (section 4.2.1) addresses this, but the exact boundary conditions need careful testing.
+- **Reuse cursor synchronization:** Keeping the cursor aligned with the parser requires careful bookkeeping. If the cursor falls out of sync (e.g., after error recovery skips tokens), all subsequent reuse checks may fail silently.
+- **Edge cases at edit boundaries:** Edits that create or destroy token boundaries (e.g., inserting a space to split an identifier) stress both the incremental lexer and the reuse protocol simultaneously.
+- **Tree shape limits gains:** Lambda calculus produces left-leaning spines with O(N) depth, so the spine must always be rebuilt. The real win comes after Phase 5 adds let bindings.
 
-Mitigated by: The correctness invariant (incremental == full reparse) catches all bugs. Extensive property-based testing.
+Mitigated by: The differential testing oracle (see Cross-Cutting Concern section) catches all correctness bugs. Property-based fuzzing with random edits runs on every commit. Reuse can be conservatively disabled (fall back to full reparse) if any check is uncertain — correctness is never sacrificed for performance.
 
 ### Milestone 6: Grammar Expansion (Phase 5)
 **Confidence: High**
 
 Adding let bindings and type annotations to a recursive descent parser is straightforward. The green tree architecture supports new node kinds naturally.
 
-### Milestone 7: CRDT Integration (Phase 6)
-**Confidence: Medium**
+### Milestone 7: CRDT Exploration (Phase 6)
+**Confidence: Low-Medium (research phase)**
 
-The CRDT integration depends on having a solid diff algorithm for green trees and a well-defined operation model. The theoretical foundation is sound but the implementation complexity is significant.
+This is explicitly exploratory. The most likely outcome is "text-level CRDT + incremental parser on merge," which is architecturally simple but requires answering design questions about convergence guarantees and the value of tree-level awareness. The green tree diff utility is the concrete deliverable; the CRDT architecture decision is the intellectual deliverable.
 
 ---
 
