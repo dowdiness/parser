@@ -251,13 +251,13 @@ trailing whitespace coverage and mixed binary operators. See TODO archive.
 
 **Goal:** Replace the current mutable `TermNode` with an immutable green tree architecture that enables structural sharing and subtree reuse.
 
-**Status (2026-02-01): Scaffolding complete (types, parser, red nodes, conversion, tests). Integration pending.**
+**Status (2026-02-01): Scaffolding complete + event buffer refactor. Integration pending.**
 
 **What's done:**
 - `SyntaxKind` enum unifying tokens and node types (`green_tree.mbt`)
 - `GreenToken`, `GreenNode`, `GreenElement` core types (`green_tree.mbt`)
-- `TreeBuilder` with stack-based construction (`tree_builder.mbt`)
-- `GreenParser` / `parse_green()` with whitespace token emission (`green_parser.mbt`)
+- `ParseEvent` enum, `EventBuffer` struct, `build_tree` function (`parse_events.mbt`) — replaced old stack-based `TreeBuilder`
+- `GreenParser` / `parse_green()` with `EventBuffer`, `mark()`/`start_at()` retroactive wrapping, whitespace token emission (`green_parser.mbt`)
 - `RedNode` wrapper with offset-based position computation (`red_tree.mbt`)
 - Green → Term conversion with mixed-operator handling (`green_convert.mbt`)
 - `ParenExpr` node kind distinguishes `x` / `(x)` / `((x))` (section 2.6 satisfied)
@@ -364,19 +364,30 @@ pub struct RedNode {
 
 Red nodes are created lazily when you need to answer "what is the absolute position of this node?" They are ephemeral - not stored persistently.
 
-### 2.4 Builder Pattern
+### 2.4 Event Buffer Pattern
 
-The parser constructs green trees using a builder that manages the stack:
+The parser emits events into a flat buffer during parsing. A separate `build_tree` function replays the events to construct the `GreenNode` tree. This decouples parsing from tree construction.
 
 ```
-pub struct TreeBuilder {
-  stack : Array[Array[GreenElement]]  // Stack of in-progress children lists
+pub enum ParseEvent {
+  StartNode(SyntaxKind)   // Open a new node
+  FinishNode              // Close the current node
+  Token(SyntaxKind, String)
+  Tombstone               // Placeholder for retroactive wrapping; skipped during build
 }
 
-fn TreeBuilder::start_node(self, kind : SyntaxKind)
-fn TreeBuilder::finish_node(self) -> GreenNode
-fn TreeBuilder::token(self, kind : SyntaxKind, text : String)
+pub struct EventBuffer {
+  events : Array[ParseEvent]
+}
+
+fn EventBuffer::push(self, event : ParseEvent)
+fn EventBuffer::mark(self) -> Int          // Push Tombstone, return its index
+fn EventBuffer::start_at(self, mark : Int, kind : SyntaxKind)  // Overwrite Tombstone → StartNode
+
+fn build_tree(events : Array[ParseEvent]) -> GreenNode  // Replay events into green tree
 ```
+
+**Retroactive wrapping** (the `mark`/`start_at` pattern): When parsing binary expressions or applications, the left operand is parsed before we know whether wrapping is needed. `mark()` inserts a `Tombstone` before parsing the left operand. If wrapping is needed, `start_at()` overwrites the `Tombstone` with `StartNode(kind)` — an O(1) index overwrite with no stack manipulation. If no wrapping is needed, the `Tombstone` stays and is skipped during `build_tree`.
 
 ### 2.5 Structural Sharing
 
@@ -409,8 +420,8 @@ The current parser absorbs parentheses — `(42)` produces a node of kind `Int(4
 ### 2.7 Migration Path
 
 1. ✅ Implement `GreenNode`, `GreenToken`, `GreenElement`, `SyntaxKind`
-2. ✅ Implement `TreeBuilder`
-3. ✅ Implement `GreenParser` using `TreeBuilder` (standalone `parse_green`, not yet replacing `TermNode` path)
+2. ✅ Implement `ParseEvent` enum, `EventBuffer` struct, `build_tree` function (replaced old `TreeBuilder`)
+3. ✅ Implement `GreenParser` using `EventBuffer` with `mark()`/`start_at()` retroactive wrapping (standalone `parse_green`, not yet replacing `TermNode` path)
 4. ✅ **Change parenthesis handling to emit `ParenExpr` nodes** (see 2.6)
 5. ✅ Implement `RedNode` for position queries
 6. ✅ Provide `green_to_term()` conversion to maintain backward compatibility (note: `ParenExpr` maps to its inner expression in the semantic `Term`)

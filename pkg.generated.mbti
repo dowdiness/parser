@@ -9,6 +9,8 @@ import {
 // Values
 pub fn ast_to_crdt(TermNode) -> CRDTNode
 
+pub fn build_tree(Array[ParseEvent]) -> GreenNode
+
 pub fn collect_errors(TermNode) -> Array[String]
 
 pub fn crdt_to_source(CRDTNode) -> String
@@ -114,6 +116,14 @@ pub fn Edit::to_string(Self) -> String
 pub impl Eq for Edit
 pub impl Show for Edit
 
+pub struct EventBuffer {
+  events : Array[ParseEvent]
+}
+pub fn EventBuffer::mark(Self) -> Int
+pub fn EventBuffer::new() -> Self
+pub fn EventBuffer::push(Self, ParseEvent) -> Unit
+pub fn EventBuffer::start_at(Self, Int, SyntaxKind) -> Unit
+
 pub enum GreenElement {
   Token(GreenToken)
   Node(GreenNode)
@@ -153,6 +163,15 @@ pub fn IncrementalParser::get_tree(Self) -> TermNode?
 pub fn IncrementalParser::new(String) -> Self
 pub fn IncrementalParser::parse(Self) -> TermNode
 pub fn IncrementalParser::stats(Self) -> String
+
+pub enum ParseEvent {
+  StartNode(SyntaxKind)
+  FinishNode
+  Token(SyntaxKind, String)
+  Tombstone
+}
+pub impl Eq for ParseEvent
+pub impl Show for ParseEvent
 
 pub struct ParsedDocument {
   mut source : String
@@ -295,15 +314,6 @@ pub struct TokenInfo {
 pub fn TokenInfo::new(Token, Int, Int) -> Self
 pub impl Eq for TokenInfo
 pub impl Show for TokenInfo
-
-pub struct TreeBuilder(Array[Array[GreenElement]])
-pub fn TreeBuilder::finish(Self) -> GreenNode
-pub fn TreeBuilder::finish_node(Self, SyntaxKind) -> Unit
-#deprecated
-pub fn TreeBuilder::inner(Self) -> Array[Array[GreenElement]]
-pub fn TreeBuilder::new() -> Self
-pub fn TreeBuilder::start_node(Self, SyntaxKind) -> Unit
-pub fn TreeBuilder::token(Self, SyntaxKind, String) -> Unit
 
 // Type aliases
 pub type VarName = String

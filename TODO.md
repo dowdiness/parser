@@ -1,7 +1,7 @@
 # Incremental Parser TODO (Compact)
 
 **Last Updated:** 2026-02-01
-**Status:** Phase 1 implemented; Phase 2 scaffolding done, integration pending
+**Status:** Phase 1 implemented; Phase 2 scaffolding done + event buffer refactor, integration pending
 
 ## Current Focus
 
@@ -11,11 +11,12 @@
 - Command: `moon benchmark performance_benchmark.mbt`
 
 ### Phase 2 (Green Tree) — Scaffolding Complete, Integration Pending
-**Done (scaffolding):**
+**Done (scaffolding + event buffer refactor):**
 - ✅ `SyntaxKind` enum unifying tokens and node types (`green_tree.mbt`)
 - ✅ `GreenToken`, `GreenNode`, `GreenElement` core types (`green_tree.mbt`)
-- ✅ `TreeBuilder` with stack-based construction (`tree_builder.mbt`)
-- ✅ `GreenParser` / `parse_green()` with whitespace emission (`green_parser.mbt`)
+- ✅ `ParseEvent` enum + `EventBuffer` struct + `build_tree` function (`parse_events.mbt`)
+- ✅ Replaced old stack-based `TreeBuilder` with flat event buffer architecture
+- ✅ `GreenParser` uses `EventBuffer` with `mark()`/`start_at()` for retroactive wrapping (`green_parser.mbt`)
 - ✅ `RedNode` with offset-based position computation (`red_tree.mbt`)
 - ✅ `green_to_term_node` / `green_to_term` backward-compat conversion (`green_convert.mbt`)
 - ✅ `ParenExpr` distinguishes `x` from `(x)` from `((x))`
@@ -32,7 +33,6 @@
 
 **Known issues (non-blocking):**
 - `EofToken` and `ErrorNode` in `SyntaxKind` are unused — intentional placeholders for Phase 3
-- `TreeBuilder::start_node` ignores its `kind` param (kind is passed to `finish_node` instead)
 - Structural sharing is value-equal, not pointer-equal — pointer sharing comes with Phase 4 reuse cursor
 
 ## Optional / On-Demand

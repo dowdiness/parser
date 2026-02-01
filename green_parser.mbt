@@ -4,7 +4,7 @@ priv struct GreenParser {
   source : String
   mut position : Int
   mut last_end : Int // Track last token end to emit whitespace
-  builder : TreeBuilder
+  events : EventBuffer
 }
 
 ///|
@@ -12,12 +12,22 @@ pub fn parse_green(source : String) -> GreenNode raise {
   let tokens = tokenize(source)
   let parser = GreenParser::new(tokens, source)
   parser.parse_source_file()
-  parser.builder.finish()
+  build_tree(parser.events.events)
 }
 
 ///|
 fn GreenParser::new(tokens : Array[TokenInfo], source : String) -> GreenParser {
-  { tokens, source, position: 0, last_end: 0, builder: TreeBuilder::new() }
+  { tokens, source, position: 0, last_end: 0, events: EventBuffer::new() }
+}
+
+///|
+fn GreenParser::start_node(self : GreenParser, kind : SyntaxKind) -> Unit {
+  self.events.push(StartNode(kind))
+}
+
+///|
+fn GreenParser::finish_node(self : GreenParser) -> Unit {
+  self.events.push(FinishNode)
 }
 
 ///|
@@ -58,7 +68,7 @@ fn GreenParser::emit_whitespace_before(
     let ws_text : StringView = self.source[self.last_end:info.start] catch {
         _ => ""
       }
-    self.builder.token(WhitespaceToken, ws_text.to_string())
+    self.events.push(Token(WhitespaceToken, ws_text.to_string()))
   }
 }
 
@@ -67,7 +77,7 @@ fn GreenParser::emit_token(self : GreenParser, kind : SyntaxKind) -> Unit {
   let info = self.peek_info()
   self.emit_whitespace_before(info)
   let text = self.token_text(info)
-  self.builder.token(kind, text)
+  self.events.push(Token(kind, text))
   self.last_end = info.end
   self.advance()
 }
@@ -94,7 +104,7 @@ fn GreenParser::parse_source_file(self : GreenParser) -> Unit raise ParseError {
         let ws_text : StringView = self.source[self.last_end:self.source.length()] catch {
             _ => ""
           }
-        self.builder.token(WhitespaceToken, ws_text.to_string())
+        self.events.push(Token(WhitespaceToken, ws_text.to_string()))
         self.last_end = self.source.length()
       }
     token => raise ParseError("Unexpected tokens after expression", token)
@@ -108,17 +118,11 @@ fn GreenParser::parse_expression(self : GreenParser) -> Unit raise ParseError {
 
 ///|
 fn GreenParser::parse_binary_op(self : GreenParser) -> Unit raise ParseError {
+  let mark = self.events.mark()
   self.parse_application()
   match self.peek() {
     Plus | Minus => {
-      // We have a binary op - need to wrap in BinaryExpr
-      // The left operand was already parsed, so we use a marker approach
-      let left_children = self.builder.0.last().unwrap().pop()
-      self.builder.start_node(BinaryExpr)
-      match left_children {
-        Some(child) => self.builder.0.last().unwrap().push(child)
-        None => ()
-      }
+      self.events.start_at(mark, BinaryExpr)
       while true {
         match self.peek() {
           Plus => {
@@ -132,7 +136,7 @@ fn GreenParser::parse_binary_op(self : GreenParser) -> Unit raise ParseError {
           _ => break
         }
       }
-      self.builder.finish_node(BinaryExpr)
+      self.finish_node()
     }
     _ => ()
   }
@@ -140,23 +144,18 @@ fn GreenParser::parse_binary_op(self : GreenParser) -> Unit raise ParseError {
 
 ///|
 fn GreenParser::parse_application(self : GreenParser) -> Unit raise ParseError {
+  let mark = self.events.mark()
   self.parse_atom()
   match self.peek() {
     LeftParen | Identifier(_) | Integer(_) | Lambda => {
-      // We have application - wrap left operand
-      let left_child = self.builder.0.last().unwrap().pop()
-      self.builder.start_node(AppExpr)
-      match left_child {
-        Some(child) => self.builder.0.last().unwrap().push(child)
-        None => ()
-      }
+      self.events.start_at(mark, AppExpr)
       while true {
         match self.peek() {
           LeftParen | Identifier(_) | Integer(_) | Lambda => self.parse_atom()
           _ => break
         }
       }
-      self.builder.finish_node(AppExpr)
+      self.finish_node()
     }
     _ => ()
   }
@@ -166,17 +165,17 @@ fn GreenParser::parse_application(self : GreenParser) -> Unit raise ParseError {
 fn GreenParser::parse_atom(self : GreenParser) -> Unit raise ParseError {
   match self.peek() {
     Integer(_) => {
-      self.builder.start_node(IntLiteral)
+      self.start_node(IntLiteral)
       self.emit_token(IntToken)
-      self.builder.finish_node(IntLiteral)
+      self.finish_node()
     }
     Identifier(_) => {
-      self.builder.start_node(VarRef)
+      self.start_node(VarRef)
       self.emit_token(IdentToken)
-      self.builder.finish_node(VarRef)
+      self.finish_node()
     }
     Lambda => {
-      self.builder.start_node(LambdaExpr)
+      self.start_node(LambdaExpr)
       self.emit_token(LambdaToken)
       match self.peek() {
         Identifier(_) => self.emit_token(IdentToken)
@@ -184,24 +183,24 @@ fn GreenParser::parse_atom(self : GreenParser) -> Unit raise ParseError {
       }
       self.expect(Dot, DotToken)
       self.parse_expression()
-      self.builder.finish_node(LambdaExpr)
+      self.finish_node()
     }
     If => {
-      self.builder.start_node(IfExpr)
+      self.start_node(IfExpr)
       self.emit_token(IfKeyword)
       self.parse_expression()
       self.expect(Then, ThenKeyword)
       self.parse_expression()
       self.expect(Else, ElseKeyword)
       self.parse_expression()
-      self.builder.finish_node(IfExpr)
+      self.finish_node()
     }
     LeftParen => {
-      self.builder.start_node(ParenExpr)
+      self.start_node(ParenExpr)
       self.emit_token(LeftParenToken)
       self.parse_expression()
       self.expect(RightParen, RightParenToken)
-      self.builder.finish_node(ParenExpr)
+      self.finish_node()
     }
     token => raise ParseError("Unexpected token", token)
   }
