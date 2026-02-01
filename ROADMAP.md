@@ -265,7 +265,7 @@ trailing whitespace coverage and mixed binary operators. See TODO archive.
 - 195 total tests passing
 
 **Remaining before Phase 2 exit:**
-- Integrate `parse_green` into primary `parse()` / `parse_tree()` path (replace direct `TermNode` construction)
+- ~~Integrate `parse_green` into primary `parse()` / `parse_tree()` path~~ **Done** — `parse_tree` now routes through `parse_green → green_to_term_node`
 - Wire `RedNode` for position queries in production code (not just tests)
 - Ensure public API compatibility and update docs
 - Verify no performance regression on existing benchmarks
@@ -426,7 +426,7 @@ The current parser absorbs parentheses — `(42)` produces a node of kind `Int(4
 5. ✅ Implement `RedNode` for position queries
 6. ✅ Provide `green_to_term()` conversion to maintain backward compatibility (note: `ParenExpr` maps to its inner expression in the semantic `Term`)
 7. ✅ Add green tree tests (structure, positions, backward compatibility)
-8. ⏳ Wire `parse_green` into primary `parse()` / `parse_tree()` path
+8. ✅ Wire `parse_green` into primary `parse()` / `parse_tree()` path
 9. ⏳ Use `RedNode` in production position queries
 10. ⏳ Update docs and verify API compatibility
 

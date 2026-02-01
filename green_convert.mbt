@@ -10,6 +10,38 @@ fn extract_token_text(green : GreenNode, token_kind : SyntaxKind) -> String? {
 }
 
 ///|
+/// Compute tight start/end positions for a green node, skipping leading and
+/// trailing whitespace tokens. Returns (start, end) relative to the given offset.
+fn tight_span(green : GreenNode, offset : Int) -> (Int, Int) {
+  let mut pos = offset
+  let mut tight_start = offset
+  let mut tight_end = offset + green.text_len
+  let mut found_start = false
+  for elem in green.children {
+    let len = elem.text_len()
+    match elem {
+      Token(t) =>
+        if t.kind != WhitespaceToken {
+          if not(found_start) {
+            tight_start = pos
+            found_start = true
+          }
+          tight_end = pos + len
+        }
+      Node(_) => {
+        if not(found_start) {
+          tight_start = pos
+          found_start = true
+        }
+        tight_end = pos + len
+      }
+    }
+    pos = pos + len
+  }
+  (tight_start, tight_end)
+}
+
+///|
 fn find_child_nodes(green : GreenNode) -> Array[GreenNode] {
   let nodes : Array[GreenNode] = []
   for elem in green.children {
@@ -52,19 +84,21 @@ pub fn green_to_term_node(
 
   fn convert(g : GreenNode, off : Int) -> TermNode {
     let start = off
-    let end = off + g.text_len
     match g.kind {
       IntLiteral => {
         let text = extract_token_text(g, IntToken).unwrap_or("")
         let value = @strconv.parse_int(text) catch { _ => 0 }
-        TermNode::new(TermKind::Int(value), start, end, next_id(), [])
+        let (tight_start, tight_end) = tight_span(g, off)
+        TermNode::new(TermKind::Int(value), tight_start, tight_end, next_id(), [])
       }
       VarRef => {
         let name = extract_token_text(g, IdentToken).unwrap_or("")
-        TermNode::new(TermKind::Var(name), start, end, next_id(), [])
+        let (tight_start, tight_end) = tight_span(g, off)
+        TermNode::new(TermKind::Var(name), tight_start, tight_end, next_id(), [])
       }
       LambdaExpr => {
         let param = extract_token_text(g, IdentToken).unwrap_or("")
+        let (tight_start, tight_end) = tight_span(g, off)
         let mut child_offset = off
         for elem in g.children {
           match elem {
@@ -72,8 +106,8 @@ pub fn green_to_term_node(
               let body = convert(n, child_offset)
               return TermNode::new(
                 TermKind::Lam(param),
-                start,
-                end,
+                tight_start,
+                body.end,
                 next_id(),
                 [body],
               )
@@ -81,7 +115,7 @@ pub fn green_to_term_node(
             Token(t) => child_offset = child_offset + t.text_len()
           }
         }
-        TermNode::new(TermKind::Lam(param), start, end, next_id(), [])
+        TermNode::new(TermKind::Lam(param), tight_start, tight_end, next_id(), [])
       }
       AppExpr => {
         let children : Array[TermNode] = []
@@ -146,6 +180,7 @@ pub fn green_to_term_node(
         }
       }
       IfExpr => {
+        let (tight_start, _) = tight_span(g, off)
         let children : Array[TermNode] = []
         let mut child_offset = off
         for elem in g.children {
@@ -157,9 +192,15 @@ pub fn green_to_term_node(
             Token(t) => child_offset = child_offset + t.text_len()
           }
         }
-        TermNode::new(TermKind::If, start, end, next_id(), children)
+        let if_end = if children.length() > 0 {
+          children[children.length() - 1].end
+        } else {
+          off + g.text_len
+        }
+        TermNode::new(TermKind::If, tight_start, if_end, next_id(), children)
       }
       ParenExpr => {
+        let (tight_start, tight_end) = tight_span(g, off)
         let mut child_offset = off
         for elem in g.children {
           match elem {
@@ -167,8 +208,8 @@ pub fn green_to_term_node(
               let inner = convert(n, child_offset)
               return TermNode::new(
                 inner.kind,
-                start,
-                end,
+                tight_start,
+                tight_end,
                 next_id(),
                 inner.children,
               )

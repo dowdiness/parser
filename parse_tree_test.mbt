@@ -92,3 +92,43 @@ test "parse_tree preserves source positions" {
   let right_child = node.children[1]
   inspect(right_child.start >= 7, content="true")
 }
+
+///|
+test "parse_tree: lambda span excludes leading whitespace in application" {
+  // Regression: green tree emits whitespace before λ inside the LambdaExpr
+  // node. The conversion must skip it so Lam start points at λ, not the space.
+  let node = parse_tree("f  λx.x")
+  // Root is App(f, λx.x)
+  inspect(node.kind, content="App")
+  let lam = node.children[1]
+  inspect(lam.kind, content="Lam(\"x\")")
+  // λ starts at position 3 (after "f  "), not 1
+  inspect(lam.start, content="3")
+}
+
+///|
+test "parse_tree: if-expr span excludes leading whitespace" {
+  // IfExpr as body of lambda — space after "." is inside the IfExpr green node
+  let node = parse_tree("\\x. if x then y else z")
+  inspect(node.kind, content="Lam(\"x\")")
+  let if_node = node.children[0]
+  inspect(if_node.kind, content="If")
+  // "if" starts at position 4, not 3 (the space after ".")
+  inspect(if_node.start, content="4")
+  // end should be at the end of "z" (position 22)
+  inspect(if_node.end, content="22")
+}
+
+///|
+test "parse_tree: paren-expr span excludes leading whitespace" {
+  // ParenExpr inside an application with leading whitespace
+  let node = parse_tree("f  (x)")
+  inspect(node.kind, content="App")
+  let paren = node.children[1]
+  // ParenExpr unwraps to Var, but span should cover ( to )
+  inspect(paren.kind, content="Var(\"x\")")
+  // "(" starts at position 3
+  inspect(paren.start, content="3")
+  // ")" ends at position 6
+  inspect(paren.end, content="6")
+}

@@ -1,7 +1,7 @@
 # Incremental Parser TODO (Compact)
 
 **Last Updated:** 2026-02-01
-**Status:** Phase 1 implemented; Phase 2 scaffolding done + event buffer refactor, integration pending
+**Status:** Phase 1 implemented; Phase 2 integration complete (green tree is canonical parse path)
 
 ## Current Focus
 
@@ -26,7 +26,7 @@
 - ✅ 195 total tests passing
 
 **Next (integration):**
-- [ ] Wire `parse_green` into primary `parse()` / `parse_tree()` path (replace direct `TermNode` construction)
+- [x] Wire `parse_green` into primary `parse()` / `parse_tree()` path (replace direct `TermNode` construction)
 - [ ] Use `RedNode` for position queries in production code (not just tests)
 - [ ] Ensure public API compatibility and update docs
 - [ ] Verify no performance regression on existing benchmarks
