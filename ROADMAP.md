@@ -236,6 +236,9 @@ Modify `IncrementalParser` to:
 2. On edit: update token buffer incrementally, then parse
 3. On initial parse: fill token buffer from full tokenization
 
+**Note (2026-02-01):** Green tree conversion fixes landed for
+trailing whitespace coverage and mixed binary operators. See TODO archive.
+
 **Exit criteria:**
 - ✅ Incremental lexer correctly handles all edit types (insert, delete, replace)
 - ✅ Token buffer matches full re-tokenization for every test case
@@ -247,6 +250,25 @@ Modify `IncrementalParser` to:
 ## Phase 2: Green Tree (Immutable CST)
 
 **Goal:** Replace the current mutable `TermNode` with an immutable green tree architecture that enables structural sharing and subtree reuse.
+
+**Status (2026-02-01): Scaffolding complete (types, parser, red nodes, conversion, tests). Integration pending.**
+
+**What's done:**
+- `SyntaxKind` enum unifying tokens and node types (`green_tree.mbt`)
+- `GreenToken`, `GreenNode`, `GreenElement` core types (`green_tree.mbt`)
+- `TreeBuilder` with stack-based construction (`tree_builder.mbt`)
+- `GreenParser` / `parse_green()` with whitespace token emission (`green_parser.mbt`)
+- `RedNode` wrapper with offset-based position computation (`red_tree.mbt`)
+- Green → Term conversion with mixed-operator handling (`green_convert.mbt`)
+- `ParenExpr` node kind distinguishes `x` / `(x)` / `((x))` (section 2.6 satisfied)
+- 30+ tests: structure, positions, backward compatibility with `parse_tree` (`green_tree_test.mbt`)
+- 195 total tests passing
+
+**Remaining before Phase 2 exit:**
+- Integrate `parse_green` into primary `parse()` / `parse_tree()` path (replace direct `TermNode` construction)
+- Wire `RedNode` for position queries in production code (not just tests)
+- Ensure public API compatibility and update docs
+- Verify no performance regression on existing benchmarks
 
 ### Why This Architecture
 
@@ -386,22 +408,25 @@ The current parser absorbs parentheses — `(42)` produces a node of kind `Int(4
 
 ### 2.7 Migration Path
 
-1. Implement `GreenNode`, `GreenToken`, `GreenElement`, `SyntaxKind`
-2. Implement `TreeBuilder`
-3. Modify parser to use `TreeBuilder` instead of direct `TermNode` construction
-4. **Change parenthesis handling to emit `ParenExpr` nodes** (see 2.6)
-5. Implement `RedNode` for position queries
-6. Provide `green_to_term()` conversion to maintain backward compatibility (note: `ParenExpr` maps to its inner expression in the semantic `Term`)
-7. Migrate tests incrementally
+1. ✅ Implement `GreenNode`, `GreenToken`, `GreenElement`, `SyntaxKind`
+2. ✅ Implement `TreeBuilder`
+3. ✅ Implement `GreenParser` using `TreeBuilder` (standalone `parse_green`, not yet replacing `TermNode` path)
+4. ✅ **Change parenthesis handling to emit `ParenExpr` nodes** (see 2.6)
+5. ✅ Implement `RedNode` for position queries
+6. ✅ Provide `green_to_term()` conversion to maintain backward compatibility (note: `ParenExpr` maps to its inner expression in the semantic `Term`)
+7. ✅ Add green tree tests (structure, positions, backward compatibility)
+8. ⏳ Wire `parse_green` into primary `parse()` / `parse_tree()` path
+9. ⏳ Use `RedNode` in production position queries
+10. ⏳ Update docs and verify API compatibility
 
 **Exit criteria:**
-- Green tree correctly represents all parsed programs
-- `ParenExpr` nodes are present for all parenthesized expressions
-- Red node positions match current `TermNode` positions for all test cases
-- Structural sharing verified: unchanged subtrees are pointer-equal
-- CST distinguishes `x` from `(x)` from `((x))`
-- No performance regression on current benchmarks
-- All existing semantic tests pass through compatibility layer
+- ✅ Green tree correctly represents all parsed programs
+- ✅ `ParenExpr` nodes are present for all parenthesized expressions
+- ✅ Red node positions match current `TermNode` positions for all test cases
+- ⏳ Structural sharing verified: unchanged subtrees are pointer-equal (value-equal verified; pointer sharing requires Phase 4 reuse cursor)
+- ✅ CST distinguishes `x` from `(x)` from `((x))`
+- ⏳ No performance regression on current benchmarks (benchmarks not yet run)
+- ✅ All existing semantic tests pass through compatibility layer (195/195)
 
 ---
 
