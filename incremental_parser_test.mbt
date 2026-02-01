@@ -120,38 +120,8 @@ test "IncrementalParser::edit result equals full reparse" {
   inspect(print_term_node(incremental_tree), content=print_term_node(full_tree))
 }
 
-// Lezer-style incremental repair tests
-
 ///|
-test "Lezer-style: selective cache invalidation - token cache" {
-  let parser = IncrementalParser::new("x + y + z")
-  let _ = parser.parse()
-
-  // Edit only affects middle portion "y" -> "42"
-  let edit = Edit::replace(4, 5, 6) // Replace "y" with "42"
-  let _ = parser.edit(edit, "x + 42 + z")
-
-  // Token cache should have selectively invalidated only overlapping entries
-  let stats = parser.stats()
-  inspect(stats.contains("TokenCache"), content="true")
-}
-
-///|
-test "Lezer-style: selective cache invalidation - parse cache" {
-  let parser = IncrementalParser::new("(λx.x) (λy.y)")
-  let _ = parser.parse()
-
-  // Edit only second lambda
-  let edit = Edit::replace(11, 12, 12) // Replace "y" with "z"
-  let _ = parser.edit(edit, "(λx.x) (λz.z)")
-
-  // Parse cache should preserve entries for first lambda
-  let stats = parser.stats()
-  inspect(stats.contains("ParseCache"), content="true")
-}
-
-///|
-test "Lezer-style: tree fragment reuse for unchanged regions" {
+test "tree fragment reuse for unchanged regions" {
   let parser = IncrementalParser::new("λf.λx.f (x + 1)")
   let initial_tree = parser.parse()
 
@@ -170,7 +140,7 @@ test "Lezer-style: tree fragment reuse for unchanged regions" {
 }
 
 ///|
-test "Lezer-style: minimal reparsing for local edits" {
+test "minimal reparsing for local edits" {
   let parser = IncrementalParser::new("a + b + c + d")
   let _ = parser.parse()
 
@@ -185,7 +155,7 @@ test "Lezer-style: minimal reparsing for local edits" {
 }
 
 ///|
-test "Lezer-style: multiple incremental edits preserve correctness" {
+test "multiple incremental edits preserve correctness" {
   let parser = IncrementalParser::new("λx.x")
   let _ = parser.parse()
 
@@ -206,7 +176,7 @@ test "Lezer-style: multiple incremental edits preserve correctness" {
 }
 
 ///|
-test "Lezer-style: damage tracking accuracy" {
+test "damage tracking accuracy" {
   let parser = IncrementalParser::new("(a + b) * (c + d)")
   let _ = parser.parse()
 
@@ -220,7 +190,7 @@ test "Lezer-style: damage tracking accuracy" {
   inspect(print_term_node(new_tree).contains("b"), content="false")
 }
 
-// Edge case tests for Lezer-style incremental parsing
+// Edge case tests for incremental parsing
 
 ///|
 test "Edge case: insertion at position 0" {

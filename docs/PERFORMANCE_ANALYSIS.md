@@ -37,17 +37,6 @@ All benchmarks executed successfully. Performance measurements taken on 2025-12-
 - ✅ Multiple edits scale linearly (~0.36 µs per edit)
 - ⚠️ Currently performing full reparse (optimization opportunity)
 
-### Cache Performance
-
-| Operation | Mean Time | Range | Iterations |
-|-----------|-----------|-------|------------|
-| Parse cache get | **0.17 µs** | 0.16 - 0.18 µs | 1,000,000 |
-
-**Analysis:**
-- ✅ Cache lookups: **0.17 µs** (extremely fast)
-- ✅ O(1) HashMap performance as expected
-- 📊 Cache effectiveness: Currently not fully utilized (full reparse)
-
 ### Damage Tracking
 
 | Operation | Mean Time | Range | Iterations |
@@ -108,10 +97,7 @@ All benchmarks executed successfully. Performance measurements taken on 2025-12-
 | Full parse (complex) | < 10ms | **1.17 µs** | ✅ **8,500x better** |
 | Incremental edit | < 1ms | **0.36 µs** | ✅ **2,800x better** |
 | Real-time editing (60 FPS) | < 16ms | **< 1 µs** | ✅ **16,000x better** |
-| Cache hit rate | > 80% | N/A* | 📊 To measure |
-| Memory overhead | < 2x source | N/A* | 📊 To measure |
-
-\* Cache effectiveness not yet measured (currently full reparse on edits)
+| Memory overhead | < 2x source | N/A | 📊 To measure |
 
 ---
 
@@ -140,45 +126,23 @@ Current implementation breakdown for typical edit (`x` → `x + 1`):
 4. **Fast CRDT integration**: Round-trip conversion < 2.5 µs
 5. **Real-time capable**: 16,000x faster than 60 FPS requirement
 
-### 📊 Areas for Future Optimization (Phase 7 - Optional)
+### 📊 Areas for Future Optimization
 
-1. **Cache utilization**: Currently performing full reparse instead of using cache
-   - Potential speedup: 2-10x for localized edits
+1. **Subtree reuse**: Currently performing full reparse when damage overlaps tree
+   - Potential speedup: 2-10x for localized edits on larger files
    - Implementation: Selective reparsing in damaged regions only
 
-2. **Selective cache invalidation**: Currently incrementing version (invalidate all)
-   - Potential speedup: Improved cache hit rate
-   - Implementation: Range-based invalidation
-
-3. **Memory profiling**: Track cache sizes and growth
+2. **Memory profiling**: Track AST allocation patterns
    - Current: Not measured
    - Target: < 2x source size
 
-4. **Parallel tokenization**: For large documents
+3. **Parallel tokenization**: For large documents
    - Current: Sequential tokenization
    - Potential: Multi-threaded lexing
 
 ### Performance Red Flags
 
 **None detected.** All metrics exceed targets by orders of magnitude.
-
----
-
-## Comparison with Tree-sitter
-
-Tree-sitter (C implementation, similar Wagner-Graham algorithm):
-- Typical edit: 1-10 ms (depending on language complexity)
-- Our implementation: **0.36 µs = 0.00036 ms**
-
-**Factors contributing to our performance:**
-1. Lambda Calculus is simpler than full programming languages
-2. MoonBit compiler optimizations in release mode
-3. Small input sizes in benchmarks
-4. Efficient HashMap implementation
-
-**Expected performance on larger files (1000+ lines):**
-- Still sub-millisecond for localized edits (Wagner-Graham scales with damaged region, not file size)
-- May need position indexing for O(log n) node lookup
 
 ---
 
@@ -191,16 +155,11 @@ Tree-sitter (C implementation, similar Wagner-Graham algorithm):
 ✅ **Sub-microsecond incremental edits**
 ✅ **Efficient CRDT integration**
 
-### Phase 7 Optional Enhancements
+### Optional Enhancements
 
-The implementation is **production-ready** as-is. Optional optimizations for Phase 7:
-
-1. **Selective reparsing** (use cached subtrees) - for academic interest
-2. **Memory profiling** - to validate < 2x overhead assumption
+1. **Subtree reuse** - selective reparsing in damaged regions only
+2. **Memory profiling** - validate < 2x overhead assumption
 3. **Large file benchmarks** - test scalability beyond current benchmarks
-4. **Cache hit rate measurement** - validate effectiveness
-
-These optimizations would improve already-excellent performance but are **not critical** given current results.
 
 ---
 
@@ -228,5 +187,5 @@ moon bench --package parser --release > results.txt
 ---
 
 **Analysis Date:** 2025-12-27
-**Implementation Status:** Phase 1-6 Complete ✅, Phase 7 Optional
+**Implementation Status:** Recursive descent parser with Wagner-Graham damage tracking
 **Overall Assessment:** **Exceeds all performance requirements**

@@ -24,33 +24,20 @@ Before planning forward, we need an unflinching look at where we are. The existi
 
 6. **Test suite** - 223 tests passing, including property-based tests. Good coverage.
 
-### What Does Not Work (Architectural Dead Weight)
+### What Does Not Work (Architectural Gaps)
 
-**Critical finding: The caches are never consulted during parsing.**
-
-- `TokenCache` (`token_cache.mbt`) stores tokens and invalidates ranges, but `tokenize()` in `lexer.mbt` never calls `TokenCache::get()`. Every parse does a full re-tokenization regardless.
-
-- `ParseCache` (`parse_cache.mbt`) stores parse results and invalidates ranges, but `parse_tree()` in `parser.mbt` never calls `ParseCache::get()`. Every parse does a full parse regardless.
-
-- The only callers of `cache.get()` are test files and benchmarks - never production code.
-
-**This means the "incremental" parser is actually:**
+**Phase 0 (completed 2026-02-01) removed the dead cache infrastructure.** `TokenCache`, `ParseCache`, and `RecoveringParser` have been deleted. The incremental parser now honestly does:
 1. Track damage (works)
-2. Invalidate cache entries that nothing reads (no-op)
-3. Check whole-tree reuse (rare optimization)
-4. Fall through to full reparse (almost always)
-
-The cache invalidation that the documentation claims "provides 70-80% of incremental benefits" provides **zero benefits** because the parser never reads from the caches. The performance numbers in the docs reflect full-reparse speed on small inputs, not incremental gains.
+2. Check whole-tree reuse (works when damage is outside tree bounds)
+3. Full reparse (fallback for all other cases)
 
 ### Error Recovery is a Wrapper, Not an Integration
 
-`parse_with_error_recovery()` (`error_recovery.mbt:35-61`) wraps `parse_tree()` in a try-catch. If parsing fails at any point, the entire input gets a single error node. There is no:
+`parse_with_error_recovery()` wraps `parse_tree()` in a try-catch. If parsing fails at any point, the entire input gets a single error node. There is no:
 - Synchronization point recovery inside the parser
 - Partial tree construction on error
 - Multiple error node insertion
 - Recovery continuation after errors
-
-The `RecoveringParser` struct exists but is never used for actual parsing. The parser either succeeds completely or fails completely.
 
 ### CRDT Integration is Conceptual
 
@@ -62,17 +49,17 @@ The `RecoveringParser` struct exists but is never used for actual parsing. The p
 
 ### Summary
 
-| Component | Claimed Status | Actual Status |
-|-----------|---------------|---------------|
-| Recursive descent parser | Production ready | **Correct** - genuinely works |
-| Lexer | Production ready | **Correct** - genuinely works |
-| Damage tracking | Production ready | **Correct** - genuinely works |
-| Position adjustment | Production ready | **Correct** - genuinely works |
-| Token cache | Provides 70-80% benefit | **Dead code** - never read during parsing |
-| Parse cache | Preserves subtrees | **Dead code** - never read during parsing |
-| Incremental reparse | Cache-based optimization | **Full reparse** every time (except whole-tree reuse) |
-| Error recovery | Panic mode with sync points | **Try-catch wrapper** - all-or-nothing |
-| CRDT integration | Bridge to collaborative editing | **Conversion functions** - no CRDT logic |
+| Component | Status |
+|-----------|--------|
+| Recursive descent parser | **Correct** - genuinely works |
+| Lexer | **Correct** - genuinely works |
+| Damage tracking | **Correct** - genuinely works |
+| Position adjustment | **Correct** - genuinely works |
+| ~~Token cache~~ | **Deleted** (Phase 0) - was never read during parsing |
+| ~~Parse cache~~ | **Deleted** (Phase 0) - was never read during parsing |
+| Incremental reparse | **Full reparse** fallback (whole-tree reuse when applicable) |
+| Error recovery | **Try-catch wrapper** - all-or-nothing |
+| CRDT integration | **Conversion functions** - no CRDT logic |
 
 ---
 
@@ -148,53 +135,29 @@ The end state is a parser where every layer earns its existence. No dead infrast
 
 ---
 
-## Phase 0: Architectural Reckoning
+## Phase 0: Architectural Reckoning ✅ COMPLETE (2026-02-01)
 
-**Goal:** Remove all dead infrastructure. Make the codebase honest about what it does. Establish baseline benchmarks that measure real behavior.
+**Goal:** Remove all dead infrastructure. Make the codebase honest about what it does.
 
-### 0.1 Remove Dead Caches
+### What was done:
 
-The `TokenCache` and `ParseCache` are never read during parsing. They add ~400 lines of code, complexity to `IncrementalParser`, and false claims in documentation.
+- **Deleted** `token_cache.mbt`, `token_cache_test.mbt`, `parse_cache.mbt`, `parse_cache_test.mbt` (~581 lines)
+- **Deleted** `RecoveringParser` struct from `error_recovery.mbt`; replaced with plain `Array[String]`
+- **Removed** `token_cache` and `parse_cache` fields from `IncrementalParser`
+- **Removed** cache invalidation from `IncrementalParser::edit()`
+- **Removed** duplicate tokenization from `parse_with_error_recovery()`
+- **Simplified** `IncrementalParser::stats()` to report only source length
+- **Removed** cache-specific tests and benchmarks
+- **Updated** documentation to remove cache claims
+- **Renamed** "Lezer-style:" test prefixes to honest names
 
-**Action:**
-- Remove `TokenCache` and `ParseCache` structs and all associated code
-- Remove cache fields from `IncrementalParser`
-- Remove cache invalidation steps from `IncrementalParser::edit()`
-- Update `IncrementalParser::stats()` to reflect actual state
-- Update all documentation that references cache benefits
+**What survives:** Recursive descent parser, lexer, damage tracking, position adjustment, whole-tree reuse, error recovery wrapper (try-catch), CRDT integration, all correctness tests.
 
-**What survives:** Damage tracking, position adjustment, whole-tree reuse. These actually work.
-
-**Risk:** Tests that directly test cache behavior will be removed. Tests that test parser correctness (the important ones) will be unaffected.
-
-### 0.2 Honest Benchmarks
-
-Create benchmarks that measure what actually happens:
-
-```
-Benchmark: "full reparse on edit" (current behavior)
-Benchmark: "full reparse on unchanged input" (should be instant with whole-tree reuse)
-Benchmark: "position adjustment cost"
-Benchmark: "damage tracking cost"
-Benchmark: "tokenization cost by input size"
-Benchmark: "parsing cost by input size"
-```
-
-These baselines will let us measure real improvements in later phases.
-
-### 0.3 Simplify Error Recovery
-
-Remove `RecoveringParser` struct (unused for actual parsing). Keep `parse_with_error_recovery()` but document it honestly as a try-catch wrapper. The real error recovery comes in Phase 4.
-
-### 0.4 Clean Documentation
-
-Update all documentation to reflect the actual state after cleanup. Remove claims about cache benefits, Lezer-style optimization, etc.
-
-**Exit criteria:**
-- Zero dead code
-- All benchmarks running and baselined
-- Documentation matches reality
-- All existing correctness tests still pass
+**Exit criteria met:**
+- Zero dead code in parsing path
+- 149 tests passing
+- `moon check` clean
+- `.mbti` regenerated
 
 ---
 

@@ -1,5 +1,7 @@
 # What We Learned from Lezer
 
+> **Note (2026-02-01):** References to `token_cache.mbt` and `parse_cache.mbt` below are historical — those files were deleted in the Phase 0 cleanup. See [ROADMAP.md](../ROADMAP.md) for the current architecture.
+
 ## Summary
 
 This document describes what we learned from analyzing the actual Lezer implementation, what concepts we borrowed, and why we can't directly implement Lezer's algorithm with our recursive descent parser.

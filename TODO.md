@@ -474,8 +474,8 @@ git diff HEAD~1 -- parser/BENCHMARKS.md
 - **Future-proof** via clean architecture, not premature optimization
 
 ### Open Questions
-- [ ] Should we keep `RecoveringParser` separate or merge with main parser?
-- [ ] Is unified parser approach preferred over separate parsers?
+- [x] ~~Should we keep `RecoveringParser` separate or merge with main parser?~~ → **Deleted** (Phase 0, 2026-02-01). Was never used for actual parsing.
+- [x] ~~Is unified parser approach preferred over separate parsers?~~ → Resolved in Priority 2 (single PositionedParser).
 - [ ] What performance targets should trigger advanced optimizations?
 
 ---
@@ -652,6 +652,24 @@ Instead of creating complex `UnifiedParser` with conditional logic:
 
 ---
 
-**Last Updated:** 2026-01-04
-**Status:** ✅ All Core Priorities Complete
-**Next Review:** Optional Priority 4 enhancements or project complete
+### 2026-02-01 - ROADMAP Phase 0 Complete ✅
+
+**What was accomplished:**
+- ✅ Deleted `TokenCache`, `ParseCache`, `RecoveringParser` and all associated code (~581 lines)
+- ✅ Removed cache fields and invalidation from `IncrementalParser`
+- ✅ Removed duplicate tokenization from `parse_with_error_recovery()`
+- ✅ Removed cache-specific tests and benchmarks
+- ✅ Updated documentation to remove cache claims
+- ✅ Added deprecation notices to historical docs
+
+**Key outcomes:**
+- Zero dead code in parsing path
+- 149 tests passing
+- `.mbti` regenerated without deleted types
+- Documentation matches reality
+
+---
+
+**Last Updated:** 2026-02-01
+**Status:** ✅ All Core Priorities Complete + ROADMAP Phase 0 Complete
+**Next Review:** ROADMAP Phase 1 (Incremental Lexer) or optional Priority 4 enhancements

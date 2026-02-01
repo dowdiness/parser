@@ -112,19 +112,6 @@ test "incremental - replacement" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: Parse cache - get operation
-test "parse cache - get" (b : @bench.T) {
-  b.bench(fn() {
-    let cache = ParseCache::new()
-    let tokens = tokenize("42") catch { _ => abort("benchmark failed") }
-    let ast = parse_tree("42") catch { _ => abort("benchmark failed") }
-    cache.insert(tokens, 0, tokens.length(), ast)
-    let result = cache.get(tokens, 0, tokens.length())
-    b.keep(result)
-  })
-}
-
-///|
 /// Benchmark: Damage tracking
 test "damage tracking" (b : @bench.T) {
   b.bench(fn() {

@@ -61,23 +61,6 @@ test "collect_errors finds nested errors" {
 }
 
 ///|
-test "RecoveringParser::new creates parser" {
-  let tokens = tokenize("42")
-  let parser = RecoveringParser::new(tokens)
-  inspect(parser.get_errors().length(), content="0")
-}
-
-///|
-test "RecoveringParser tracks errors" {
-  let tokens = tokenize("42")
-  let parser = RecoveringParser::new(tokens)
-  parser.record_error("test error")
-  let errors = parser.get_errors()
-  inspect(errors.length(), content="1")
-  inspect(errors[0], content="test error")
-}
-
-///|
 test "parse_with_error_recovery returns partial tree" {
   // Even with errors, we should get some tree structure back
   let (tree, _errors) = parse_with_error_recovery("λx") // Incomplete

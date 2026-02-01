@@ -68,14 +68,6 @@ pub struct CRDTNode {
 }
 pub fn CRDTNode::new(String, String, @hashmap.HashMap[String, String], Array[Self]) -> Self
 
-type CacheKey
-pub impl Eq for CacheKey
-pub impl Hash for CacheKey
-
-type CachedNode
-
-type CachedTokens
-
 pub struct DamageTracker {
   damaged_ranges : Array[Range]
 }
@@ -111,8 +103,6 @@ pub impl Show for Edit
 pub struct IncrementalParser {
   mut source : String
   mut tree : TermNode?
-  token_cache : TokenCache
-  parse_cache : ParseCache
 }
 pub fn IncrementalParser::edit(Self, Edit, String) -> TermNode
 pub fn IncrementalParser::get_source(Self) -> String
@@ -120,23 +110,6 @@ pub fn IncrementalParser::get_tree(Self) -> TermNode?
 pub fn IncrementalParser::new(String) -> Self
 pub fn IncrementalParser::parse(Self) -> TermNode
 pub fn IncrementalParser::stats(Self) -> String
-
-pub struct ParseCache {
-  cache : @hashmap.HashMap[ParseCacheKey, CachedNode]
-  mut version : Int
-  max_entries : Int
-}
-pub fn ParseCache::clear(Self) -> Unit
-pub fn ParseCache::get(Self, Array[TokenInfo], Int, Int) -> TermNode?
-pub fn ParseCache::insert(Self, Array[TokenInfo], Int, Int, TermNode) -> Unit
-pub fn ParseCache::invalidate_range(Self, Range) -> Unit
-pub fn ParseCache::new() -> Self
-pub fn ParseCache::stats(Self) -> String
-pub fn ParseCache::with_capacity(Int) -> Self
-
-type ParseCacheKey
-pub impl Eq for ParseCacheKey
-pub impl Hash for ParseCacheKey
 
 pub struct ParsedDocument {
   mut source : String
@@ -164,15 +137,6 @@ pub impl Compare for Range
 pub impl Eq for Range
 pub impl Hash for Range
 pub impl Show for Range
-
-pub struct RecoveringParser {
-  tokens : Array[TokenInfo]
-  position : Int
-  errors : Array[String]
-}
-pub fn RecoveringParser::get_errors(Self) -> Array[String]
-pub fn RecoveringParser::new(Array[TokenInfo]) -> Self
-pub fn RecoveringParser::record_error(Self, String) -> Unit
 
 pub(all) enum Term {
   Int(Int)
@@ -227,19 +191,6 @@ pub enum Token {
 }
 pub impl Eq for Token
 pub impl Show for Token
-
-pub struct TokenCache {
-  cache : @hashmap.HashMap[CacheKey, CachedTokens]
-  mut version : Int
-  max_entries : Int
-}
-pub fn TokenCache::clear(Self) -> Unit
-pub fn TokenCache::get(Self, String, Int, Int) -> Array[TokenInfo]?
-pub fn TokenCache::insert(Self, String, Int, Int, Array[TokenInfo]) -> Unit
-pub fn TokenCache::invalidate_range(Self, Int, Int) -> Unit
-pub fn TokenCache::new() -> Self
-pub fn TokenCache::stats(Self) -> String
-pub fn TokenCache::with_capacity(Int) -> Self
 
 pub struct TokenInfo {
   token : Token

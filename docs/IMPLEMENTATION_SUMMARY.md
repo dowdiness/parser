@@ -1,20 +1,14 @@
 # Incremental Parser Implementation Summary
 
+> **Note (2026-02-01):** This document predates the Phase 0 cleanup. The `TokenCache`, `ParseCache`, and `RecoveringParser` described below have been **deleted** — they were never consulted during parsing. See [ROADMAP.md](../ROADMAP.md) for the current architecture and forward plan.
+
 ## Overview
 
-Successfully implemented a **Wagner-Graham incremental parser** for Lambda Calculus with full CRDT integration support. The parser efficiently handles source edits by reparsing only affected regions while maintaining synchronized parse trees for collaborative editing.
+Wagner-Graham incremental parser for Lambda Calculus with CRDT integration support. The parser handles source edits using damage tracking with whole-tree reuse or full reparse.
 
 ## Implementation Status
 
-**6 of 7 Phases Complete** (86% done)
-
-✅ **Phase 1**: Source tracking and node identity
-✅ **Phase 2**: Token cache
-✅ **Phase 3**: Parse tree caching and damage tracking
-✅ **Phase 4**: Incremental re-parsing
-✅ **Phase 5**: Error recovery
-✅ **Phase 6**: CRDT integration
-🔲 **Phase 7**: Optimization and performance (optional enhancements)
+**Current:** Recursive descent parser with Wagner-Graham damage tracking, whole-tree reuse, and full reparse fallback.
 
 ---
 

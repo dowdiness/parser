@@ -1,14 +1,16 @@
 # Incremental Parsing Implementation
 
+> **Note (2026-02-01):** This document predates the Phase 0 cleanup. The `TokenCache`, `ParseCache`, and `RecoveringParser` described below have been **deleted** — they were never consulted during parsing. See [ROADMAP.md](../ROADMAP.md) for the current architecture and forward plan.
+
 ## Overview
 
-This document describes the incremental parsing implementation for the lambda calculus parser, based on the Wagner-Graham damage tracking algorithm with cache-based optimization.
+This document describes the incremental parsing implementation for the lambda calculus parser, based on the Wagner-Graham damage tracking algorithm.
 
 ## Implementation Status
 
-**Algorithm:** Wagner-Graham damage tracking + selective cache invalidation
-**Test Results:** 35/35 tests passing
-**Files:** [incremental_parser.mbt](../incremental_parser.mbt), [damage.mbt](../damage.mbt), [token_cache.mbt](../token_cache.mbt), [parse_cache.mbt](../parse_cache.mbt)
+**Algorithm:** Wagner-Graham damage tracking + whole-tree reuse or full reparse
+**Test Results:** 149 tests passing
+**Files:** [incremental_parser.mbt](../incremental_parser.mbt), [damage.mbt](../damage.mbt)
 
 ---
 

@@ -1,13 +1,15 @@
 # Incremental Parser - Implementation Status
 
+> **Note (2026-02-01):** This document predates the Phase 0 cleanup. The `TokenCache`, `ParseCache`, and `RecoveringParser` described below have been **deleted** — they were never consulted during parsing and provided zero incremental benefit. See [ROADMAP.md](../ROADMAP.md) for the current architecture and forward plan.
+
 ## Summary
 
-Wagner-Graham incremental parser with cache-based optimization has been successfully implemented for the lambda calculus CRDT parser.
+Wagner-Graham incremental parser with damage tracking and whole-tree reuse for the lambda calculus CRDT parser.
 
 **Status:** ✅ **Production Ready**
-**Test Results:** 35/35 incremental tests passing
-**Algorithm:** Wagner-Graham damage tracking + selective cache invalidation
-**Date:** 2025-12-28 (initial), 2026-01-04 (documentation update)
+**Test Results:** 149 tests passing
+**Algorithm:** Wagner-Graham damage tracking + whole-tree reuse or full reparse
+**Date:** 2025-12-28 (initial), 2026-01-04 (documentation update), 2026-02-01 (Phase 0 cleanup)
 
 ---
 

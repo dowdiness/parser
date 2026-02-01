@@ -1,34 +1,23 @@
 // Incremental parser based on Wagner-Graham damage tracking algorithm
-// with cache-based optimization for lambda calculus
+// for lambda calculus
 //
 // References:
 // - Wagner-Graham (1998): https://harmonia.cs.berkeley.edu/papers/twagner-parsing.pdf
-// - Lezer (inspiration for cache invalidation): https://marijnhaverbeke.nl/blog/lezer.html
 //
-// Note: Lezer uses position-based fragment reuse with LR parser states.
-// We use a simpler approach appropriate for recursive descent parsers:
-// - Wagner-Graham damage tracking
-// - Selective cache invalidation (primary optimization)
-// - Whole-tree reuse or full reparse with cache benefits
+// Strategy: Wagner-Graham damage tracking with whole-tree reuse
+// or full reparse. Appropriate for recursive descent + small grammars.
 
 ///|
 /// Incremental parser state
 pub struct IncrementalParser {
   mut source : String // Current source text
   mut tree : TermNode? // Current parse tree
-  token_cache : TokenCache // Token cache
-  parse_cache : ParseCache // Parse cache
 }
 
 ///|
 /// Create a new incremental parser
 pub fn IncrementalParser::new(source : String) -> IncrementalParser {
-  {
-    source,
-    tree: None,
-    token_cache: TokenCache::new(),
-    parse_cache: ParseCache::new(),
-  }
+  { source, tree: None }
 }
 
 ///|
@@ -45,8 +34,7 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> TermNode {
 /// This implements the Wagner-Graham incremental parsing algorithm:
 /// 1. Update source text
 /// 2. Identify damaged region (edit range)
-/// 3. Invalidate caches in damaged region
-/// 4. Reparse damaged region, reusing cached subtrees where possible
+/// 3. Reparse damaged region, reusing whole tree where possible
 pub fn IncrementalParser::edit(
   self : IncrementalParser,
   edit : Edit,
@@ -70,12 +58,8 @@ pub fn IncrementalParser::edit(
   let damage = DamageTracker::new(edit)
   damage.expand_for_tree(adjusted_tree)
 
-  // Step 5: Invalidate caches in damaged range
+  // Step 5: Incremental reparse
   let damaged_range = damage.range()
-  self.token_cache.invalidate_range(damaged_range.start, damaged_range.end)
-  self.parse_cache.invalidate_range(damaged_range)
-
-  // Step 6: Incremental reparse (with cache benefits from step 5)
   let new_tree = self.incremental_reparse(
     new_source, damaged_range, adjusted_tree,
   )
@@ -88,13 +72,7 @@ pub fn IncrementalParser::edit(
 ///
 /// Strategy:
 /// 1. Attempt whole-tree reuse if damage is completely outside tree bounds
-/// 2. Otherwise full reparse with cache benefits (tokens/nodes outside damaged range preserved)
-///
-/// Note: Lezer uses position-based fragment reuse with LR states for granular reuse.
-/// We use simpler approach appropriate for recursive descent + lambda calculus:
-/// - Cache invalidation provides 70-80% of incremental benefits
-/// - Small files (< 1KB) make full reparse fast (< 1ms)
-/// - Simple, maintainable code for simple grammar
+/// 2. Otherwise full reparse
 fn IncrementalParser::incremental_reparse(
   self : IncrementalParser,
   source : String,
@@ -110,11 +88,7 @@ fn IncrementalParser::incremental_reparse(
     return adjusted_tree
   }
 
-  // Full reparse with cache benefits
-  // Cache invalidation (step 5 above) already preserved tokens/nodes outside damaged range:
-  // - Token cache: Avoids re-tokenizing 70-90% of unchanged text
-  // - Parse cache: Preserves nodes outside damaged region
-  // This provides incremental benefits without complex fragment reuse logic
+  // Full reparse
   let (tree, _errors) = parse_with_error_recovery(source)
   tree
 }
@@ -198,16 +172,9 @@ pub fn IncrementalParser::get_source(self : IncrementalParser) -> String {
 }
 
 ///|
-/// Get cache statistics
+/// Get parser statistics
 pub fn IncrementalParser::stats(self : IncrementalParser) -> String {
-  "IncrementalParser {\n" +
-  "  source_length: " +
+  "IncrementalParser { source_length: " +
   self.source.length().to_string() +
-  ",\n" +
-  "  " +
-  self.token_cache.stats() +
-  ",\n" +
-  "  " +
-  self.parse_cache.stats() +
-  "\n}"
+  " }"
 }

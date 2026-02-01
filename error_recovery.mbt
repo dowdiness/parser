@@ -1,63 +1,28 @@
-// Error recovery for incremental parsing
-// Implements panic mode recovery with synchronization points
-
-///|
-/// Parser with error recovery
-pub struct RecoveringParser {
-  tokens : Array[TokenInfo]
-  position : Int
-  errors : Array[String] // Accumulated errors
-}
-
-///|
-/// Create a recovering parser
-pub fn RecoveringParser::new(tokens : Array[TokenInfo]) -> RecoveringParser {
-  { tokens, position: 0, errors: [] }
-}
-
-///|
-/// Record an error
-pub fn RecoveringParser::record_error(
-  self : RecoveringParser,
-  error : String,
-) -> Unit {
-  self.errors.push(error)
-}
-
-///|
-/// Get accumulated errors
-pub fn RecoveringParser::get_errors(self : RecoveringParser) -> Array[String] {
-  self.errors
-}
+// Error recovery for parsing
+// Wraps parse_tree with try-catch to produce partial trees on failure
 
 ///|
 /// Parse with error recovery (returns partial tree with error nodes)
 pub fn parse_with_error_recovery(input : String) -> (TermNode, Array[String]) {
-  let tokens = tokenize(input) catch {
-    TokenizationError(msg) => {
-      // Return error node for tokenization failure
-      let error_tree = TermNode::error("Tokenization error: " + msg, 0, 0)
-      return (error_tree, ["Tokenization error: " + msg])
-    }
-  }
-  let parser = RecoveringParser::new(tokens)
-
-  // Try to parse, catching any errors
-  // Use the standard positioned parser for now
-  // In a full implementation, we'd use RecoveringParser throughout
+  let errors : Array[String] = []
   let tree = parse_tree(input) catch {
+    TokenizationError(msg) => {
+      let error_msg = "Tokenization error: " + msg
+      errors.push(error_msg)
+      TermNode::error(error_msg, 0, 0)
+    }
     ParseError(msg, token) => {
       let error_msg = "Parse error: " + msg + " at token " + print_token(token)
-      parser.record_error(error_msg)
+      errors.push(error_msg)
       TermNode::error(error_msg, 0, 0)
     }
     e => {
       let error_msg = "Unexpected error: " + e.to_string()
-      parser.record_error(error_msg)
+      errors.push(error_msg)
       TermNode::error(error_msg, 0, 0)
     }
   }
-  (tree, parser.get_errors())
+  (tree, errors)
 }
 
 ///|
