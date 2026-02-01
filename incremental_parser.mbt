@@ -12,18 +12,33 @@
 pub struct IncrementalParser {
   mut source : String // Current source text
   mut tree : TermNode? // Current parse tree
+  mut token_buffer : TokenBuffer? // Incremental token buffer
 }
 
 ///|
 /// Create a new incremental parser
 pub fn IncrementalParser::new(source : String) -> IncrementalParser {
-  { source, tree: None }
+  { source, tree: None, token_buffer: None }
 }
 
 ///|
 /// Perform initial full parse
 pub fn IncrementalParser::parse(self : IncrementalParser) -> TermNode {
-  let (tree, _errors) = parse_with_error_recovery(self.source)
+  let tree = try {
+    let buffer = TokenBuffer::new(self.source)
+    self.token_buffer = Some(buffer)
+    let tokens = match self.token_buffer {
+      Some(b) => b.get_tokens()
+      None => []
+    }
+    let (parsed_tree, _errors) = parse_with_error_recovery_tokens(tokens)
+    parsed_tree
+  } catch {
+    TokenizationError(msg) => {
+      let error_msg = "Tokenization error: " + msg
+      TermNode::error(error_msg, 0, 0)
+    }
+  }
   self.tree = Some(tree)
   tree
 }
@@ -43,6 +58,36 @@ pub fn IncrementalParser::edit(
   // Step 1: Update source
   self.source = new_source
 
+  // Step 1.5: Update token buffer incrementally
+  let tokens = match self.token_buffer {
+    Some(buffer) =>
+      buffer.update(edit, self.source) catch {
+        TokenizationError(msg) => {
+          let error_msg = "Tokenization error: " + msg
+          let tree = TermNode::error(error_msg, 0, 0)
+          self.tree = Some(tree)
+          self.token_buffer = None
+          return tree
+        }
+      }
+    None => {
+      // No token buffer yet - try full tokenize
+      let buffer = TokenBuffer::new(self.source) catch {
+        TokenizationError(msg) => {
+          let error_msg = "Tokenization error: " + msg
+          let tree = TermNode::error(error_msg, 0, 0)
+          self.tree = Some(tree)
+          return tree
+        }
+      }
+      self.token_buffer = Some(buffer)
+      match self.token_buffer {
+        Some(b) => b.get_tokens()
+        None => []
+      }
+    }
+  }
+
   // Step 2: Get old tree (if any)
   let old_tree = match self.tree {
     Some(t) => t
@@ -61,7 +106,7 @@ pub fn IncrementalParser::edit(
   // Step 5: Incremental reparse
   let damaged_range = damage.range()
   let new_tree = self.incremental_reparse(
-    new_source, damaged_range, adjusted_tree,
+    new_source, damaged_range, adjusted_tree, tokens,
   )
   self.tree = Some(new_tree)
   new_tree
@@ -78,6 +123,7 @@ fn IncrementalParser::incremental_reparse(
   source : String,
   damaged_range : Range,
   adjusted_tree : TermNode,
+  tokens : Array[TokenInfo],
 ) -> TermNode {
   // Attempt whole-tree reuse: Can we reuse the entire tree?
   // Only safe if damage is completely outside tree bounds
@@ -89,7 +135,7 @@ fn IncrementalParser::incremental_reparse(
   }
 
   // Full reparse
-  let (tree, _errors) = parse_with_error_recovery(source)
+  let (tree, _errors) = parse_with_error_recovery_tokens(tokens)
   tree
 }
 

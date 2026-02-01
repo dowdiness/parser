@@ -26,6 +26,27 @@ pub fn parse_with_error_recovery(input : String) -> (TermNode, Array[String]) {
 }
 
 ///|
+/// Parse pre-tokenized input with error recovery
+pub fn parse_with_error_recovery_tokens(
+  tokens : Array[TokenInfo],
+) -> (TermNode, Array[String]) {
+  let errors : Array[String] = []
+  let tree = parse_tree_from_tokens(tokens) catch {
+    ParseError(msg, token) => {
+      let error_msg = "Parse error: " + msg + " at token " + print_token(token)
+      errors.push(error_msg)
+      TermNode::error(error_msg, 0, 0)
+    }
+    e => {
+      let error_msg = "Unexpected error: " + e.to_string()
+      errors.push(error_msg)
+      TermNode::error(error_msg, 0, 0)
+    }
+  }
+  (tree, errors)
+}
+
+///|
 /// Check if a tree contains any error nodes
 pub fn has_errors(tree : TermNode) -> Bool {
   match tree.kind {

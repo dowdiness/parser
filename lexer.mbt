@@ -127,3 +127,31 @@ fn tokenize_helper(
 pub fn tokenize(input : String) -> Array[TokenInfo] raise TokenizationError {
   tokenize_helper(input, 0, [])
 }
+
+///|
+/// Tokenize a slice of the input string and return tokens without EOF.
+pub fn tokenize_range(
+  input : String,
+  start : Int,
+  end : Int,
+) -> Array[TokenInfo] raise TokenizationError {
+  let slice = input[start:end] catch {
+      _ => raise TokenizationError("Invalid slice")
+    }
+  let tokens = tokenize(slice.to_string())
+  let result : Array[TokenInfo] = []
+  for token_info in tokens {
+    match token_info.token {
+      EOF => ()
+      _ =>
+        result.push(
+          TokenInfo::new(
+            token_info.token,
+            token_info.start + start,
+            token_info.end + start,
+          ),
+        )
+    }
+  }
+  result
+}

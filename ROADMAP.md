@@ -165,6 +165,14 @@ The end state is a parser where every layer earns its existence. No dead infrast
 
 **Goal:** Only re-tokenize the damaged region of the source. This is the first optimization that provides real, measurable incremental benefit.
 
+**Status (2026-02-01): Implemented; benchmarks pending.**
+
+**What’s done:**
+- TokenBuffer implemented with splice-based incremental updates (`token_buffer.mbt`)
+- Incremental re-lex integration in `IncrementalParser` (uses token buffer, token-based parse)
+- Token-range re-lex with conservative boundary expansion (left/right context)
+- Property tests: incremental lex == full lex (QuickCheck + deterministic generators)
+
 ### Why This Comes First
 
 Tokenization is O(n) on source length. For a 10KB file with a 1-character edit, we currently re-tokenize all 10KB. An incremental lexer re-tokenizes perhaps 50 bytes around the edit point and splices the result into the existing token buffer. This is the single largest practical win available.
@@ -229,10 +237,10 @@ Modify `IncrementalParser` to:
 3. On initial parse: fill token buffer from full tokenization
 
 **Exit criteria:**
-- Incremental lexer correctly handles all edit types (insert, delete, replace)
-- Token buffer matches full re-tokenization for every test case
-- Benchmark shows measurable speedup for edits on larger inputs (100+ tokens)
-- Property test: for any edit, incremental lex result == full lex result
+- ✅ Incremental lexer correctly handles all edit types (insert, delete, replace)
+- ✅ Token buffer matches full re-tokenization for every test case
+- ⏳ Benchmark shows measurable speedup for edits on larger inputs (100+ tokens)
+- ✅ Property test: for any edit, incremental lex result == full lex result
 
 ---
 

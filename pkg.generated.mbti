@@ -21,7 +21,11 @@ pub fn parse(String) -> Term raise
 
 pub fn parse_tree(String) -> TermNode raise
 
+pub fn parse_tree_from_tokens(Array[TokenInfo]) -> TermNode raise
+
 pub fn parse_with_error_recovery(String) -> (TermNode, Array[String])
+
+pub fn parse_with_error_recovery_tokens(Array[TokenInfo]) -> (TermNode, Array[String])
 
 pub fn print_crdt_tree(CRDTNode, Int) -> String
 
@@ -40,6 +44,8 @@ pub fn print_tokens(Array[Token]) -> String
 pub fn term_node_to_dot(TermNode) -> String
 
 pub fn tokenize(String) -> Array[TokenInfo] raise TokenizationError
+
+pub fn tokenize_range(String, Int, Int) -> Array[TokenInfo] raise TokenizationError
 
 // Errors
 pub suberror ParseError {
@@ -103,6 +109,7 @@ pub impl Show for Edit
 pub struct IncrementalParser {
   mut source : String
   mut tree : TermNode?
+  mut token_buffer : TokenBuffer?
 }
 pub fn IncrementalParser::edit(Self, Edit, String) -> TermNode
 pub fn IncrementalParser::get_source(Self) -> String
@@ -191,6 +198,17 @@ pub enum Token {
 }
 pub impl Eq for Token
 pub impl Show for Token
+
+pub struct TokenBuffer {
+  mut tokens : Array[TokenInfo]
+  mut source : String
+  mut version : Int
+}
+pub fn TokenBuffer::get_source(Self) -> String
+pub fn TokenBuffer::get_tokens(Self) -> Array[TokenInfo]
+pub fn TokenBuffer::get_version(Self) -> Int
+pub fn TokenBuffer::new(String) -> Self raise TokenizationError
+pub fn TokenBuffer::update(Self, Edit, String) -> Array[TokenInfo] raise TokenizationError
 
 pub struct TokenInfo {
   token : Token

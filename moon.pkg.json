@@ -5,5 +5,11 @@
     "moonbitlang/core/hashmap",
     "moonbitlang/core/json",
     "moonbitlang/core/quickcheck"
+  ],
+  "test-import": [
+    {
+      "path": "moonbitlang/quickcheck",
+      "alias": "qc"
+    }
   ]
 }

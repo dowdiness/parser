@@ -104,3 +104,47 @@ test "tokenize error - invalid character" {
   }
   inspect(should_error, content="true")
 }
+
+///|
+test "token_buffer update insertion matches full tokenize" {
+  let source = "x"
+  let new_source = "x + 1"
+  let edit = Edit::insert(1, 4)
+  let buffer = TokenBuffer::new(source)
+  let updated = buffer.update(edit, new_source)
+  let full = tokenize(new_source)
+  inspect(print_token_infos(updated), content=print_token_infos(full))
+}
+
+///|
+test "token_buffer update deletion merges identifiers" {
+  let source = "x y"
+  let new_source = "xy"
+  let edit = Edit::delete(1, 2)
+  let buffer = TokenBuffer::new(source)
+  let updated = buffer.update(edit, new_source)
+  let full = tokenize(new_source)
+  inspect(print_token_infos(updated), content=print_token_infos(full))
+}
+
+///|
+test "token_buffer update replacement matches full tokenize" {
+  let source = "x + 1"
+  let new_source = "x + 42"
+  let edit = Edit::replace(4, 5, 6)
+  let buffer = TokenBuffer::new(source)
+  let updated = buffer.update(edit, new_source)
+  let full = tokenize(new_source)
+  inspect(print_token_infos(updated), content=print_token_infos(full))
+}
+
+///|
+test "token_buffer update insertion creates keyword" {
+  let source = "i"
+  let new_source = "if"
+  let edit = Edit::insert(1, 1)
+  let buffer = TokenBuffer::new(source)
+  let updated = buffer.update(edit, new_source)
+  let full = tokenize(new_source)
+  inspect(print_token_infos(updated), content=print_token_infos(full))
+}

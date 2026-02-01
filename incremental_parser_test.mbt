@@ -198,7 +198,7 @@ test "Edge case: insertion at position 0" {
   let _ = parser.parse()
 
   // Insert at the very beginning
-  let edit = Edit::insert(0, 2)
+  let edit = Edit::insert(0, 3)
   let new_tree = parser.edit(edit, "λx.x")
 
   // Should correctly parse the new structure

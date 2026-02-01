@@ -71,6 +71,12 @@ fn expect(parser : Parser, expected : Token) -> Parser raise ParseError {
 /// Parse the input string into a TermNode with position tracking
 pub fn parse_tree(input : String) -> TermNode raise {
   let tokens = tokenize(input)
+  parse_tree_from_tokens(tokens)
+}
+
+///|
+/// Parse a pre-tokenized input into a TermNode with position tracking
+pub fn parse_tree_from_tokens(tokens : Array[TokenInfo]) -> TermNode raise {
   let parser = make_parser(tokens)
   letrec parse_expression = fn(parser : Parser) -> (Parser, TermNode) raise {
     parse_binary_op(parser)
