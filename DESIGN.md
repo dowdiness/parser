@@ -1,0 +1,250 @@
+# Design — How incr Works Under the Hood
+
+This document explains the theoretical foundations and implementation details of the `incr` library. For usage and API examples, see [README.md](README.md). For contributor/AI guidance, see [CLAUDE.md](CLAUDE.md).
+
+## Motivation & Background
+
+### The Recomputation Problem
+
+Many programs model computations as a graph of derived values: some values are inputs, and others are computed from those inputs through intermediate steps. When an input changes, the naive approach recomputes every derived value from scratch. For large graphs this is wasteful — most derived values are unaffected by any single input change.
+
+Incremental computation solves this by tracking which derived values actually depend on which inputs and only recomputing what is necessary.
+
+### Salsa as Inspiration
+
+`incr` borrows its core ideas from [Salsa](https://salsa-rs.github.io/salsa/), the incremental computation framework used by rust-analyzer. The key ideas adapted from Salsa are:
+
+- **Pull-based lazy verification**: derived values are not eagerly recomputed when inputs change. Instead, when a derived value is read, the framework checks whether it is still valid by walking its dependency chain.
+- **Automatic dependency tracking**: dependencies are discovered at runtime by intercepting reads, not declared statically.
+- **Backdating**: when a derived value is recomputed but produces the same result as before, its change timestamp is preserved, preventing unnecessary downstream recomputation.
+- **Durability-based shortcuts**: inputs are classified by how often they change, allowing entire subgraphs of stable inputs to skip verification.
+
+### Push vs. Pull vs. Hybrid
+
+Invalidation strategies for dependency graphs fall into three families:
+
+- **Push-based** (eager): when an input changes, immediately propagate invalidation to all transitive dependents. Simple, but can cause a cascade of wasted work if many intermediate values recompute to the same result.
+- **Pull-based** (lazy): do nothing when an input changes. When a derived value is read, walk its dependencies to check if anything changed. This is what `incr` uses — it avoids wasted work at the cost of a verification walk on read.
+- **Hybrid**: combine push notifications with pull verification. Salsa itself has evolved toward hybrid approaches in newer versions.
+
+`incr` uses a pure pull-based strategy: `Signal::set()` only bumps a revision counter and records the change. All verification and recomputation happens lazily when `Memo::get()` is called.
+
+## Core Concepts
+
+### Signals and Memos
+
+The library has two cell types:
+
+- **Signal[T]** — An input cell. Its value is set externally by the user via `set()`. Signals are the leaves of the dependency graph.
+- **Memo[T]** — A derived cell. Its value is computed by a user-provided function that may read other Signals and Memos. Memos are the interior nodes of the dependency graph.
+
+This two-tier model keeps the API surface small while supporting arbitrarily complex computation graphs.
+
+### The Dependency Graph
+
+The dependency graph is **implicit** and **dynamically discovered**. There is no upfront declaration of which Memos depend on which Signals. Instead, when a Memo's compute function runs, every `Signal::get()` or `Memo::get()` call it makes is recorded as a dependency. This means:
+
+- Dependencies can change between recomputations (a Memo might conditionally read different inputs).
+- The graph is rebuilt each time a Memo recomputes, always reflecting the current computation structure.
+
+### Revisions as a Global Clock
+
+A **Revision** is a monotonically increasing integer that serves as the system's logical clock. Each time a Signal's value changes, the global revision is bumped. Every cell records two timestamps:
+
+- **`changed_at`** — The revision at which this cell's value last actually changed.
+- **`verified_at`** — The revision at which this cell was last confirmed to be up-to-date.
+
+These two timestamps are the foundation of the verification algorithm. A cell is stale if `verified_at < current_revision`. A cell has changed (relative to some observer) if `changed_at > observer.verified_at`.
+
+## Automatic Dependency Tracking
+
+### The Tracking Stack
+
+The `Runtime` maintains a `tracking_stack`: an array of `ActiveQuery` frames. Each frame collects the `CellId`s of every cell read during a single Memo computation.
+
+The mechanism works as follows:
+
+1. When a Memo needs to recompute, it pushes a new `ActiveQuery` frame onto the stack (`Runtime::push_tracking`).
+2. The Memo's compute function runs. Every `Signal::get()` or `Memo::get()` call invokes `Runtime::record_dependency`, which appends the read cell's ID to the top frame.
+3. When the compute function returns, the frame is popped (`Runtime::pop_tracking`) and the collected dependency list is stored on the Memo's `CellMeta`.
+
+### Deduplication
+
+If a compute function reads the same cell multiple times, `ActiveQuery::record` deduplicates by linear scan. This keeps the dependency list minimal, though the linear scan is a known O(n) cost per recorded dependency (see TODO for a planned `HashSet` optimization).
+
+### Transparency
+
+From the user's perspective, dependency tracking is invisible. Users write ordinary functions that call `get()` on Signals and Memos. The framework handles everything behind the scenes — no manual dependency declarations, no subscription management.
+
+## The Verification Algorithm (`maybe_changed_after`)
+
+The core of the framework is the `maybe_changed_after` function in `verify.mbt`. Given a cell and a revision, it answers: "has this cell's value changed after the given revision?"
+
+### For Input Cells
+
+Trivial: compare `changed_at > after_revision`.
+
+### For Derived Cells
+
+The algorithm for derived cells has several fast paths before falling back to a full dependency walk:
+
+**1. Already verified (fast path)**
+
+```
+if cell.verified_at == current_revision:
+    return cell.changed_at > after_revision
+```
+
+If the cell was already verified during this revision, return immediately.
+
+**2. Durability shortcut**
+
+```
+if durability_last_changed[cell.durability] <= after_revision:
+    mark verified, return false
+```
+
+If no input of this cell's durability level (or lower) has changed since `after_revision`, the cell cannot have changed. This skips the entire dependency walk.
+
+**3. Cycle detection**
+
+```
+if cell.in_progress:
+    abort("Cycle detected")
+```
+
+If we encounter a cell that is already being verified, we have a cycle.
+
+**4. Dependency walk**
+
+```
+for each dependency:
+    if maybe_changed_after(dependency, cell.verified_at):
+        any_dep_changed = true; break
+```
+
+Recursively check each dependency. Stop at the first one that changed.
+
+**5a. If a dependency changed — recompute**
+
+Call `recompute_and_check()` to run the Memo's compute function. This is where backdating happens: if the new value equals the old value, `changed_at` is not updated.
+
+**5b. If no dependency changed — green path**
+
+Mark `verified_at = current_revision`. The cell is confirmed unchanged without recomputation.
+
+## Backdating — The Key Insight
+
+Backdating is the most important optimization in the framework. It prevents unnecessary recomputation from propagating through the graph.
+
+### What Backdating Means
+
+When a Memo recomputes and produces the **same value** as before, its `changed_at` revision is **not updated**. It keeps its old `changed_at` timestamp, which tells downstream cells "nothing changed here."
+
+### Concrete Example
+
+Consider this graph:
+
+```
+input(4) → is_even(true) → label("even")
+```
+
+1. Initial state: `input = 4`, `is_even = true`, `label = "even"`. All cells have `changed_at = R1`.
+2. User sets `input = 6`. Global revision bumps to `R2`. `input.changed_at = R2`.
+3. `label.get()` is called. `label` is stale (`verified_at < R2`).
+4. Verification walks to `is_even`, which walks to `input`. `input.changed_at = R2 > is_even.verified_at`, so `is_even` must recompute.
+5. `is_even` recomputes: `6 % 2 == 0` → `true`. This is the **same value** as before.
+6. **Backdating**: `is_even.changed_at` stays at `R1` (not updated to `R2`). `is_even.verified_at = R2`.
+7. Back in `label`'s verification: `is_even.changed_at = R1`, which is not after `label.verified_at = R1`. No dependency changed.
+8. **Green path**: `label` is confirmed unchanged. Its compute function never runs.
+
+### Without Backdating
+
+Without backdating, step 6 would set `is_even.changed_at = R2`, and `label` would needlessly recompute `"even"` again. In deep or wide graphs, this cascading recomputation can be very expensive. Backdating cuts it off at the earliest point where a value stabilizes.
+
+## Durability Levels
+
+### Three Tiers
+
+Durability classifies how often an input is expected to change:
+
+| Level    | Index | Typical Use |
+|----------|-------|-------------|
+| **Low**  | 0     | Frequently changing data (source text, user input) |
+| **Medium** | 1   | Moderately stable data |
+| **High** | 2     | Rarely changing data (configuration, schemas) |
+
+### Per-Durability Revision Tracking
+
+The `Runtime` maintains a `durability_last_changed` array (one entry per durability level). When a Signal changes, `bump_revision` updates the entry for its durability level **and all lower levels**:
+
+```
+for i = 0 to durability.index():
+    durability_last_changed[i] = current_revision
+```
+
+This means a High-durability change also marks Medium and Low as changed, which is correct: a High change means everything might need checking.
+
+### Derived Cell Durability
+
+A derived cell's durability is the **minimum** of its dependencies' durabilities. If a Memo depends on both a Low and a High input, it inherits Low durability, because it could be affected by frequent changes.
+
+### The Shortcut
+
+During verification, before walking any dependencies, `maybe_changed_after` checks:
+
+```
+durability_last_changed[cell.durability] <= after_revision?
+```
+
+If true, no input at this durability level has changed, so the cell and its entire subtree can be marked verified immediately. This is powerful for stable subgraphs: if configuration inputs (High durability) haven't changed, all Memos that only depend on configuration skip verification entirely, regardless of how many Low-durability inputs changed elsewhere.
+
+## Type Erasure Strategy
+
+### The Problem
+
+The `Runtime` needs to store metadata for all cells in a single `HashMap[CellId, CellMeta]`. But cells have different value types (`Signal[Int]`, `Memo[String]`, etc.). MoonBit's type system doesn't allow heterogeneous collections.
+
+### The Solution
+
+The library splits each cell into two parts:
+
+1. **Typed value**: lives in the `Signal[T]` or `Memo[T]` struct, which the user holds a reference to.
+2. **Type-erased metadata**: lives in `CellMeta`, stored in the Runtime. Contains revisions, dependencies, durability, and cell kind — all type-independent.
+
+The bridge between them is `CellMeta.recompute_and_check`: a closure of type `(() -> Bool)?`. For derived cells, this closure captures the `Memo[T]` instance and calls its typed `recompute_inner()` method. The return value (`Bool`) indicates whether the value changed, which is all the verification algorithm needs to know. The closure is `None` for input cells.
+
+This design means the verification algorithm in `verify.mbt` operates entirely on `CellMeta` without knowing any value types, while the actual typed computation is deferred to the captured closure.
+
+## Cycle Detection
+
+### The Approach
+
+Each `CellMeta` has an `in_progress : Bool` flag. It is set to `true` when a cell enters verification or recomputation, and cleared when the operation completes.
+
+### Where Detection Fires
+
+Cycle detection triggers in two places:
+
+1. **During verification** (`verify.mbt`): if `maybe_changed_after_derived` encounters a cell with `in_progress == true`, it means we recursively reached a cell that is currently being verified — a cycle.
+2. **During initial computation** (`memo.mbt`): if `force_recompute` encounters a cell with `in_progress == true`, it means the Memo's compute function (directly or indirectly) tried to read its own value — also a cycle.
+
+### Current Limitation
+
+Cycle detection currently calls `abort()`, terminating the program. There is no graceful recovery. The ROADMAP includes plans to replace this with a `CycleError` type that callers can handle.
+
+## File Map
+
+| File | Purpose |
+|------|---------|
+| `signal.mbt` | `Signal[T]` — input cells with same-value optimization and durability |
+| `memo.mbt` | `Memo[T]` — derived cells with memoization, backdating, and dependency tracking |
+| `runtime.mbt` | `Runtime` — central state, revision management, tracking stack |
+| `cell.mbt` | `CellId`, `CellKind`, `CellMeta` — type-erased cell metadata |
+| `tracking.mbt` | `ActiveQuery` — dependency recording frame with deduplication |
+| `verify.mbt` | `maybe_changed_after` — core verification algorithm |
+| `revision.mbt` | `Revision`, `Durability` — revision counter and durability enum |
+| `signal_test.mbt` | Tests for Signal behavior |
+| `memo_test.mbt` | Tests for Memo behavior, backdating, and dependency tracking |
+| `durability_test.mbt` | Tests for durability shortcuts |
+| `cycle_test.mbt` | Tests for cycle detection |

@@ -49,7 +49,14 @@ The library implements Salsa's incremental computation pattern with three key ty
 - Assertions use `inspect(expr, content="expected")` pattern
 - The library imports `moonbitlang/core/hashmap` as its only external dependency
 
-## Planning Documents
+## Documentation Hierarchy
 
+The project documentation flows from user-facing overview to deep technical detail:
+
+- **README.md** — Entry point: features, usage examples, quick start
+- **DESIGN.md** — Deep technical internals: verification algorithm, backdating, durability, type erasure
+- **CLAUDE.md** (this file) — Contributor and AI guidance: commands, architecture map, conventions
 - **ROADMAP.md** — Phased future direction (error handling, performance, advanced features, ecosystem)
 - **TODO.md** — Concrete actionable tasks with checkboxes
+
+When contributing, read DESIGN.md to understand the conceptual model (pull-based verification, backdating, durability shortcuts) before modifying core algorithm files like `verify.mbt` or `memo.mbt`.

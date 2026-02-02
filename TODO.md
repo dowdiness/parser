@@ -30,4 +30,5 @@ Concrete, actionable tasks for the `incr` library.
 ## Documentation
 
 - [ ] Add doc comments to all public functions
-- [ ] Add usage examples for durability in README
+- [x] Add usage examples for durability in README
+- [ ] Keep [DESIGN.md](DESIGN.md) in sync when core algorithms change

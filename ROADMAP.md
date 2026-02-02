@@ -1,6 +1,6 @@
 # Roadmap
 
-High-level future direction for the `incr` library, organized by phase. Each phase builds on the previous one.
+High-level future direction for the `incr` library, organized by phase. Each phase builds on the previous one. For a detailed explanation of the current architecture, see [DESIGN.md](DESIGN.md).
 
 ## Phase 1 — Error Handling
 

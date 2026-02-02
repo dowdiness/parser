@@ -63,6 +63,10 @@ source.set(2)
 inspect(config_derived.get(), content="200")
 ```
 
+## Design
+
+See [DESIGN.md](DESIGN.md) for an in-depth explanation of how incr works under the hood — the verification algorithm, backdating, durability shortcuts, and type erasure strategy.
+
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md) for the high-level future direction and [TODO.md](TODO.md) for concrete next tasks.
