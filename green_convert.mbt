@@ -1,4 +1,20 @@
 ///|
+/// Collect token text from all children of an ErrorNode.
+fn extract_error_text(green : GreenNode) -> String {
+  let parts : Array[String] = []
+  for elem in green.children {
+    match elem {
+      Token(t) =>
+        if t.kind != WhitespaceToken && t.text != "" {
+          parts.push(t.text)
+        }
+      Node(_) => ()
+    }
+  }
+  parts.join("")
+}
+
+///|
 fn extract_token_text(green : GreenNode, token_kind : SyntaxKind) -> String? {
   for elem in green.children {
     match elem {
@@ -42,18 +58,6 @@ fn tight_span(green : GreenNode, offset : Int) -> (Int, Int) {
 }
 
 ///|
-fn find_child_nodes(green : GreenNode) -> Array[GreenNode] {
-  let nodes : Array[GreenNode] = []
-  for elem in green.children {
-    match elem {
-      Node(n) => nodes.push(n)
-      Token(_) => continue
-    }
-  }
-  nodes
-}
-
-///|
 fn collect_binary_ops(green : GreenNode) -> Array[Bop] {
   let ops : Array[Bop] = []
   for elem in green.children {
@@ -68,6 +72,77 @@ fn collect_binary_ops(green : GreenNode) -> Array[Bop] {
     }
   }
   ops
+}
+
+///|
+/// Handle multiple children from SourceFile (main expression + error nodes).
+fn convert_source_file_children(
+  children : Array[TermNode],
+  off : Int,
+  counter : Ref[Int],
+) -> TermNode {
+  fn next_id() -> Int {
+    let id = counter.val
+    counter.val = id + 1
+    id
+  }
+
+  if children.length() == 0 {
+    return TermNode::error("Empty SourceFile", off, next_id())
+  }
+  if children.length() == 1 {
+    return children[0]
+  }
+  // Multiple children: find the first non-error child as main, rest as error children
+  let main_nodes : Array[TermNode] = []
+  let error_nodes : Array[TermNode] = []
+  for child in children {
+    match child.kind {
+      TermKind::Error(_) => error_nodes.push(child)
+      _ => main_nodes.push(child)
+    }
+  }
+  if main_nodes.length() > 0 {
+    let m = main_nodes[0]
+    // Attach any extra main nodes and error nodes as children
+    let extra : Array[TermNode] = []
+    for i = 1; i < main_nodes.length(); i = i + 1 {
+      extra.push(main_nodes[i])
+    }
+    extra.append(error_nodes)
+    if extra.length() > 0 {
+      let all_children : Array[TermNode] = m.children.copy()
+      all_children.append(extra)
+      // Extend end to cover all children so the parent span is a superset
+      let mut end = m.end
+      for child in extra {
+        if child.end > end {
+          end = child.end
+        }
+      }
+      TermNode::new(m.kind, m.start, end, next_id(), all_children)
+    } else {
+      m
+    }
+  } else {
+    // All children are errors — wrap them under a single error node
+    // so none are discarded
+    if children.length() == 1 {
+      children[0]
+    } else {
+      let mut start = children[0].start
+      let mut end = children[0].end
+      for child in children {
+        if child.start < start {
+          start = child.start
+        }
+        if child.end > end {
+          end = child.end
+        }
+      }
+      TermNode::new(TermKind::Error("Syntax error"), start, end, next_id(), children)
+    }
+  }
 }
 
 ///|
@@ -189,15 +264,23 @@ fn convert_red(red : RedNode, counter : Ref[Int]) -> TermNode {
       }
       TermNode::error("Empty ParenExpr", off, next_id())
     }
-    SourceFile => {
-      let child_nodes = find_child_nodes(g)
-      if child_nodes.length() > 0 {
-        let red_children = red.children()
-        for child in red_children {
-          return convert_red(child, counter)
-        }
+    ErrorNode => {
+      let (tight_start, tight_end) = tight_span(g, off)
+      let text = extract_error_text(g)
+      let msg = if text != "" {
+        "Syntax error: " + text
+      } else {
+        "Syntax error"
       }
-      TermNode::error("Empty SourceFile", off, next_id())
+      TermNode::new(TermKind::Error(msg), tight_start, tight_end, next_id(), [])
+    }
+    SourceFile => {
+      let red_children = red.children()
+      let children : Array[TermNode] = []
+      for child in red_children {
+        children.push(convert_red(child, counter))
+      }
+      convert_source_file_children(children, off, counter)
     }
     _ =>
       TermNode::error(

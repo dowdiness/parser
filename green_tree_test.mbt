@@ -511,3 +511,94 @@ test "green tree: structural sharing - identical GreenNodes are equal" {
   }
   inspect(node1 == node2, content="true")
 }
+
+// ============================================================================
+// 6. Error recovery in green tree
+// ============================================================================
+
+///|
+test "green tree: has_green_errors on valid input" {
+  let green = parse_green("42")
+  inspect(has_green_errors(green), content="false")
+}
+
+///|
+test "green tree: has_green_errors on valid lambda" {
+  let green = parse_green("λx.x")
+  inspect(has_green_errors(green), content="false")
+}
+
+///|
+test "green tree: error recovery - missing param produces ErrorToken" {
+  let (green, diagnostics) = parse_green_recover("λ.x")
+  inspect(has_green_errors(green), content="true")
+  inspect(diagnostics.length(), content="1")
+  // Should still have SourceFile > LambdaExpr structure
+  inspect(green.kind, content="SourceFile")
+  let child = match green.children[0] {
+    Node(n) => n
+    Token(_) => abort("Expected node, got token")
+  }
+  inspect(child.kind, content="LambdaExpr")
+}
+
+///|
+test "green tree: error recovery - extra tokens wrapped in ErrorNode" {
+  let (green, diagnostics) = parse_green_recover("42 )")
+  inspect(diagnostics.length() > 0, content="true")
+  // SourceFile should have IntLiteral + ErrorNode
+  let mut found_int = false
+  let mut found_error = false
+  for elem in green.children {
+    match elem {
+      Node(n) =>
+        match n.kind {
+          IntLiteral => found_int = true
+          ErrorNode => found_error = true
+          _ => ()
+        }
+      Token(_) => ()
+    }
+  }
+  inspect(found_int, content="true")
+  inspect(found_error, content="true")
+}
+
+///|
+test "green tree: error recovery - missing else in if" {
+  let (green, diagnostics) = parse_green_recover("if x then y")
+  inspect(diagnostics.length() > 0, content="true")
+  inspect(green.kind, content="SourceFile")
+  let child = match green.children[0] {
+    Node(n) => n
+    Token(_) => abort("Expected node, got token")
+  }
+  inspect(child.kind, content="IfExpr")
+}
+
+///|
+test "green tree: error recovery - text_len preserved" {
+  let (green, _) = parse_green_recover("λ.x")
+  // text_len should cover the entire source
+  inspect(green.text_len, content="3")
+}
+
+///|
+test "green tree: error recovery - multiple errors" {
+  let (green, diagnostics) = parse_green_recover("λ.x + )")
+  // Should have at least 2 errors: missing param, extra ")"
+  inspect(diagnostics.length() >= 2, content="true")
+  inspect(green.kind, content="SourceFile")
+}
+
+///|
+test "green tree: error recovery preserves valid input" {
+  // Valid inputs should produce identical trees via recover vs strict
+  let inputs = ["42", "x", "λx.x", "f x", "1 + 2", "if x then 1 else 2", "(x)"]
+  for input in inputs {
+    let strict = parse_green(input)
+    let (recovered, diagnostics) = parse_green_recover(input)
+    inspect(diagnostics.length(), content="0")
+    inspect(strict == recovered, content="true")
+  }
+}

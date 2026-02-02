@@ -104,3 +104,20 @@ pub fn GreenNode::new(
 pub fn GreenNode::kind(self : GreenNode) -> SyntaxKind {
   self.kind
 }
+
+///|
+/// Check if a green tree contains any error nodes or error tokens.
+pub fn has_green_errors(node : GreenNode) -> Bool {
+  match node.kind {
+    ErrorNode => true
+    _ => {
+      for elem in node.children {
+        match elem {
+          Token(t) => if t.kind == ErrorToken { return true }
+          Node(n) => if has_green_errors(n) { return true }
+        }
+      }
+      false
+    }
+  }
+}

@@ -1,23 +1,52 @@
 ///|
+let max_errors : Int = 50
+
+///|
 priv struct GreenParser {
   tokens : Array[TokenInfo]
   source : String
   mut position : Int
   mut last_end : Int // Track last token end to emit whitespace
   events : EventBuffer
+  errors : Array[ParseDiagnostic]
+  mut error_count : Int
 }
 
 ///|
+/// Strict: raises ParseError on first syntax error (backward compat)
 pub fn parse_green(source : String) -> GreenNode raise {
+  let (green, errors) = parse_green_recover(source)
+  if errors.length() > 0 {
+    let diag = errors[0]
+    raise ParseError(diag.message, diag.token)
+  }
+  green
+}
+
+///|
+/// Recovering: returns tree with ErrorNodes + diagnostic list.
+/// Only raises for TokenizationError (unrecoverable).
+pub fn parse_green_recover(
+  source : String,
+) -> (GreenNode, Array[ParseDiagnostic]) raise TokenizationError {
   let tokens = tokenize(source)
   let parser = GreenParser::new(tokens, source)
   parser.parse_source_file()
-  build_tree(parser.events.events)
+  let tree = build_tree(parser.events.events)
+  (tree, parser.errors)
 }
 
 ///|
 fn GreenParser::new(tokens : Array[TokenInfo], source : String) -> GreenParser {
-  { tokens, source, position: 0, last_end: 0, events: EventBuffer::new() }
+  {
+    tokens,
+    source,
+    position: 0,
+    last_end: 0,
+    events: EventBuffer::new(),
+    errors: [],
+    error_count: 0,
+  }
 }
 
 ///|
@@ -44,7 +73,8 @@ fn GreenParser::peek_info(self : GreenParser) -> TokenInfo {
   if self.position < self.tokens.length() {
     self.tokens[self.position]
   } else {
-    TokenInfo::new(EOF, 0, 0)
+    let end = self.source.length()
+    TokenInfo::new(EOF, end, end)
   }
 }
 
@@ -83,20 +113,59 @@ fn GreenParser::emit_token(self : GreenParser, kind : SyntaxKind) -> Unit {
 }
 
 ///|
-fn GreenParser::expect(
+/// Record a diagnostic and increment error count.
+fn GreenParser::error(
   self : GreenParser,
-  expected : Token,
-  kind : SyntaxKind,
-) -> Unit raise ParseError {
-  let current = self.peek()
-  match (current, expected) {
-    (a, b) if a == b => self.emit_token(kind)
-    _ => raise ParseError("Expected token", expected)
+  msg : String,
+  token : Token,
+  start : Int,
+  end : Int,
+) -> Unit {
+  self.errors.push({ message: msg, token, start, end })
+  self.error_count = self.error_count + 1
+}
+
+///|
+/// Consume current token as an ErrorToken (emit whitespace + token).
+fn GreenParser::bump_error(self : GreenParser) -> Unit {
+  let info = self.peek_info()
+  self.emit_whitespace_before(info)
+  let text = self.token_text(info)
+  self.events.push(Token(ErrorToken, text))
+  self.last_end = info.end
+  self.advance()
+}
+
+///|
+/// Check if current token is a sync/stop point.
+fn GreenParser::at_stop_token(self : GreenParser) -> Bool {
+  match self.peek() {
+    RightParen | Then | Else | EOF => true
+    _ => false
   }
 }
 
 ///|
-fn GreenParser::parse_source_file(self : GreenParser) -> Unit raise ParseError {
+fn GreenParser::expect(self : GreenParser, expected : Token, kind : SyntaxKind) -> Unit {
+  let current = self.peek()
+  match (current, expected) {
+    (a, b) if a == b => self.emit_token(kind)
+    _ => {
+      let info = self.peek_info()
+      self.error(
+        "Expected " + print_token(expected),
+        current,
+        info.start,
+        info.end,
+      )
+      // Emit zero-width ErrorToken — do NOT consume current token
+      self.events.push(Token(ErrorToken, ""))
+    }
+  }
+}
+
+///|
+fn GreenParser::parse_source_file(self : GreenParser) -> Unit {
   self.parse_expression()
   match self.peek() {
     EOF =>
@@ -107,23 +176,45 @@ fn GreenParser::parse_source_file(self : GreenParser) -> Unit raise ParseError {
         self.events.push(Token(WhitespaceToken, ws_text.to_string()))
         self.last_end = self.source.length()
       }
-    token => raise ParseError("Unexpected tokens after expression", token)
+    _ => {
+      // Wrap all remaining tokens (until EOF) in a single ErrorNode
+      let info = self.peek_info()
+      self.error(
+        "Unexpected tokens after expression",
+        info.token,
+        info.start,
+        info.end,
+      )
+      self.start_node(ErrorNode)
+      while self.peek() != EOF {
+        self.bump_error()
+      }
+      self.finish_node()
+      // Emit trailing whitespace if any
+      if self.last_end < self.source.length() {
+        let ws_text : StringView = self.source[self.last_end:self.source.length()] catch {
+            _ => ""
+          }
+        self.events.push(Token(WhitespaceToken, ws_text.to_string()))
+        self.last_end = self.source.length()
+      }
+    }
   }
 }
 
 ///|
-fn GreenParser::parse_expression(self : GreenParser) -> Unit raise ParseError {
+fn GreenParser::parse_expression(self : GreenParser) -> Unit {
   self.parse_binary_op()
 }
 
 ///|
-fn GreenParser::parse_binary_op(self : GreenParser) -> Unit raise ParseError {
+fn GreenParser::parse_binary_op(self : GreenParser) -> Unit {
   let mark = self.events.mark()
   self.parse_application()
   match self.peek() {
     Plus | Minus => {
       self.events.start_at(mark, BinaryExpr)
-      while true {
+      while self.error_count < max_errors {
         match self.peek() {
           Plus => {
             self.emit_token(PlusToken)
@@ -143,13 +234,13 @@ fn GreenParser::parse_binary_op(self : GreenParser) -> Unit raise ParseError {
 }
 
 ///|
-fn GreenParser::parse_application(self : GreenParser) -> Unit raise ParseError {
+fn GreenParser::parse_application(self : GreenParser) -> Unit {
   let mark = self.events.mark()
   self.parse_atom()
   match self.peek() {
     LeftParen | Identifier(_) | Integer(_) | Lambda => {
       self.events.start_at(mark, AppExpr)
-      while true {
+      while self.error_count < max_errors {
         match self.peek() {
           LeftParen | Identifier(_) | Integer(_) | Lambda => self.parse_atom()
           _ => break
@@ -162,7 +253,10 @@ fn GreenParser::parse_application(self : GreenParser) -> Unit raise ParseError {
 }
 
 ///|
-fn GreenParser::parse_atom(self : GreenParser) -> Unit raise ParseError {
+fn GreenParser::parse_atom(self : GreenParser) -> Unit {
+  if self.error_count >= max_errors {
+    return
+  }
   match self.peek() {
     Integer(_) => {
       self.start_node(IntLiteral)
@@ -179,7 +273,17 @@ fn GreenParser::parse_atom(self : GreenParser) -> Unit raise ParseError {
       self.emit_token(LambdaToken)
       match self.peek() {
         Identifier(_) => self.emit_token(IdentToken)
-        token => raise ParseError("Expected parameter after λ", token)
+        token => {
+          let info = self.peek_info()
+          self.error(
+            "Expected parameter after λ",
+            token,
+            info.start,
+            info.end,
+          )
+          // Emit zero-width ErrorToken for missing identifier
+          self.events.push(Token(ErrorToken, ""))
+        }
       }
       self.expect(Dot, DotToken)
       self.parse_expression()
@@ -202,6 +306,20 @@ fn GreenParser::parse_atom(self : GreenParser) -> Unit raise ParseError {
       self.expect(RightParen, RightParenToken)
       self.finish_node()
     }
-    token => raise ParseError("Unexpected token", token)
+    token => {
+      let info = self.peek_info()
+      self.error("Unexpected token", token, info.start, info.end)
+      if self.at_stop_token() {
+        // Stop token: emit zero-width ErrorNode (don't consume)
+        self.start_node(ErrorNode)
+        self.events.push(Token(ErrorToken, ""))
+        self.finish_node()
+      } else {
+        // Wrap current token in ErrorNode (consume it)
+        self.start_node(ErrorNode)
+        self.bump_error()
+        self.finish_node()
+      }
+    }
   }
 }

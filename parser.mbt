@@ -6,6 +6,14 @@ pub suberror ParseError {
 }
 
 ///|
+pub struct ParseDiagnostic {
+  message : String
+  token : Token
+  start : Int
+  end : Int
+} derive(Show)
+
+///|
 /// Parse the input string into a Term (without position information)
 ///
 /// This is a wrapper around parse_tree that discards position information.

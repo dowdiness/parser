@@ -21,11 +21,15 @@ pub fn green_to_term_node(GreenNode, Int, Ref[Int]) -> TermNode
 
 pub fn has_errors(TermNode) -> Bool
 
+pub fn has_green_errors(GreenNode) -> Bool
+
 pub fn node_to_term(TermNode) -> Term
 
 pub fn parse(String) -> Term raise
 
 pub fn parse_green(String) -> GreenNode raise
+
+pub fn parse_green_recover(String) -> (GreenNode, Array[ParseDiagnostic]) raise TokenizationError
 
 pub fn parse_green_to_term_node(String) -> TermNode raise
 
@@ -165,6 +169,14 @@ pub fn IncrementalParser::get_tree(Self) -> TermNode?
 pub fn IncrementalParser::new(String) -> Self
 pub fn IncrementalParser::parse(Self) -> TermNode
 pub fn IncrementalParser::stats(Self) -> String
+
+pub struct ParseDiagnostic {
+  message : String
+  token : Token
+  start : Int
+  end : Int
+}
+pub impl Show for ParseDiagnostic
 
 pub enum ParseEvent {
   StartNode(SyntaxKind)
