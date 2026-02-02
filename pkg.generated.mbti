@@ -1,0 +1,116 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/incr"
+
+import {
+  "moonbitlang/core/hashset",
+}
+
+// Values
+pub let durability_count : Int
+
+pub fn maybe_changed_after(Runtime, CellId, Revision) -> Bool
+
+// Errors
+
+// Types and methods
+pub(all) struct ActiveQuery {
+  cell_id : CellId
+  mut dependencies : Array[CellId]
+  seen : @hashset.HashSet[CellId]
+}
+pub fn ActiveQuery::new(CellId) -> Self
+pub fn ActiveQuery::record(Self, CellId) -> Unit
+
+pub(all) struct CellId {
+  id : Int
+}
+pub impl Eq for CellId
+pub impl Show for CellId
+
+pub enum CellKind {
+  Input
+  Derived
+}
+pub impl Eq for CellKind
+pub impl Show for CellKind
+
+pub(all) struct CellMeta {
+  id : CellId
+  kind : CellKind
+  mut changed_at : Revision
+  mut verified_at : Revision
+  mut dependencies : Array[CellId]
+  mut durability : Durability
+  recompute_and_check : (() -> Bool)?
+  mut commit_pending : (() -> Bool)?
+  mut in_progress : Bool
+}
+pub fn CellMeta::new_derived(CellId, () -> Bool) -> Self
+pub fn CellMeta::new_input(CellId, Durability) -> Self
+
+pub(all) enum Durability {
+  Low
+  Medium
+  High
+}
+pub fn Durability::index(Self) -> Int
+pub impl Eq for Durability
+pub impl Show for Durability
+
+pub struct Memo[T] {
+  rt : Runtime
+  cell_id : CellId
+  compute : () -> T
+  mut value : T?
+}
+pub fn[T : Eq] Memo::get(Self[T]) -> T
+pub fn[T : Eq] Memo::new(Runtime, () -> T) -> Self[T]
+
+pub(all) struct Revision {
+  value : Int
+}
+pub fn Revision::after(Self, Self) -> Bool
+pub fn Revision::initial() -> Self
+pub fn Revision::next(Self) -> Self
+pub impl Compare for Revision
+pub impl Eq for Revision
+pub impl Show for Revision
+
+pub(all) struct Runtime {
+  mut current_revision : Revision
+  cells : Array[CellMeta?]
+  mut next_cell_id : Int
+  tracking_stack : Array[ActiveQuery]
+  durability_last_changed : FixedArray[Revision]
+  mut batch_depth : Int
+  batch_pending_signals : Array[CellId]
+  mut batch_max_durability : Durability
+}
+pub fn Runtime::alloc_cell_id(Self) -> CellId
+pub fn Runtime::batch(Self, () -> Unit) -> Unit
+pub fn Runtime::bump_revision(Self, Durability) -> Unit
+pub fn Runtime::get_cell(Self, CellId) -> CellMeta
+pub fn Runtime::new() -> Self
+pub fn Runtime::pop_tracking(Self) -> Array[CellId]
+pub fn Runtime::push_tracking(Self, CellId) -> Unit
+pub fn Runtime::record_batch_signal(Self, CellId) -> Unit
+pub fn Runtime::record_dependency(Self, CellId) -> Unit
+pub fn Runtime::register_cell(Self, CellMeta) -> Unit
+
+pub struct Signal[T] {
+  rt : Runtime
+  cell_id : CellId
+  mut value : T
+  mut pending_value : T?
+  durability : Durability
+}
+pub fn[T] Signal::get(Self[T]) -> T
+pub fn[T] Signal::new(Runtime, T) -> Self[T]
+pub fn[T] Signal::new_with_durability(Runtime, T, Durability) -> Self[T]
+pub fn[T : Eq] Signal::set(Self[T], T) -> Unit
+pub fn[T] Signal::set_unconditional(Self[T], T) -> Unit
+
+// Type aliases
+
+// Traits
+

@@ -70,7 +70,7 @@ The mechanism works as follows:
 
 ### Deduplication
 
-If a compute function reads the same cell multiple times, `ActiveQuery::record` deduplicates by linear scan. This keeps the dependency list minimal, though the linear scan is a known O(n) cost per recorded dependency (see TODO for a planned `HashSet` optimization).
+If a compute function reads the same cell multiple times, `ActiveQuery::record` deduplicates using a `HashSet[CellId]`. This gives O(1) cost per recorded dependency while keeping the dependency list minimal and order-preserving.
 
 ### Transparency
 
@@ -123,7 +123,7 @@ for each dependency:
         any_dep_changed = true; break
 ```
 
-Recursively check each dependency. Stop at the first one that changed.
+Iteratively check each dependency using an explicit stack of `VerifyFrame`s (replacing the original recursive implementation). Input dependencies are checked inline; derived dependencies push a new frame. This prevents stack overflow on deep dependency graphs — tested with chains of 250+ levels. Stop at the first dependency that changed.
 
 **5a. If a dependency changed — recompute**
 
@@ -203,18 +203,31 @@ If true, no input at this durability level has changed, so the cell and its enti
 
 ### The Problem
 
-The `Runtime` needs to store metadata for all cells in a single `HashMap[CellId, CellMeta]`. But cells have different value types (`Signal[Int]`, `Memo[String]`, etc.). MoonBit's type system doesn't allow heterogeneous collections.
+The `Runtime` needs to store metadata for all cells in a single collection. But cells have different value types (`Signal[Int]`, `Memo[String]`, etc.). MoonBit's type system doesn't allow heterogeneous collections.
 
 ### The Solution
 
 The library splits each cell into two parts:
 
 1. **Typed value**: lives in the `Signal[T]` or `Memo[T]` struct, which the user holds a reference to.
-2. **Type-erased metadata**: lives in `CellMeta`, stored in the Runtime. Contains revisions, dependencies, durability, and cell kind — all type-independent.
+2. **Type-erased metadata**: lives in `CellMeta`, stored in an `Array[CellMeta?]` indexed directly by `CellId.id` for O(1) lookup. Contains revisions, dependencies, durability, and cell kind — all type-independent.
 
-The bridge between them is `CellMeta.recompute_and_check`: a closure of type `(() -> Bool)?`. For derived cells, this closure captures the `Memo[T]` instance and calls its typed `recompute_inner()` method. The return value (`Bool`) indicates whether the value changed, which is all the verification algorithm needs to know. The closure is `None` for input cells.
+The bridge between typed and type-erased worlds uses closure-based type erasure:
 
-This design means the verification algorithm in `verify.mbt` operates entirely on `CellMeta` without knowing any value types, while the actual typed computation is deferred to the captured closure.
+- `CellMeta.recompute_and_check: (() -> Bool)?` — For derived cells, this closure captures the `Memo[T]` instance and calls its typed `recompute_inner()` method. The return value indicates whether the value changed. `None` for input cells.
+- `CellMeta.commit_pending: (() -> Bool)?` — For input cells during a batch, this closure captures the `Signal[T]` instance and commits its pending value. Returns true if the committed value differs from the current value. Set dynamically during batch operations and cleared after commit.
+
+This design means the verification algorithm in `verify.mbt` operates entirely on `CellMeta` without knowing any value types, and the batch commit logic in `runtime.mbt` can commit pending signal values without knowing their types.
+
+### Reference Semantics Invariant
+
+The entire framework relies on MoonBit's reference semantics for mutable structs. Because `CellMeta` has `mut` fields, it is heap-allocated — every variable, function parameter, array slot, or struct field holding a `CellMeta` is a reference to the same object, not a copy. This means:
+
+- `Runtime::get_cell()` returns a reference to the canonical cell in `Runtime.cells`, not a detached copy.
+- `VerifyFrame.cell` in the iterative verification stack (`verify.mbt`) references the same `CellMeta`. Mutations to `in_progress`, `verified_at`, or `changed_at` inside `finish_frame_changed` / `finish_frame_unchanged` affect the runtime's canonical cell.
+- `Memo::force_recompute` retrieves a `CellMeta` via `get_cell` and mutates its fields directly.
+
+If `CellMeta` were ever changed to a value type (e.g., via MoonBit's `#valtype` annotation), this invariant would break — mutations would apply to copies, not originals, and the framework would silently produce incorrect results (e.g., `in_progress` flags stuck `true`, causing false cycle detection).
 
 ## Cycle Detection
 
@@ -233,6 +246,46 @@ Cycle detection triggers in two places:
 
 Cycle detection currently calls `abort()`, terminating the program. There is no graceful recovery. The ROADMAP includes plans to replace this with a `CycleError` type that callers can handle.
 
+## Batch Updates
+
+### The Problem
+
+Without batching, each `Signal::set()` call bumps the global revision independently. If a user needs to update multiple signals atomically (e.g., setting both `x` and `y` coordinates), intermediate states are visible to memo reads, and each set triggers a separate verification pass.
+
+### Two-Phase Batch Commit
+
+`Runtime::batch(fn)` groups multiple signal updates into a single revision:
+
+1. **Write phase**: Inside the batch closure, `Signal::set()` stores new values as `pending_value` on the Signal rather than committing immediately. The actual `value` field is unchanged, so any `get()` calls during the batch see the pre-batch values. Each signal registers a type-erased `commit_pending` closure on its `CellMeta`.
+
+2. **Commit phase**: When the outermost batch ends, the runtime iterates over all pending signals and calls their `commit_pending` closures. Each closure compares the pending value against the current value using `Eq`. Only signals whose values actually changed are marked with the new revision.
+
+### Revert Detection
+
+The two-phase design enables revert detection: if a signal is set to a new value and then set back to its original value within the same batch, the commit phase sees no net change. No revision bump occurs, and downstream memos skip verification entirely.
+
+### Nested Batches
+
+Batches can be nested. A `batch_depth` counter tracks nesting. Only the outermost batch triggers the commit phase. Inner batches are transparent — their signal writes accumulate in the same pending set.
+
+## Comparison with alien-signals
+
+[alien-signals](https://github.com/nicepkg/alien-signals) is a high-performance reactive framework that uses different design trade-offs. Several ideas from alien-signals have influenced `incr`:
+
+### Ideas adopted
+
+- **Array-based storage**: Like alien-signals' flat arrays for dependency/subscriber links, `incr` now uses `Array[CellMeta?]` indexed by `CellId.id` instead of a HashMap. This gives O(1) cell lookup.
+- **HashSet deduplication**: Efficient O(1) dependency deduplication during tracking, similar to alien-signals' link-based dedup.
+- **Batch updates with two-phase values**: alien-signals buffers signal writes during batches. `incr` adopted this pattern with `pending_value` and commit closures, enabling revert detection.
+- **Iterative graph walking**: alien-signals uses iterative propagation. `incr` converted its recursive `maybe_changed_after` to an iterative stack-based loop to prevent stack overflow on deep graphs.
+
+### Ideas deferred
+
+- **Subscriber (reverse) links**: alien-signals maintains bidirectional edges — each cell knows both its dependencies and its subscribers. This enables push-based dirty propagation and efficient cleanup. `incr` currently only has forward (dependency) edges; adding subscriber links would be a significant architectural change (see ROADMAP Phase 4).
+- **Push-pull hybrid**: With subscriber links, alien-signals can eagerly propagate dirty flags on write and lazily verify on read. `incr` uses pure pull-based verification. Adopting hybrid invalidation requires subscriber links as a prerequisite.
+- **Effect system**: alien-signals has first-class `Effect` nodes that trigger side effects when observed values change. `incr` is a pure computation framework with no built-in effect mechanism.
+- **Automatic cleanup/GC**: alien-signals can garbage-collect unreachable nodes via subscriber reference counting. `incr` requires subscriber links before this is possible.
+
 ## File Map
 
 | File | Purpose |
@@ -246,5 +299,6 @@ Cycle detection currently calls `abort()`, terminating the program. There is no 
 | `revision.mbt` | `Revision`, `Durability` — revision counter and durability enum |
 | `signal_test.mbt` | Tests for Signal behavior |
 | `memo_test.mbt` | Tests for Memo behavior, backdating, and dependency tracking |
+| `batch_test.mbt` | Tests for batch updates, revert detection, and two-phase values |
 | `durability_test.mbt` | Tests for durability shortcuts |
 | `cycle_test.mbt` | Tests for cycle detection |

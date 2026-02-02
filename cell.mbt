@@ -34,6 +34,10 @@ pub(all) struct CellMeta {
   /// For derived cells: recomputes and returns true if value changed.
   /// None for input cells.
   recompute_and_check : (() -> Bool)?
+  /// For input cells during batch: commits pending value and returns true
+  /// if the committed value differs from the current value.
+  /// None for derived cells or inputs outside a batch.
+  mut commit_pending : (() -> Bool)?
   /// Cycle detection flag.
   mut in_progress : Bool
 }
@@ -48,6 +52,7 @@ pub fn CellMeta::new_input(id : CellId, durability : Durability) -> CellMeta {
     dependencies: [],
     durability,
     recompute_and_check: None,
+    commit_pending: None,
     in_progress: false,
   }
 }
@@ -65,6 +70,7 @@ pub fn CellMeta::new_derived(
     dependencies: [],
     durability: Low,
     recompute_and_check: Some(recompute_and_check),
+    commit_pending: None,
     in_progress: false,
   }
 }

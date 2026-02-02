@@ -167,6 +167,31 @@ test "integration: repeated set-get cycles" {
 }
 
 ///|
+test "integration: deep chain (200+ levels) - iterative verification" {
+  // Stress test: a chain of 250 memos, each depending on the previous.
+  // This would cause a stack overflow with recursive verification.
+  let rt = Runtime::new()
+  let input = Signal::new(rt, 1)
+  let depth = 250
+  // Build chain: memos[0] depends on input, memos[i] depends on memos[i-1]
+  let memos : Array[Memo[Int]] = []
+  memos.push(Memo::new(rt, fn() { input.get() + 1 }))
+  for i = 1; i < depth; i = i + 1 {
+    let prev = memos[i - 1]
+    memos.push(Memo::new(rt, fn() { prev.get() + 1 }))
+  }
+  let tail = memos[depth - 1]
+  // Initial: 1 + 250 = 251
+  inspect(tail.get(), content="251")
+  // Change input and verify propagation through entire chain
+  input.set(10)
+  inspect(tail.get(), content="260") // 10 + 250
+  // Backdating test: set input back to 1
+  input.set(1)
+  inspect(tail.get(), content="251") // 1 + 250
+}
+
+///|
 test "integration: dynamic dependencies" {
   // A memo that conditionally reads different signals based on a flag.
   // When the flag flips, the dependency set changes between invocations.
