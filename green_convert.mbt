@@ -71,177 +71,159 @@ fn collect_binary_ops(green : GreenNode) -> Array[Bop] {
 }
 
 ///|
+/// Convert a RedNode to a TermNode. Uses RedNode's offset-based position
+/// computation instead of manual offset tracking.
+fn convert_red(red : RedNode, counter : Ref[Int]) -> TermNode {
+  fn next_id() -> Int {
+    let id = counter.val
+    counter.val = id + 1
+    id
+  }
+
+  let g = red.green
+  let off = red.start()
+  match g.kind {
+    IntLiteral => {
+      let text = extract_token_text(g, IntToken).unwrap_or("")
+      let value = @strconv.parse_int(text) catch { _ => 0 }
+      let (tight_start, tight_end) = tight_span(g, off)
+      TermNode::new(TermKind::Int(value), tight_start, tight_end, next_id(), [])
+    }
+    VarRef => {
+      let name = extract_token_text(g, IdentToken).unwrap_or("")
+      let (tight_start, tight_end) = tight_span(g, off)
+      TermNode::new(TermKind::Var(name), tight_start, tight_end, next_id(), [])
+    }
+    LambdaExpr => {
+      let param = extract_token_text(g, IdentToken).unwrap_or("")
+      let (tight_start, tight_end) = tight_span(g, off)
+      let red_children = red.children()
+      for child in red_children {
+        let body = convert_red(child, counter)
+        return TermNode::new(
+          TermKind::Lam(param),
+          tight_start,
+          body.end,
+          next_id(),
+          [body],
+        )
+      }
+      TermNode::new(TermKind::Lam(param), tight_start, tight_end, next_id(), [])
+    }
+    AppExpr => {
+      let children : Array[TermNode] = []
+      let red_children = red.children()
+      for child in red_children {
+        children.push(convert_red(child, counter))
+      }
+      if children.length() >= 2 {
+        let mut result = children[0]
+        for i = 1; i < children.length(); i = i + 1 {
+          result = TermNode::new(
+            TermKind::App,
+            result.start,
+            children[i].end,
+            next_id(),
+            [result, children[i]],
+          )
+        }
+        result
+      } else if children.length() == 1 {
+        children[0]
+      } else {
+        TermNode::error("Empty AppExpr", off, next_id())
+      }
+    }
+    BinaryExpr => {
+      let ops = collect_binary_ops(g)
+      let children : Array[TermNode] = []
+      let red_children = red.children()
+      for child in red_children {
+        children.push(convert_red(child, counter))
+      }
+      if children.length() >= 2 {
+        let mut result = children[0]
+        for i = 1; i < children.length(); i = i + 1 {
+          let op = if i - 1 < ops.length() { ops[i - 1] } else { Bop::Plus }
+          result = TermNode::new(
+            TermKind::Bop(op),
+            result.start,
+            children[i].end,
+            next_id(),
+            [result, children[i]],
+          )
+        }
+        result
+      } else if children.length() == 1 {
+        children[0]
+      } else {
+        TermNode::error("Empty BinaryExpr", off, next_id())
+      }
+    }
+    IfExpr => {
+      let (tight_start, _) = tight_span(g, off)
+      let children : Array[TermNode] = []
+      let red_children = red.children()
+      for child in red_children {
+        children.push(convert_red(child, counter))
+      }
+      let if_end = if children.length() > 0 {
+        children[children.length() - 1].end
+      } else {
+        off + g.text_len
+      }
+      TermNode::new(TermKind::If, tight_start, if_end, next_id(), children)
+    }
+    ParenExpr => {
+      let (tight_start, tight_end) = tight_span(g, off)
+      let red_children = red.children()
+      for child in red_children {
+        let inner = convert_red(child, counter)
+        return TermNode::new(
+          inner.kind,
+          tight_start,
+          tight_end,
+          next_id(),
+          inner.children,
+        )
+      }
+      TermNode::error("Empty ParenExpr", off, next_id())
+    }
+    SourceFile => {
+      let child_nodes = find_child_nodes(g)
+      if child_nodes.length() > 0 {
+        let red_children = red.children()
+        for child in red_children {
+          return convert_red(child, counter)
+        }
+      }
+      TermNode::error("Empty SourceFile", off, next_id())
+    }
+    _ =>
+      TermNode::error(
+        "Unexpected node kind: " + g.kind.to_string(),
+        off,
+        next_id(),
+      )
+  }
+}
+
+///|
+/// Convert a RedNode (position-aware CST facade) to a TermNode.
+pub fn red_to_term_node(red : RedNode, node_id_counter : Ref[Int]) -> TermNode {
+  convert_red(red, node_id_counter)
+}
+
+///|
+/// Convert a GreenNode to a TermNode. Preserved for backward compatibility.
+/// Internally creates a RedNode and delegates to convert_red.
 pub fn green_to_term_node(
   green : GreenNode,
   offset : Int,
   node_id_counter : Ref[Int],
 ) -> TermNode {
-  fn next_id() -> Int {
-    let id = node_id_counter.val
-    node_id_counter.val = id + 1
-    id
-  }
-
-  fn convert(g : GreenNode, off : Int) -> TermNode {
-    let start = off
-    match g.kind {
-      IntLiteral => {
-        let text = extract_token_text(g, IntToken).unwrap_or("")
-        let value = @strconv.parse_int(text) catch { _ => 0 }
-        let (tight_start, tight_end) = tight_span(g, off)
-        TermNode::new(TermKind::Int(value), tight_start, tight_end, next_id(), [])
-      }
-      VarRef => {
-        let name = extract_token_text(g, IdentToken).unwrap_or("")
-        let (tight_start, tight_end) = tight_span(g, off)
-        TermNode::new(TermKind::Var(name), tight_start, tight_end, next_id(), [])
-      }
-      LambdaExpr => {
-        let param = extract_token_text(g, IdentToken).unwrap_or("")
-        let (tight_start, tight_end) = tight_span(g, off)
-        let mut child_offset = off
-        for elem in g.children {
-          match elem {
-            Node(n) => {
-              let body = convert(n, child_offset)
-              return TermNode::new(
-                TermKind::Lam(param),
-                tight_start,
-                body.end,
-                next_id(),
-                [body],
-              )
-            }
-            Token(t) => child_offset = child_offset + t.text_len()
-          }
-        }
-        TermNode::new(TermKind::Lam(param), tight_start, tight_end, next_id(), [])
-      }
-      AppExpr => {
-        let children : Array[TermNode] = []
-        let mut child_offset = off
-        for elem in g.children {
-          match elem {
-            Node(n) => {
-              children.push(convert(n, child_offset))
-              child_offset = child_offset + n.text_len
-            }
-            Token(t) => child_offset = child_offset + t.text_len()
-          }
-        }
-        if children.length() >= 2 {
-          let mut result = children[0]
-          for i = 1; i < children.length(); i = i + 1 {
-            result = TermNode::new(
-              TermKind::App,
-              result.start,
-              children[i].end,
-              next_id(),
-              [result, children[i]],
-            )
-          }
-          result
-        } else if children.length() == 1 {
-          children[0]
-        } else {
-          TermNode::error("Empty AppExpr", start, next_id())
-        }
-      }
-      BinaryExpr => {
-        let ops = collect_binary_ops(g)
-        let children : Array[TermNode] = []
-        let mut child_offset = off
-        for elem in g.children {
-          match elem {
-            Node(n) => {
-              children.push(convert(n, child_offset))
-              child_offset = child_offset + n.text_len
-            }
-            Token(t) => child_offset = child_offset + t.text_len()
-          }
-        }
-        if children.length() >= 2 {
-          let mut result = children[0]
-          for i = 1; i < children.length(); i = i + 1 {
-            let op = if i - 1 < ops.length() { ops[i - 1] } else { Bop::Plus }
-            result = TermNode::new(
-              TermKind::Bop(op),
-              result.start,
-              children[i].end,
-              next_id(),
-              [result, children[i]],
-            )
-          }
-          result
-        } else if children.length() == 1 {
-          children[0]
-        } else {
-          TermNode::error("Empty BinaryExpr", start, next_id())
-        }
-      }
-      IfExpr => {
-        let (tight_start, _) = tight_span(g, off)
-        let children : Array[TermNode] = []
-        let mut child_offset = off
-        for elem in g.children {
-          match elem {
-            Node(n) => {
-              children.push(convert(n, child_offset))
-              child_offset = child_offset + n.text_len
-            }
-            Token(t) => child_offset = child_offset + t.text_len()
-          }
-        }
-        let if_end = if children.length() > 0 {
-          children[children.length() - 1].end
-        } else {
-          off + g.text_len
-        }
-        TermNode::new(TermKind::If, tight_start, if_end, next_id(), children)
-      }
-      ParenExpr => {
-        let (tight_start, tight_end) = tight_span(g, off)
-        let mut child_offset = off
-        for elem in g.children {
-          match elem {
-            Node(n) => {
-              let inner = convert(n, child_offset)
-              return TermNode::new(
-                inner.kind,
-                tight_start,
-                tight_end,
-                next_id(),
-                inner.children,
-              )
-            }
-            Token(t) => child_offset = child_offset + t.text_len()
-          }
-        }
-        TermNode::error("Empty ParenExpr", start, next_id())
-      }
-      SourceFile => {
-        let child_nodes = find_child_nodes(g)
-        if child_nodes.length() > 0 {
-          let mut child_offset = off
-          for elem in g.children {
-            match elem {
-              Node(n) => return convert(n, child_offset)
-              Token(t) => child_offset = child_offset + t.text_len()
-            }
-          }
-        }
-        TermNode::error("Empty SourceFile", start, next_id())
-      }
-      _ =>
-        TermNode::error(
-          "Unexpected node kind: " + g.kind.to_string(),
-          start,
-          next_id(),
-        )
-    }
-  }
-
-  convert(green, offset)
+  let red = RedNode::new(green, None, offset)
+  convert_red(red, node_id_counter)
 }
 
 ///|

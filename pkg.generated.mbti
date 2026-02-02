@@ -51,6 +51,8 @@ pub fn print_token_infos(Array[TokenInfo]) -> String
 
 pub fn print_tokens(Array[Token]) -> String
 
+pub fn red_to_term_node(RedNode, Ref[Int]) -> TermNode
+
 pub fn term_node_to_dot(TermNode) -> String
 
 pub fn tokenize(String) -> Array[TokenInfo] raise TokenizationError

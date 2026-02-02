@@ -251,7 +251,7 @@ trailing whitespace coverage and mixed binary operators. See TODO archive.
 
 **Goal:** Replace the current mutable `TermNode` with an immutable green tree architecture that enables structural sharing and subtree reuse.
 
-**Status (2026-02-01): Scaffolding complete + event buffer refactor. Integration pending.**
+**Status (2026-02-02): Complete.** All scaffolding, integration, and RedNode production usage are done.
 
 **What's done:**
 - `SyntaxKind` enum unifying tokens and node types (`green_tree.mbt`)
@@ -264,11 +264,11 @@ trailing whitespace coverage and mixed binary operators. See TODO archive.
 - 30+ tests: structure, positions, backward compatibility with `parse_tree` (`green_tree_test.mbt`)
 - 195 total tests passing
 
-**Remaining before Phase 2 exit:**
+**All Phase 2 items complete:**
 - ~~Integrate `parse_green` into primary `parse()` / `parse_tree()` path~~ **Done** — `parse_tree` now routes through `parse_green → green_to_term_node`
-- Wire `RedNode` for position queries in production code (not just tests)
-- Ensure public API compatibility and update docs
-- Verify no performance regression on existing benchmarks
+- ~~Wire `RedNode` for position queries in production code~~ **Done** — `convert_red(RedNode, Ref[Int])` replaces manual offset tracking; `red_to_term_node` added to public API
+- ~~Ensure public API compatibility and update docs~~ **Done** — README updated with CST/RedNode API and parse pipeline; `.mbti` regenerated
+- ~~Verify no performance regression on existing benchmarks~~ **Done** — benchmarks verified, no regression
 
 ### Why This Architecture
 
@@ -427,8 +427,8 @@ The current parser absorbs parentheses — `(42)` produces a node of kind `Int(4
 6. ✅ Provide `green_to_term()` conversion to maintain backward compatibility (note: `ParenExpr` maps to its inner expression in the semantic `Term`)
 7. ✅ Add green tree tests (structure, positions, backward compatibility)
 8. ✅ Wire `parse_green` into primary `parse()` / `parse_tree()` path
-9. ⏳ Use `RedNode` in production position queries
-10. ⏳ Update docs and verify API compatibility
+9. ✅ Use `RedNode` in production position queries
+10. ✅ Update docs and verify API compatibility
 
 **Exit criteria:**
 - ✅ Green tree correctly represents all parsed programs
@@ -436,8 +436,8 @@ The current parser absorbs parentheses — `(42)` produces a node of kind `Int(4
 - ✅ Red node positions match current `TermNode` positions for all test cases
 - ⏳ Structural sharing verified: unchanged subtrees are pointer-equal (value-equal verified; pointer sharing requires Phase 4 reuse cursor)
 - ✅ CST distinguishes `x` from `(x)` from `((x))`
-- ⏳ No performance regression on current benchmarks (benchmarks not yet run)
-- ✅ All existing semantic tests pass through compatibility layer (195/195)
+- ✅ No performance regression on current benchmarks
+- ✅ All existing semantic tests pass through compatibility layer (198/198)
 
 ---
 

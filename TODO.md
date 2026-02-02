@@ -1,7 +1,7 @@
 # Incremental Parser TODO (Compact)
 
 **Last Updated:** 2026-02-01
-**Status:** Phase 1 implemented; Phase 2 integration complete (green tree is canonical parse path)
+**Status:** Phase 1 implemented; Phase 2 complete (green tree + RedNode is canonical parse path)
 
 ## Current Focus
 
@@ -10,7 +10,7 @@
 - [ ] Add Phase 1 incremental lexer benchmark case and record results in `BENCHMARKS.md`
 - Command: `moon benchmark performance_benchmark.mbt`
 
-### Phase 2 (Green Tree) — Scaffolding Complete, Integration Pending
+### Phase 2 (Green Tree) — Complete ✅
 **Done (scaffolding + event buffer refactor):**
 - ✅ `SyntaxKind` enum unifying tokens and node types (`green_tree.mbt`)
 - ✅ `GreenToken`, `GreenNode`, `GreenElement` core types (`green_tree.mbt`)
@@ -25,11 +25,11 @@
 - ✅ 30+ green tree tests (structure, positions, backward compatibility)
 - ✅ 195 total tests passing
 
-**Next (integration):**
+**Integration (complete):**
 - [x] Wire `parse_green` into primary `parse()` / `parse_tree()` path (replace direct `TermNode` construction)
-- [ ] Use `RedNode` for position queries in production code (not just tests)
-- [ ] Ensure public API compatibility and update docs
-- [ ] Verify no performance regression on existing benchmarks
+- [x] Use `RedNode` for position queries in production code (`convert_red` replaces manual offset tracking)
+- [x] Ensure public API compatibility and update docs (`red_to_term_node` added, README updated)
+- [x] Verify no performance regression on existing benchmarks
 
 **Known issues (non-blocking):**
 - `EofToken` and `ErrorNode` in `SyntaxKind` are unused — intentional placeholders for Phase 3
