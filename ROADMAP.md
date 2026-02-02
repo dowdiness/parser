@@ -1,7 +1,8 @@
 # Roadmap: Stabilized Incremental Parser
 
 **Created:** 2026-02-01
-**Status:** Active
+**Updated:** 2026-02-02
+**Status:** Active — Phases 0-2 complete, Phase 3 (Error Recovery) next
 **Goal:** A genuinely incremental, architecturally sound parser for lambda calculus (and beyond) with confidence in every layer.
 
 ---
@@ -22,7 +23,7 @@ Before planning forward, we need an unflinching look at where we are. The existi
 
 5. **Data structures** - `TermNode`, `TermKind`, `Edit`, `Range` are well-designed and tested.
 
-6. **Test suite** - 223 tests passing, including property-based tests. Good coverage.
+6. **Test suite** - 198 tests passing, including property-based tests. Good coverage.
 
 ### What Does Not Work (Architectural Gaps)
 
@@ -161,17 +162,30 @@ The end state is a parser where every layer earns its existence. No dead infrast
 
 ---
 
-## Phase 1: Incremental Lexer
+## Phase 1: Incremental Lexer ✅ COMPLETE (2026-02-02)
 
 **Goal:** Only re-tokenize the damaged region of the source. This is the first optimization that provides real, measurable incremental benefit.
 
-**Status (2026-02-01): Implemented; benchmarks pending.**
+**Status (2026-02-02): Complete.** Implementation and benchmarks done.
 
-**What’s done:**
+**What's done:**
 - TokenBuffer implemented with splice-based incremental updates (`token_buffer.mbt`)
 - Incremental re-lex integration in `IncrementalParser` (uses token buffer, token-based parse)
 - Token-range re-lex with conservative boundary expansion (left/right context)
 - Property tests: incremental lex == full lex (QuickCheck + deterministic generators)
+- Benchmarks on 110-token input (`1 + 2 + ... + 55`) recorded in `BENCHMARKS.md`
+
+**Benchmark results (110 tokens, 263 chars):**
+
+| Edit location | Update cost (estimated) | vs full re-tokenize | Speedup |
+|---------------|------------------------|---------------------|---------|
+| Start | ~0.97 us | 1.23 us | ~1.3x |
+| Middle | ~0.83 us | 1.23 us | ~1.5x |
+| End | ~0.74 us | 1.23 us | ~1.7x |
+
+All operations well under the 16ms real-time editing target (< 3 us total including setup).
+Speedup is modest at 110 tokens because full tokenize is already fast; larger inputs will
+show greater benefit as update cost stays proportional to the damaged region.
 
 ### Why This Comes First
 
@@ -242,7 +256,7 @@ trailing whitespace coverage and mixed binary operators. See TODO archive.
 **Exit criteria:**
 - ✅ Incremental lexer correctly handles all edit types (insert, delete, replace)
 - ✅ Token buffer matches full re-tokenization for every test case
-- ⏳ Benchmark shows measurable speedup for edits on larger inputs (100+ tokens)
+- ✅ Benchmark shows measurable speedup for edits on larger inputs (110 tokens: 1.3-1.7x faster)
 - ✅ Property test: for any edit, incremental lex result == full lex result
 
 ---
@@ -888,13 +902,13 @@ This avoids the complexity of tree CRDTs entirely. The incremental parser provid
 ## Phase Summary and Dependencies
 
 ```
-Phase 0: Reckoning          (no dependencies - cleanup)
+Phase 0: Reckoning          ✅ COMPLETE
     |
-    +------ Phase 1: Incremental Lexer  (depends on Phase 0)
+    +------ Phase 1: Incremental Lexer  ✅ COMPLETE
     |
-    +------ Phase 2: Green Tree         (depends on Phase 0, parallel with Phase 1)
+    +------ Phase 2: Green Tree         ✅ COMPLETE
                 |
-                +------ Phase 3: Error Recovery     (depends on Phase 2)
+                +------ Phase 3: Error Recovery     (depends on Phase 2) ← NEXT
                 |
                 +------ Phase 4: Subtree Reuse      (depends on Phase 1, 2)
                 |
@@ -905,8 +919,8 @@ Phase 0: Reckoning          (no dependencies - cleanup)
                 +------ Phase 6: CRDT Exploration   (depends on Phase 2, 4)
 ```
 
-Phases 1 and 2 can proceed in parallel after Phase 0.
-Phases 3 and 4 can proceed in parallel after Phase 2 (Phase 4 also needs Phase 1).
+Phases 0, 1, and 2 are complete. All prerequisites for Phases 3 and 4 are satisfied.
+Phases 3 and 4 can proceed in parallel.
 Phase 4 works on well-formed input without Phase 3. Full incremental reuse on malformed input requires both.
 Phases 5 and 6 can proceed in parallel after their dependencies.
 
@@ -955,13 +969,13 @@ Use QuickCheck (already a dependency) to generate random test cases:
 
 ### Phase-Specific Testing Requirements
 
-| Phase | What to verify | Oracle |
-|-------|---------------|--------|
-| Phase 1 (Incremental Lexer) | Incremental tokenization == full tokenization | `incremental_lex(edit) == tokenize(new_source)` |
-| Phase 2 (Green Tree) | Green tree → Term matches old parser's Term | `green_to_term(green_parse(s)) == parse(s)` |
-| Phase 3 (Error Recovery) | Parser terminates on all inputs; valid inputs unchanged | Fuzzing with random bytes; regression suite |
-| Phase 4 (Subtree Reuse) | Incremental parse == full reparse | Full differential oracle |
-| Phase 5 (Grammar Expansion) | New constructs parse correctly; old constructs unchanged | Existing test suite + new construct tests |
+| Phase | What to verify | Oracle | Status |
+|-------|---------------|--------|--------|
+| Phase 1 (Incremental Lexer) | Incremental tokenization == full tokenization | `incremental_lex(edit) == tokenize(new_source)` | ✅ Verified |
+| Phase 2 (Green Tree) | Green tree → Term matches old parser's Term | `green_to_term(green_parse(s)) == parse(s)` | ✅ Verified |
+| Phase 3 (Error Recovery) | Parser terminates on all inputs; valid inputs unchanged | Fuzzing with random bytes; regression suite | Pending |
+| Phase 4 (Subtree Reuse) | Incremental parse == full reparse | Full differential oracle | Pending |
+| Phase 5 (Grammar Expansion) | New constructs parse correctly; old constructs unchanged | Existing test suite + new construct tests | Pending |
 
 ### Regression Suite
 
@@ -986,12 +1000,10 @@ The full test suite (including property-based fuzzing with 10,000+ random cases)
 
 Removing dead code and establishing honest benchmarks requires no architectural risk. This is purely cleanup work.
 
-### Milestone 2: Incremental Lexer (Phase 1)
-**Confidence: High**
+### Milestone 2: Incremental Lexer (Phase 1) ✅ COMPLETE
+**Confidence: Certain (completed)**
 
-Incremental lexing is well-understood. The lambda calculus lexer is simple (no multi-line tokens, no context-dependent lexing, no string interpolation). The main work is splicing logic and boundary handling.
-
-Known risk: Token boundary detection when edits create or destroy multi-character tokens (e.g., `if` keyword). Mitigated by conservative context margins.
+Incremental lexing implemented with splice-based TokenBuffer updates. Conservative boundary expansion handles keyword formation edge cases. Benchmarked on 110-token input: incremental update is 1.3-1.7x faster than full re-tokenize, with all operations under 3 us. Property tests verify correctness (incremental lex == full lex).
 
 ### Milestone 3: Green Tree (Phase 2)
 **Confidence: High**

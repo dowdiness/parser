@@ -1,14 +1,15 @@
 # Incremental Parser TODO (Compact)
 
-**Last Updated:** 2026-02-01
-**Status:** Phase 1 implemented; Phase 2 complete (green tree + RedNode is canonical parse path)
+**Last Updated:** 2026-02-02
+**Status:** Phase 1 complete (benchmarked); Phase 2 complete (green tree + RedNode is canonical parse path)
 
-## Current Focus
+## Completed
 
-### Phase 1 (Incremental Lexer) — Implemented ✅
-**Pending:** benchmarks on 100+ token inputs
-- [ ] Add Phase 1 incremental lexer benchmark case and record results in `BENCHMARKS.md`
-- Command: `moon benchmark performance_benchmark.mbt`
+### Phase 1 (Incremental Lexer) — Complete ✅
+- [x] Add Phase 1 incremental lexer benchmark case and record results in `BENCHMARKS.md`
+  - 110-token input (`1 + 2 + 3 + ... + 55`), edits at start/middle/end
+  - Incremental update: ~0.74-0.97 us vs full re-tokenize: ~1.23 us (1.3-1.7x speedup)
+  - All operations well under 16ms real-time target
 
 ### Phase 2 (Green Tree) — Complete ✅
 **Done (scaffolding + event buffer refactor):**
