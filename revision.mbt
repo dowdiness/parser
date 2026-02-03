@@ -9,9 +9,9 @@
 ///
 /// A cell is stale when `verified_at < current_revision`. A cell has changed
 /// (relative to an observer) when `changed_at > observer.verified_at`.
-pub(all) struct Revision {
+priv struct Revision {
   value : Int
-} derive(Show, Eq, Compare)
+} derive(Eq)
 
 ///|
 /// Returns the initial revision (revision 0).
@@ -21,7 +21,7 @@ pub(all) struct Revision {
 /// # Returns
 ///
 /// The initial revision
-pub fn Revision::initial() -> Revision {
+fn Revision::initial() -> Revision {
   { value: 0 }
 }
 
@@ -31,7 +31,7 @@ pub fn Revision::initial() -> Revision {
 /// # Returns
 ///
 /// A new revision with value incremented by 1
-pub fn Revision::next(self : Revision) -> Revision {
+fn Revision::next(self : Revision) -> Revision {
   { value: self.value + 1 }
 }
 
@@ -48,7 +48,7 @@ pub fn Revision::next(self : Revision) -> Revision {
 /// # Returns
 ///
 /// `true` if `self > other`, `false` otherwise
-pub fn Revision::after(self : Revision, other : Revision) -> Bool {
+fn Revision::after(self : Revision, other : Revision) -> Bool {
   self.value > other.value
 }
 
@@ -86,7 +86,7 @@ pub(all) enum Durability {
 /// - `Low` → 0
 /// - `Medium` → 1
 /// - `High` → 2
-pub fn Durability::index(self : Durability) -> Int {
+fn Durability::index(self : Durability) -> Int {
   match self {
     Low => 0
     Medium => 1
@@ -98,4 +98,4 @@ pub fn Durability::index(self : Durability) -> Int {
 /// The number of durability levels (3: Low, Medium, High).
 ///
 /// Used internally to size the `durability_last_changed` array in Runtime.
-pub let durability_count : Int = 3
+let durability_count : Int = 3

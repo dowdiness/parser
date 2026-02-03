@@ -3,9 +3,9 @@
 ///
 /// Cell IDs are monotonically increasing integers allocated by the runtime.
 /// They serve as direct array indices for O(1) cell lookup.
-pub(all) struct CellId {
+priv struct CellId {
   id : Int
-} derive(Show, Eq)
+} derive(Eq)
 
 ///|
 impl Hash for CellId with hash(self) {
@@ -23,10 +23,10 @@ impl Hash for CellId with hash_combine(self, hasher) {
 /// This affects how verification works:
 /// - `Input`: Changed directly by user; verification simply checks `changed_at`
 /// - `Derived`: Computed from dependencies; verification walks the dependency graph
-pub enum CellKind {
+priv enum CellKind {
   Input
   Derived
-} derive(Show, Eq)
+}
 
 ///|
 /// Type-erased cell metadata stored in the runtime.
@@ -37,7 +37,7 @@ pub enum CellKind {
 ///
 /// This separation allows the verification algorithm to operate on all cells
 /// uniformly without knowing their value types.
-pub(all) struct CellMeta {
+priv struct CellMeta {
   id : CellId
   kind : CellKind
   mut changed_at : Revision
@@ -66,7 +66,7 @@ pub(all) struct CellMeta {
 /// # Returns
 ///
 /// Initialized cell metadata with `kind = Input`
-pub fn CellMeta::new_input(id : CellId, durability : Durability) -> CellMeta {
+fn CellMeta::new_input(id : CellId, durability : Durability) -> CellMeta {
   {
     id,
     kind: Input,
@@ -94,7 +94,7 @@ pub fn CellMeta::new_input(id : CellId, durability : Durability) -> CellMeta {
 ///
 /// Initialized cell metadata with `kind = Derived` and `durability = Low`
 /// (durability is updated after first computation based on dependencies)
-pub fn CellMeta::new_derived(
+fn CellMeta::new_derived(
   id : CellId,
   recompute_and_check : () -> Bool,
 ) -> CellMeta {

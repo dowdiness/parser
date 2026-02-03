@@ -26,11 +26,11 @@
 /// a.set(15)
 /// inspect(sum.get(), content="35")  // Recomputes because `a` changed
 /// ```
-pub struct Memo[T] {
-  rt : Runtime
-  cell_id : CellId
-  compute : () -> T
-  mut value : T?
+pub(all) struct Memo[T] {
+  priv rt : Runtime
+  priv cell_id : CellId
+  priv compute : () -> T
+  priv mut value : T?
 }
 
 ///|
@@ -121,11 +121,11 @@ pub fn[T : Eq] Memo::get(self : Memo[T]) -> T {
 fn[T : Eq] Memo::force_recompute(self : Memo[T]) -> Unit {
   let cell = self.rt.get_cell(self.cell_id)
   if cell.in_progress {
-    abort("Cycle detected: cell " + cell.id.to_string() + " is already being recomputed")
+    abort("Cycle detected: cell " + cell.id.id.to_string() + " is already being recomputed")
   }
   cell.in_progress = true
   // Push tracking frame to record dependencies
-  self.rt.push_tracking(self.cell_id)
+  self.rt.push_tracking()
   let new_value = (self.compute)()
   let new_deps = self.rt.pop_tracking()
   cell.dependencies = new_deps

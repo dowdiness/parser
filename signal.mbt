@@ -13,12 +13,12 @@
 /// count.set(5)
 /// inspect(count.get(), content="5")
 /// ```
-pub struct Signal[T] {
-  rt : Runtime
-  cell_id : CellId
-  mut value : T
-  mut pending_value : T?
-  durability : Durability
+pub(all) struct Signal[T] {
+  priv rt : Runtime
+  priv cell_id : CellId
+  priv mut value : T
+  priv mut pending_value : T?
+  priv durability : Durability
 }
 
 ///|

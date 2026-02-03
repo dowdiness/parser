@@ -13,18 +13,14 @@
 /// let doubled = Memo::new(rt, fn() { x.get() * 2 })
 /// ```
 pub(all) struct Runtime {
-  mut current_revision : Revision
-  cells : Array[CellMeta?]
-  mut next_cell_id : Int
-  tracking_stack : Array[ActiveQuery]
-  /// Per-durability: the last revision at which an input of that durability changed.
-  durability_last_changed : FixedArray[Revision]
-  /// Batch state: nesting depth for batch operations.
-  mut batch_depth : Int
-  /// Signals with pending changes during a batch.
-  batch_pending_signals : Array[CellId]
-  /// Maximum durability level seen during a batch.
-  mut batch_max_durability : Durability
+  priv mut current_revision : Revision
+  priv cells : Array[CellMeta?]
+  priv mut next_cell_id : Int
+  priv tracking_stack : Array[ActiveQuery]
+  priv durability_last_changed : FixedArray[Revision]
+  priv mut batch_depth : Int
+  priv batch_pending_signals : Array[CellId]
+  priv mut batch_max_durability : Durability
 }
 
 ///|
@@ -58,7 +54,7 @@ pub fn Runtime::new() -> Runtime {
 /// # Parameters
 ///
 /// - `meta`: The cell metadata to register
-pub fn Runtime::register_cell(self : Runtime, meta : CellMeta) -> Unit {
+fn Runtime::register_cell(self : Runtime, meta : CellMeta) -> Unit {
   let id = meta.id.id
   // Grow array if needed
   while self.cells.length() <= id {
@@ -76,7 +72,7 @@ pub fn Runtime::register_cell(self : Runtime, meta : CellMeta) -> Unit {
 /// # Returns
 ///
 /// A new unique cell identifier
-pub fn Runtime::alloc_cell_id(self : Runtime) -> CellId {
+fn Runtime::alloc_cell_id(self : Runtime) -> CellId {
   let id = self.next_cell_id
   self.next_cell_id = id + 1
   { id, }
@@ -98,14 +94,14 @@ pub fn Runtime::alloc_cell_id(self : Runtime) -> CellId {
 /// # Panics
 ///
 /// Aborts if no cell with the given ID exists
-pub fn Runtime::get_cell(self : Runtime, id : CellId) -> CellMeta {
+fn Runtime::get_cell(self : Runtime, id : CellId) -> CellMeta {
   if id.id < self.cells.length() {
     match self.cells[id.id] {
       Some(meta) => meta
-      None => abort("Cell not found: " + id.to_string())
+      None => abort("Cell not found: " + id.id.to_string())
     }
   } else {
-    abort("Cell not found: " + id.to_string())
+    abort("Cell not found: " + id.id.to_string())
   }
 }
 
@@ -121,7 +117,7 @@ pub fn Runtime::get_cell(self : Runtime, id : CellId) -> CellMeta {
 /// # Parameters
 ///
 /// - `durability`: The durability level of the signal that changed
-pub fn Runtime::bump_revision(self : Runtime, durability : Durability) -> Unit {
+fn Runtime::bump_revision(self : Runtime, durability : Durability) -> Unit {
   if self.batch_depth > 0 {
     // Track the maximum durability seen during this batch
     if durability.index() > self.batch_max_durability.index() {
@@ -235,7 +231,7 @@ fn Runtime::commit_batch(self : Runtime) -> Unit {
 /// # Parameters
 ///
 /// - `cell_id`: The ID of the signal with a pending change
-pub fn Runtime::record_batch_signal(self : Runtime, cell_id : CellId) -> Unit {
+fn Runtime::record_batch_signal(self : Runtime, cell_id : CellId) -> Unit {
   self.batch_pending_signals.push(cell_id)
 }
 
@@ -249,7 +245,7 @@ pub fn Runtime::record_batch_signal(self : Runtime, cell_id : CellId) -> Unit {
 /// # Parameters
 ///
 /// - `dep`: The cell ID that the current memo depends on
-pub fn Runtime::record_dependency(self : Runtime, dep : CellId) -> Unit {
+fn Runtime::record_dependency(self : Runtime, dep : CellId) -> Unit {
   let len = self.tracking_stack.length()
   if len > 0 {
     self.tracking_stack[len - 1].record(dep)
@@ -265,8 +261,8 @@ pub fn Runtime::record_dependency(self : Runtime, dep : CellId) -> Unit {
 /// # Parameters
 ///
 /// - `cell_id`: The ID of the memo being computed
-pub fn Runtime::push_tracking(self : Runtime, cell_id : CellId) -> Unit {
-  self.tracking_stack.push(ActiveQuery::new(cell_id))
+fn Runtime::push_tracking(self : Runtime) -> Unit {
+  self.tracking_stack.push(ActiveQuery::new())
 }
 
 ///|
@@ -282,7 +278,7 @@ pub fn Runtime::push_tracking(self : Runtime, cell_id : CellId) -> Unit {
 /// # Panics
 ///
 /// Aborts if the tracking stack is empty (unbalanced push/pop)
-pub fn Runtime::pop_tracking(self : Runtime) -> Array[CellId] {
+fn Runtime::pop_tracking(self : Runtime) -> Array[CellId] {
   match self.tracking_stack.pop() {
     Some(query) => query.dependencies
     None => abort("Tracking stack underflow")

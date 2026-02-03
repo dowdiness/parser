@@ -77,9 +77,9 @@ inspect(config_derived.get(), content="200")
 
 | Document | Description |
 |----------|-------------|
-| [DESIGN.md](DESIGN.md) | Deep technical internals: verification algorithm, type erasure, implementation details |
-| [ROADMAP.md](ROADMAP.md) | High-level future direction |
-| [TODO.md](TODO.md) | Concrete actionable tasks |
+| [DESIGN.md](./DESIGN.md) | Deep technical internals: verification algorithm, type erasure, implementation details |
+| [ROADMAP.md](./ROADMAP.md) | High-level future direction |
+| [TODO.md](./TODO.md) | Concrete actionable tasks |
 | [Comparison with alien-signals](docs/comparison-with-alien-signals.md) | Analysis of different reactive frameworks |
 
 ## Development

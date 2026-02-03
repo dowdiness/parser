@@ -31,7 +31,7 @@
 /// # Panics
 ///
 /// Aborts if a cycle is detected (cell depends on itself transitively)
-pub fn maybe_changed_after(
+fn maybe_changed_after(
   rt : Runtime,
   cell_id : CellId,
   after_revision : Revision,
@@ -166,7 +166,7 @@ fn try_start_verify(
   // Cycle detection
   if cell.in_progress {
     abort(
-      "Cycle detected: cell " + cell.id.to_string() + " is already being verified",
+      "Cycle detected: cell " + cell.id.id.to_string() + " is already being verified",
     )
   }
   cell.in_progress = true

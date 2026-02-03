@@ -7,24 +7,19 @@
 /// finishes, the collected dependencies are stored on the memo's cell metadata.
 ///
 /// Dependencies are deduplicated using a HashSet for O(1) membership checks.
-pub(all) struct ActiveQuery {
-  cell_id : CellId
-  mut dependencies : Array[CellId]
+priv struct ActiveQuery {
+  dependencies : Array[CellId]
   seen : @hashset.HashSet[CellId]
 }
 
 ///|
-/// Creates a new active query for the given cell.
-///
-/// # Parameters
-///
-/// - `cell_id`: The ID of the memo being computed
+/// Creates a new active query.
 ///
 /// # Returns
 ///
 /// A new active query with an empty dependency set
-pub fn ActiveQuery::new(cell_id : CellId) -> ActiveQuery {
-  { cell_id, dependencies: [], seen: @hashset.new() }
+fn ActiveQuery::new() -> ActiveQuery {
+  { dependencies: [], seen: @hashset.new() }
 }
 
 ///|
@@ -37,7 +32,7 @@ pub fn ActiveQuery::new(cell_id : CellId) -> ActiveQuery {
 /// # Parameters
 ///
 /// - `dep`: The cell ID to record as a dependency
-pub fn ActiveQuery::record(self : ActiveQuery, dep : CellId) -> Unit {
+fn ActiveQuery::record(self : ActiveQuery, dep : CellId) -> Unit {
   if self.seen.contains(dep) {
     return
   }
