@@ -36,13 +36,13 @@ fn idf_slice_string(s : String, start : Int, end : Int) -> String? {
 fn idf_pool(allow_invalid : Bool) -> Array[String] {
   if allow_invalid {
     [
-      "x", "y", "z", "0", "1", "2", "if", "then", "else", "\\", ".", "(", ")",
-      "+", "-", " ", "@", "#", "$", "]", "[",
+      "x", "y", "z", "0", "1", "2", "if", "then", "else", "\\", ".", "(", ")", "+",
+      "-", " ", "@", "#", "$", "]", "[",
     ]
   } else {
     [
-      "x", "y", "z", "0", "1", "2", "if", "then", "else", "\\", ".", "(", ")",
-      "+", "-", " ",
+      "x", "y", "z", "0", "1", "2", "if", "then", "else", "\\", ".", "(", ")", "+",
+      "-", " ",
     ]
   }
 }
@@ -52,7 +52,7 @@ fn idf_make_fragment(seed : Int, allow_invalid : Bool) -> String {
   let pool = idf_pool(allow_invalid)
   let mut s = seed
   let mut out = ""
-  let count = (seed.abs() % 4) + 1
+  let count = seed.abs() % 4 + 1
   let pool_len = pool.length()
   for _i = 0; _i < count; _i = _i + 1 {
     s = idf_next_seed(s)
@@ -67,7 +67,7 @@ fn idf_make_source(seed : Int, allow_invalid : Bool) -> String {
   let pool = idf_pool(allow_invalid)
   let mut s = seed
   let mut out = ""
-  let count = (seed.abs() % 10) + 3
+  let count = seed.abs() % 10 + 3
   let pool_len = pool.length()
   for _i = 0; _i < count; _i = _i + 1 {
     s = idf_next_seed(s)
@@ -88,7 +88,6 @@ fn idf_apply_random_edit(
   let op = s.abs() % 3 // 0 insert, 1 delete, 2 replace
   let frag = idf_make_fragment(s, allow_invalid)
   s = idf_next_seed(s)
-
   if op == 0 || len == 0 {
     // Insert
     let start_raw = s.abs() % (len + 1)
@@ -114,7 +113,7 @@ fn idf_apply_random_edit(
     let left = idf_slice_string(source, 0, from)
     let right = idf_slice_string(source, to, len)
     match (left, right) {
-      (Some(l), Some(r)) => {
+      (Some(l), Some(r)) =>
         if op == 1 {
           // Delete
           let new_source = l + r
@@ -126,7 +125,6 @@ fn idf_apply_random_edit(
           let edit = Edit::replace(from, to, from + frag.length())
           (new_source, edit, s)
         }
-      }
       _ => (source, Edit::insert(0, 0), s)
     }
   }
@@ -157,11 +155,10 @@ test "differential-fast: deterministic random edit sequences" {
   // Fast PR check target: modest amount of deterministic fuzz.
   let mut checked_cases = 0
   for case_i = 0; case_i < 30; case_i = case_i + 1 {
-    let mut seed = 17 + (case_i * 97)
+    let mut seed = 17 + case_i * 97
     let mut source = idf_make_source(seed, false)
     let parser = IncrementalParser::new(source)
     let _ = parser.parse()
-
     for edit_i = 0; edit_i < 8; edit_i = edit_i + 1 {
       let (new_source, edit, next_seed) = idf_apply_random_edit(
         source, seed, false,
@@ -189,11 +186,10 @@ test "differential-fast: deterministic random edit sequences" {
 test "differential-fast: malformed input sequences terminate" {
   // Includes invalid characters to exercise tokenization-error paths.
   for case_i = 0; case_i < 20; case_i = case_i + 1 {
-    let mut seed = 43 + (case_i * 131)
+    let mut seed = 43 + case_i * 131
     let mut source = idf_make_source(seed, true)
     let parser = IncrementalParser::new(source)
     let _ = parser.parse()
-
     for edit_i = 0; edit_i < 8; edit_i = edit_i + 1 {
       let (new_source, edit, next_seed) = idf_apply_random_edit(
         source, seed, true,
@@ -212,7 +208,9 @@ test "differential-fast: malformed input sequences terminate" {
     let repaired = parser.edit(repair_edit, repair)
     let full_repaired = parse_tree(repair)
     idf_assert_incremental_matches_full(
-      repaired, full_repaired, "repair case=\{case_i}",
+      repaired,
+      full_repaired,
+      "repair case=\{case_i}",
     )
   }
 }
@@ -222,11 +220,10 @@ test "differential-long: larger deterministic random edit sequences" {
   // Longer local/nightly target. Keep deterministic for reproducibility.
   let mut checked_cases = 0
   for case_i = 0; case_i < 80; case_i = case_i + 1 {
-    let mut seed = 101 + (case_i * 193)
+    let mut seed = 101 + case_i * 193
     let mut source = idf_make_source(seed, false)
     let parser = IncrementalParser::new(source)
     let _ = parser.parse()
-
     for edit_i = 0; edit_i < 16; edit_i = edit_i + 1 {
       let (new_source, edit, next_seed) = idf_apply_random_edit(
         source, seed, false,

@@ -98,7 +98,9 @@ test "error recovery: if without else" {
 
 ///|
 test "error recovery: valid input produces no errors" {
-  let inputs = ["42", "x", "λx.x", "f x", "1 + 2", "if x then 1 else 2", "(x)", "λf.λx.f (f x)"]
+  let inputs = [
+    "42", "x", "λx.x", "f x", "1 + 2", "if x then 1 else 2", "(x)", "λf.λx.f (f x)",
+  ]
   for input in inputs {
     let (_, errors) = parse_with_error_recovery(input)
     inspect(errors.length(), content="0")
@@ -107,14 +109,13 @@ test "error recovery: valid input produces no errors" {
 
 ///|
 test "error recovery: valid input identical to parse_tree" {
-  let inputs = ["42", "x", "λx.x", "f x", "1 + 2", "if x then 1 else 2", "(x)", "λf.λx.f (f x)"]
+  let inputs = [
+    "42", "x", "λx.x", "f x", "1 + 2", "if x then 1 else 2", "(x)", "λf.λx.f (f x)",
+  ]
   for input in inputs {
     let direct = parse_tree(input)
     let (recovered, _) = parse_with_error_recovery(input)
-    inspect(
-      print_term_node(recovered),
-      content=print_term_node(direct),
-    )
+    inspect(print_term_node(recovered), content=print_term_node(direct))
   }
 }
 
@@ -199,13 +200,10 @@ test "error recovery: all-error input preserves every error node" {
 ///|
 test "parse_green still raises on first error" {
   // parse_green should maintain backward compat and raise
-  let result = try {
-    parse_green("λ.x")
-  } catch {
-    _ => {
+  let result = parse_green("λ.x") catch {
+    _ =>
       // Expected to raise ParseError
       return
-    }
   }
   ignore(result)
   // Should not reach here — parse_green should have raised

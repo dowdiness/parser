@@ -2,7 +2,7 @@
 
 **Created:** 2026-02-01
 **Updated:** 2026-02-03
-**Status:** Active — Phases 0-2 complete; Phases 3-4 are next
+**Status:** Active — Phases 0-3 complete; Phase 4 is next
 **Goal:** A genuinely incremental, architecturally sound parser for lambda calculus (and beyond) with confidence in every layer.
 
 ---
@@ -23,7 +23,7 @@ Before planning forward, we need an unflinching look at where we are. The existi
 
 5. **Data structures** - `TermNode`, `TermKind`, `Edit`, `Range` are well-designed and tested.
 
-6. **Test suite** - 247 tests passing, including property-based tests. Good coverage.
+6. **Test suite** - 272 tests passing, including property-based tests and Phase 3 fuzz tests. Good coverage.
 
 ### What Does Not Work (Architectural Gaps)
 
@@ -32,13 +32,14 @@ Before planning forward, we need an unflinching look at where we are. The existi
 2. Check whole-tree reuse (works when damage is outside tree bounds)
 3. Full reparse (fallback for all other cases)
 
-### Error Recovery is a Wrapper, Not an Integration
+### Error Recovery ✅ (Phase 3 Complete)
 
-`parse_with_error_recovery()` wraps `parse_tree()` in a try-catch. If parsing fails at any point, the entire input gets a single error node. There is no:
-- Synchronization point recovery inside the parser
-- Partial tree construction on error
-- Multiple error node insertion
-- Recovery continuation after errors
+**Phase 3 (completed 2026-02-03) implemented integrated error recovery.** The parser now:
+- Uses synchronization points (`RightParen`, `Then`, `Else`, `EOF`) for recovery
+- Produces partial trees with `ErrorNode`/`ErrorToken` interspersed among valid nodes
+- Reports multiple errors per parse (up to `max_errors = 50`)
+- Continues parsing after errors, recovering at grammar boundaries
+- Terminates on any input (fuzz-tested with random token sequences)
 
 ### CRDT Integration is Conceptual
 
@@ -455,9 +456,20 @@ The current parser absorbs parentheses — `(42)` produces a node of kind `Int(4
 
 ---
 
-## Phase 3: Integrated Error Recovery
+## Phase 3: Integrated Error Recovery ✅ COMPLETE (2026-02-03)
 
 **Goal:** The parser continues past errors, producing a tree with error nodes interspersed among correctly parsed nodes. Multiple errors in a single parse.
+
+**Status (2026-02-03): Complete.** All exit criteria met.
+
+**What's done:**
+- Synchronization points implemented via `at_stop_token()` (RightParen, Then, Else, EOF)
+- `ErrorNode` and `ErrorToken` used for partial tree construction
+- `bump_error()` consumes unexpected tokens wrapped in ErrorNode
+- `expect()` emits zero-width ErrorToken for missing tokens
+- Error budget (`max_errors = 50`) prevents infinite loops
+- `parse_green_recover()` returns (tree, diagnostics) without raising
+- 272 tests including comprehensive Phase 3 fuzz tests
 
 ### Relationship to Subtree Reuse (Phase 4)
 
@@ -563,11 +575,11 @@ SourceFile
 Instead of the current behavior: single error node for entire input.
 
 **Exit criteria:**
-- Parser produces partial trees for all current error test cases
-- Multiple errors reported for inputs with multiple problems
-- Parser never panics or enters infinite loop on any input
-- All valid inputs still parse identically to current behavior
-- Fuzzing with random inputs: parser always terminates, always produces a tree
+- ✅ Parser produces partial trees for all current error test cases
+- ✅ Multiple errors reported for inputs with multiple problems
+- ✅ Parser never panics or enters infinite loop on any input
+- ✅ All valid inputs still parse identically to current behavior
+- ✅ Fuzzing with random inputs: parser always terminates, always produces a tree
 
 ---
 
@@ -908,9 +920,9 @@ Phase 0: Reckoning          ✅ COMPLETE
     |
     +------ Phase 2: Green Tree         ✅ COMPLETE
                 |
-                +------ Phase 3: Error Recovery     (depends on Phase 2) ← NEXT (parallel with Phase 4)
+                +------ Phase 3: Error Recovery     ✅ COMPLETE
                 |
-                +------ Phase 4: Subtree Reuse      (depends on Phase 1, 2)
+                +------ Phase 4: Subtree Reuse      (depends on Phase 1, 2) ← NEXT
                 |
                 +------ Phase 3 + 4 combined: reuse on malformed input
                 |
@@ -919,9 +931,8 @@ Phase 0: Reckoning          ✅ COMPLETE
                 +------ Phase 6: CRDT Exploration   (depends on Phase 2, 4)
 ```
 
-Phases 0, 1, and 2 are complete. All prerequisites for Phases 3 and 4 are satisfied.
-Phases 3 and 4 can proceed in parallel.
-Phase 4 works on well-formed input without Phase 3. Full incremental reuse on malformed input requires both.
+Phases 0, 1, 2, and 3 are complete. Phase 4 prerequisites are satisfied.
+Phase 4 works on well-formed input. Full incremental reuse on malformed input requires integrating with Phase 3's error recovery.
 Phases 5 and 6 can proceed in parallel after their dependencies.
 
 ---
@@ -973,7 +984,7 @@ Use QuickCheck (already a dependency) to generate random test cases:
 |-------|---------------|--------|--------|
 | Phase 1 (Incremental Lexer) | Incremental tokenization == full tokenization | `incremental_lex(edit) == tokenize(new_source)` | ✅ Verified |
 | Phase 2 (Green Tree) | Green tree → Term matches old parser's Term | `green_to_term(green_parse(s)) == parse(s)` | ✅ Verified |
-| Phase 3 (Error Recovery) | Parser terminates on all inputs; valid inputs unchanged | Fuzzing with random bytes; regression suite | Pending |
+| Phase 3 (Error Recovery) | Parser terminates on all inputs; valid inputs unchanged | Fuzzing with random tokens; regression suite | ✅ Verified |
 | Phase 4 (Subtree Reuse) | Incremental parse == full reparse | Full differential oracle | Pending |
 | Phase 5 (Grammar Expansion) | New constructs parse correctly; old constructs unchanged | Existing test suite + new construct tests | Pending |
 

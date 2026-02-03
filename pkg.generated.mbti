@@ -31,7 +31,11 @@ pub fn parse_green(String) -> GreenNode raise
 
 pub fn parse_green_recover(String) -> (GreenNode, Array[ParseDiagnostic]) raise TokenizationError
 
+pub fn parse_green_recover_with_tokens(String, Array[TokenInfo], ReuseCursor?) -> (GreenNode, Array[ParseDiagnostic], Int)
+
 pub fn parse_green_to_term_node(String) -> TermNode raise
+
+pub fn parse_green_with_cursor(String, Array[TokenInfo], ReuseCursor) -> (GreenNode, Array[ParseDiagnostic], Int)
 
 pub fn parse_tree(String) -> TermNode raise
 
@@ -161,9 +165,12 @@ pub impl Show for GreenToken
 pub struct IncrementalParser {
   mut source : String
   mut tree : TermNode?
+  mut green_tree : GreenNode?
   mut token_buffer : TokenBuffer?
+  mut last_reuse_count : Int
 }
 pub fn IncrementalParser::edit(Self, Edit, String) -> TermNode
+pub fn IncrementalParser::get_last_reuse_count(Self) -> Int
 pub fn IncrementalParser::get_source(Self) -> String
 pub fn IncrementalParser::get_tree(Self) -> TermNode?
 pub fn IncrementalParser::new(String) -> Self
@@ -225,6 +232,15 @@ pub fn RedNode::from_green(GreenNode) -> Self
 pub fn RedNode::kind(Self) -> SyntaxKind
 pub fn RedNode::new(GreenNode, Self?, Int) -> Self
 pub fn RedNode::start(Self) -> Int
+
+pub struct ReuseCursor {
+  old_tree : GreenNode
+  damaged_range : Range
+  tokens : Array[TokenInfo]
+}
+pub fn ReuseCursor::advance_past(Self, GreenNode) -> Unit
+pub fn ReuseCursor::new(GreenNode, Range, Array[TokenInfo]) -> Self
+pub fn ReuseCursor::try_reuse(Self, SyntaxKind, Int, Int) -> GreenNode?
 
 pub enum SyntaxKind {
   LambdaToken

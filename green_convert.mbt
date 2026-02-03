@@ -124,24 +124,28 @@ fn convert_source_file_children(
     } else {
       m
     }
-  } else {
     // All children are errors — wrap them under a single error node
     // so none are discarded
-    if children.length() == 1 {
-      children[0]
-    } else {
-      let mut start = children[0].start
-      let mut end = children[0].end
-      for child in children {
-        if child.start < start {
-          start = child.start
-        }
-        if child.end > end {
-          end = child.end
-        }
+  } else if children.length() == 1 {
+    children[0]
+  } else {
+    let mut start = children[0].start
+    let mut end = children[0].end
+    for child in children {
+      if child.start < start {
+        start = child.start
       }
-      TermNode::new(TermKind::Error("Syntax error"), start, end, next_id(), children)
+      if child.end > end {
+        end = child.end
+      }
     }
+    TermNode::new(
+      TermKind::Error("Syntax error"),
+      start,
+      end,
+      next_id(),
+      children,
+    )
   }
 }
 

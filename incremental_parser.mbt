@@ -20,7 +20,13 @@ pub struct IncrementalParser {
 ///|
 /// Create a new incremental parser
 pub fn IncrementalParser::new(source : String) -> IncrementalParser {
-  { source, tree: None, green_tree: None, token_buffer: None, last_reuse_count: 0 }
+  {
+    source,
+    tree: None,
+    green_tree: None,
+    token_buffer: None,
+    last_reuse_count: 0,
+  }
 }
 
 ///|
@@ -251,8 +257,6 @@ pub fn IncrementalParser::stats(self : IncrementalParser) -> String {
 
 ///|
 /// Get the number of nodes reused in the last parse
-pub fn IncrementalParser::get_last_reuse_count(
-  self : IncrementalParser,
-) -> Int {
+pub fn IncrementalParser::get_last_reuse_count(self : IncrementalParser) -> Int {
   self.last_reuse_count
 }

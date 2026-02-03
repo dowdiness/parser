@@ -1,7 +1,7 @@
 # Incremental Parser TODO (Compact)
 
 **Last Updated:** 2026-02-03
-**Status:** Phases 1-2 complete; Step 1 baseline/doc sync complete; Phase 3 and Phase 4 are next
+**Status:** Phases 1-3 complete; Phase 4 (Subtree Reuse) is next
 
 ## Completed
 
@@ -44,8 +44,18 @@
 - [x] Ensure public API compatibility and update docs (`red_to_term_node` added, README updated)
 - [x] Verify no performance regression on existing benchmarks
 
+### Phase 3 (Error Recovery) — Complete ✅
+- [x] Synchronization points via `at_stop_token()` (RightParen, Then, Else, EOF)
+- [x] `ErrorNode` and `ErrorToken` used for partial tree construction
+- [x] `bump_error()` consumes unexpected tokens wrapped in ErrorNode
+- [x] `expect()` emits zero-width ErrorToken for missing tokens
+- [x] Error budget (`max_errors = 50`) prevents infinite loops
+- [x] `parse_green_recover()` returns (tree, diagnostics) without raising
+- [x] Comprehensive fuzz tests (`error_recovery_phase3_test.mbt`)
+- [x] 272 total tests passing
+
 **Known issues (non-blocking):**
-- `EofToken` and `ErrorNode` in `SyntaxKind` are unused — intentional placeholders for Phase 3
+- `EofToken` in `SyntaxKind` is unused — placeholder for future use
 - Structural sharing is value-equal, not pointer-equal — pointer sharing comes with Phase 4 reuse cursor
 
 ## Optional / On-Demand

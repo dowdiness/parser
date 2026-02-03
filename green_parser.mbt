@@ -203,7 +203,10 @@ fn count_tokens_in_green(node : GreenNode) -> Int {
 
 ///|
 /// Try to reuse a node at current position for given expected kind
-fn GreenParser::try_reuse(self : GreenParser, expected_kind : SyntaxKind) -> Bool {
+fn GreenParser::try_reuse(
+  self : GreenParser,
+  expected_kind : SyntaxKind,
+) -> Bool {
   match self.cursor {
     None => false
     Some(cursor) => {
@@ -266,7 +269,11 @@ fn GreenParser::at_stop_token(self : GreenParser) -> Bool {
 }
 
 ///|
-fn GreenParser::expect(self : GreenParser, expected : Token, kind : SyntaxKind) -> Unit {
+fn GreenParser::expect(
+  self : GreenParser,
+  expected : Token,
+  kind : SyntaxKind,
+) -> Unit {
   let current = self.peek()
   match (current, expected) {
     (a, b) if a == b => self.emit_token(kind)
@@ -414,12 +421,7 @@ fn GreenParser::parse_atom(self : GreenParser) -> Unit {
         Identifier(_) => self.emit_token(IdentToken)
         token => {
           let info = self.peek_info()
-          self.error(
-            "Expected parameter after λ",
-            token,
-            info.start,
-            info.end,
-          )
+          self.error("Expected parameter after λ", token, info.start, info.end)
           // Emit zero-width ErrorToken for missing identifier
           self.events.push(Token(ErrorToken, ""))
         }

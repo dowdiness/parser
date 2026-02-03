@@ -618,7 +618,6 @@ test "Reuse: multiple spaces between tokens" {
   let edit = Edit::replace(8, 9, 9)
   let incr_tree = parser.edit(edit, "a   +   c")
   let full_tree = parse_tree("a   +   c")
-
   inspect(print_term_node(incr_tree), content=print_term_node(full_tree))
 }
 
@@ -631,7 +630,6 @@ test "Reuse: leading whitespace in source" {
   let edit = Edit::replace(6, 7, 7)
   let incr_tree = parser.edit(edit, "  x + z")
   let full_tree = parse_tree("  x + z")
-
   inspect(print_term_node(incr_tree), content=print_term_node(full_tree))
 }
 
@@ -644,7 +642,6 @@ test "Reuse: trailing whitespace in source" {
   let edit = Edit::replace(4, 5, 5)
   let incr_tree = parser.edit(edit, "x + z  ")
   let full_tree = parse_tree("x + z  ")
-
   inspect(print_term_node(incr_tree), content=print_term_node(full_tree))
 }
 
@@ -662,6 +659,5 @@ test "Reuse: tokenization error clears stale green tree state" {
   let edit2 = Edit::delete(5, 6)
   let incr_tree = parser.edit(edit2, "1+2+1")
   let full_tree = parse_tree("1+2+1")
-
   inspect(print_term_node(incr_tree), content=print_term_node(full_tree))
 }

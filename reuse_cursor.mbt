@@ -30,10 +30,7 @@ fn count_tokens_in_node(node : GreenNode) -> Int {
   let mut count = 0
   for child in node.children {
     match child {
-      Token(t) =>
-        if t.kind != WhitespaceToken {
-          count = count + 1
-        }
+      Token(t) => if t.kind != WhitespaceToken { count = count + 1 }
       Node(n) => count = count + count_tokens_in_node(n)
     }
   }
@@ -45,10 +42,7 @@ fn count_tokens_in_node(node : GreenNode) -> Int {
 fn first_token_text(node : GreenNode) -> String? {
   for child in node.children {
     match child {
-      Token(t) =>
-        if t.kind != WhitespaceToken {
-          return Some(t.text)
-        }
+      Token(t) => if t.kind != WhitespaceToken { return Some(t.text) }
       Node(n) => {
         let result = first_token_text(n)
         if result is Some(_) {
@@ -65,10 +59,7 @@ fn first_token_text(node : GreenNode) -> String? {
 fn first_token_kind(node : GreenNode) -> SyntaxKind? {
   for child in node.children {
     match child {
-      Token(t) =>
-        if t.kind != WhitespaceToken {
-          return Some(t.kind)
-        }
+      Token(t) => if t.kind != WhitespaceToken { return Some(t.kind) }
       Node(n) => {
         let result = first_token_kind(n)
         if result is Some(_) {
@@ -185,11 +176,9 @@ fn leading_token_matches(
   if token_pos >= tokens.length() {
     return false
   }
-
   let expected_token = tokens[token_pos]
   let node_first_kind = first_token_kind(node)
   let node_first_text = first_token_text(node)
-
   match (node_first_kind, node_first_text) {
     (Some(kind), Some(text)) =>
       token_matches_syntax_kind(expected_token.token, text, kind)
@@ -237,10 +226,7 @@ pub fn ReuseCursor::try_reuse(
   token_pos : Int,
 ) -> GreenNode? {
   // Find a node at the given byte offset with expected kind
-  let result = find_node_at_offset(
-    self.old_tree, 0, byte_offset, expected_kind,
-  )
-
+  let result = find_node_at_offset(self.old_tree, 0, byte_offset, expected_kind)
   match result {
     None => None
     Some((node, node_offset)) => {
@@ -257,9 +243,7 @@ pub fn ReuseCursor::try_reuse(
 
       // Condition 4: Trailing context matches
       let node_token_count = count_tokens_in_node(node)
-      if not(
-        trailing_context_matches(self.tokens, token_pos, node_token_count),
-      ) {
+      if not(trailing_context_matches(self.tokens, token_pos, node_token_count)) {
         return None
       }
 

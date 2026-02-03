@@ -75,7 +75,6 @@ test "ReuseCursor::try_reuse returns None for adjacent damage" {
   // Damage starts right after node ends (adjacent)
   let damaged_range = Range::new(1, 2)
   let cursor = ReuseCursor::new(green, damaged_range, tokens)
-
   let var_ref_kind = match green.children[0] {
     Node(n) => n.kind
     Token(_) => abort("Expected node")
@@ -93,7 +92,6 @@ test "ReuseCursor::try_reuse works for IntLiteral" {
   let tokens = tokenize(source)
   let damaged_range = Range::new(10, 10)
   let cursor = ReuseCursor::new(green, damaged_range, tokens)
-
   let int_kind = match green.children[0] {
     Node(n) => n.kind
     Token(_) => abort("Expected node")
@@ -109,7 +107,6 @@ test "ReuseCursor::try_reuse works for LambdaExpr" {
   let tokens = tokenize(source)
   let damaged_range = Range::new(10, 10)
   let cursor = ReuseCursor::new(green, damaged_range, tokens)
-
   let lambda_kind = match green.children[0] {
     Node(n) => n.kind
     Token(_) => abort("Expected node")
@@ -125,7 +122,6 @@ test "ReuseCursor::try_reuse works for ParenExpr" {
   let tokens = tokenize(source)
   let damaged_range = Range::new(10, 10)
   let cursor = ReuseCursor::new(green, damaged_range, tokens)
-
   let paren_kind = match green.children[0] {
     Node(n) => n.kind
     Token(_) => abort("Expected node")
@@ -161,7 +157,6 @@ test "ReuseCursor::try_reuse checks leading token mismatch" {
   let new_tokens = tokenize("y")
   let damaged_range = Range::new(10, 10)
   let cursor = ReuseCursor::new(green, damaged_range, new_tokens)
-
   let var_ref_kind = match green.children[0] {
     Node(n) => n.kind
     Token(_) => abort("Expected node")
@@ -201,7 +196,6 @@ test "ReuseCursor no reuse when node overlaps damage" {
   // Damage is in the middle of the identifier
   let damaged_range = Range::new(1, 2)
   let cursor = ReuseCursor::new(green, damaged_range, tokens)
-
   let var_ref_kind = match green.children[0] {
     Node(n) => n.kind
     Token(_) => abort("Expected node")
@@ -217,7 +211,6 @@ test "ReuseCursor verify kind extraction works" {
   let (var_green, _) = parse_green_recover("x")
   let (int_green, _) = parse_green_recover("42")
   let (lam_green, _) = parse_green_recover("λx.x")
-
   let var_kind = match var_green.children[0] {
     Node(n) => n.kind
     Token(_) => abort("Expected node")
@@ -230,7 +223,6 @@ test "ReuseCursor verify kind extraction works" {
     Node(n) => n.kind
     Token(_) => abort("Expected node")
   }
-
   inspect(var_kind, content="VarRef")
   inspect(int_kind, content="IntLiteral")
   inspect(lam_kind, content="LambdaExpr")
