@@ -32,6 +32,12 @@
 - [x] Rename misleading "cache effectiveness" benchmark labels in `performance_benchmark.mbt`
 - [x] Add benchmark history log at `docs/benchmark_history.md`
 
+### Correctness Oracle Hardening (Step 2) — Complete ✅
+- [x] Add deterministic differential random-edit tests (`incremental_differential_fuzz_test.mbt`)
+- [x] Add malformed-input termination stress with recovery-to-valid regression checks
+- [x] Add fast/long filterable test split (`*differential-fast*`, `*differential-long*`)
+- [x] Document test split commands in `README.md`
+
 **Integration (complete):**
 - [x] Wire `parse_green` into primary `parse()` / `parse_tree()` path (replace direct `TermNode` construction)
 - [x] Use `RedNode` for position queries in production code (`convert_red` replaces manual offset tracking)

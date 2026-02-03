@@ -353,7 +353,13 @@ The module includes comprehensive tests ([parser_test.mbt](parser_test.mbt)) cov
 
 Run tests with:
 ```bash
-moon test parser
+moon test --package parser
+
+# Fast differential checks (CI-friendly per-PR)
+moon test --package parser --filter '*differential-fast*'
+
+# Longer deterministic differential fuzz pass (nightly/local)
+moon test --package parser --filter '*differential-long*'
 ```
 
 ## Relation to CRDT
