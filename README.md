@@ -17,6 +17,12 @@ This module provides a complete parsing pipeline for a Lambda Calculus-based lan
 - **Robust Error Handling**: Custom error types for tokenization and parsing failures
 - **Pretty Printing**: Convert AST back to readable string representations
 
+## Documentation
+
+- [docs/README.md](docs/README.md) — Documentation index
+- [docs/CORRECTNESS.md](docs/CORRECTNESS.md) — Correctness goals and verification
+- [ROADMAP.md](ROADMAP.md) — Architecture and phased plan
+
 ## Language Syntax
 
 ### Basic Elements
@@ -386,4 +392,4 @@ Possible extensions for the parser:
 3. **Let Bindings**: Local variable definitions
 4. **Pattern Matching**: Advanced lambda parameter patterns
 5. **Source Locations**: Track line/column information for better error messages
-6. **Incremental Parsing**: Support for parsing partial/updated input (for CRDT integration)
+6. **Semantics-Aware Reuse**: Follow-set checks for projectional/live editing contexts

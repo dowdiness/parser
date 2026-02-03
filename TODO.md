@@ -72,3 +72,4 @@
 ### Priority 4: Future Enhancements
 - [ ] Position-based fragment finding (only if profiling shows need)
 - [ ] Consider tree-sitter migration (only if requirements change)
+- [ ] Semantics-aware reuse checks (follow-set/context-sensitive) for projectional/live editing
