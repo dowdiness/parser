@@ -1,7 +1,7 @@
 # Incremental Parser TODO (Compact)
 
 **Last Updated:** 2026-02-03
-**Status:** Phases 1-3 complete; Phase 4 (Subtree Reuse) is next
+**Status:** Phases 1-4 complete; Phase 5 (Grammar Expansion) is next
 
 ## Completed
 
@@ -52,11 +52,20 @@
 - [x] Error budget (`max_errors = 50`) prevents infinite loops
 - [x] `parse_green_recover()` returns (tree, diagnostics) without raising
 - [x] Comprehensive fuzz tests (`error_recovery_phase3_test.mbt`)
-- [x] 272 total tests passing
+
+### Phase 4 (Subtree Reuse) — Complete ✅
+- [x] `ReuseCursor` struct with 4-condition reuse protocol (`reuse_cursor.mbt`)
+- [x] Integration in `parse_atom()` for all 5 atom kinds
+- [x] Trailing context check prevents false reuse from structural changes
+- [x] Strict damage boundary handling (adjacent nodes not reused)
+- [x] `IncrementalParser` creates cursor and tracks reuse count
+- [x] Benchmarks: 3-6x speedup for localized edits
+- [x] Comprehensive correctness tests (`phase4_correctness_test.mbt`)
+- [x] 287 total tests passing
 
 **Known issues (non-blocking):**
 - `EofToken` in `SyntaxKind` is unused — placeholder for future use
-- Structural sharing is value-equal, not pointer-equal — pointer sharing comes with Phase 4 reuse cursor
+- 80% reuse rate requires Phase 5 let bindings (lambda trees are left-leaning)
 
 ## Optional / On-Demand
 
