@@ -1,8 +1,8 @@
 # Roadmap: Stabilized Incremental Parser
 
 **Created:** 2026-02-01
-**Updated:** 2026-02-02
-**Status:** Active — Phases 0-2 complete, Phase 3 (Error Recovery) next
+**Updated:** 2026-02-03
+**Status:** Active — Phases 0-2 complete; Phases 3-4 are next
 **Goal:** A genuinely incremental, architecturally sound parser for lambda calculus (and beyond) with confidence in every layer.
 
 ---
@@ -23,7 +23,7 @@ Before planning forward, we need an unflinching look at where we are. The existi
 
 5. **Data structures** - `TermNode`, `TermKind`, `Edit`, `Range` are well-designed and tested.
 
-6. **Test suite** - 198 tests passing, including property-based tests. Good coverage.
+6. **Test suite** - 247 tests passing, including property-based tests. Good coverage.
 
 ### What Does Not Work (Architectural Gaps)
 
@@ -276,7 +276,7 @@ trailing whitespace coverage and mixed binary operators. See TODO archive.
 - Green → Term conversion with mixed-operator handling (`green_convert.mbt`)
 - `ParenExpr` node kind distinguishes `x` / `(x)` / `((x))` (section 2.6 satisfied)
 - 30+ tests: structure, positions, backward compatibility with `parse_tree` (`green_tree_test.mbt`)
-- 195 total tests passing
+- 247 total tests passing
 
 **All Phase 2 items complete:**
 - ~~Integrate `parse_green` into primary `parse()` / `parse_tree()` path~~ **Done** — `parse_tree` now routes through `parse_green → green_to_term_node`
@@ -451,7 +451,7 @@ The current parser absorbs parentheses — `(42)` produces a node of kind `Int(4
 - ⏳ Structural sharing verified: unchanged subtrees are pointer-equal (value-equal verified; pointer sharing requires Phase 4 reuse cursor)
 - ✅ CST distinguishes `x` from `(x)` from `((x))`
 - ✅ No performance regression on current benchmarks
-- ✅ All existing semantic tests pass through compatibility layer (198/198)
+- ✅ All existing semantic tests pass through compatibility layer (247/247)
 
 ---
 
@@ -908,7 +908,7 @@ Phase 0: Reckoning          ✅ COMPLETE
     |
     +------ Phase 2: Green Tree         ✅ COMPLETE
                 |
-                +------ Phase 3: Error Recovery     (depends on Phase 2) ← NEXT
+                +------ Phase 3: Error Recovery     (depends on Phase 2) ← NEXT (parallel with Phase 4)
                 |
                 +------ Phase 4: Subtree Reuse      (depends on Phase 1, 2)
                 |

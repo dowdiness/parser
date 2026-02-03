@@ -1,7 +1,7 @@
 # Incremental Parser TODO (Compact)
 
-**Last Updated:** 2026-02-02
-**Status:** Phase 1 complete (benchmarked); Phase 2 complete (green tree + RedNode is canonical parse path)
+**Last Updated:** 2026-02-03
+**Status:** Phases 1-2 complete; Step 1 baseline/doc sync complete; Phase 3 and Phase 4 are next
 
 ## Completed
 
@@ -24,7 +24,13 @@
 - ✅ Mixed binary operator handling in conversion (`1 + 2 - 3`)
 - ✅ Trailing whitespace emission at EOF
 - ✅ 30+ green tree tests (structure, positions, backward compatibility)
-- ✅ 195 total tests passing
+- ✅ 247 total tests passing
+
+### Baseline/Docs Sync (Step 1) — Complete ✅
+- [x] Sync roadmap/todo status text with current state and latest validation counts
+- [x] Refresh benchmark numbers in `BENCHMARKS.md` from latest local run
+- [x] Rename misleading "cache effectiveness" benchmark labels in `performance_benchmark.mbt`
+- [x] Add benchmark history log at `docs/benchmark_history.md`
 
 **Integration (complete):**
 - [x] Wire `parse_green` into primary `parse()` / `parse_tree()` path (replace direct `TermNode` construction)

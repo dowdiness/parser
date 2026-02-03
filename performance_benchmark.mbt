@@ -1,5 +1,5 @@
 // Detailed performance benchmarks for incremental parser
-// Measures scaling behavior and cache effectiveness
+// Measures scaling behavior and incremental-state overhead
 // Run with: moon bench --package parser --release
 
 ///|
@@ -98,8 +98,8 @@ test "sequential edits - backspace simulation" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: Cache effectiveness - repeated parsing
-test "cache effectiveness - repeated parsing" (b : @bench.T) {
+/// Benchmark: Incremental state baseline - repeated parsing
+test "incremental state baseline - repeated parsing" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("λx.x")
     let _ = parser.parse()
@@ -116,8 +116,8 @@ test "cache effectiveness - repeated parsing" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: Cache effectiveness - similar expressions
-test "cache effectiveness - similar expressions" (b : @bench.T) {
+/// Benchmark: Incremental state baseline - similar expressions
+test "incremental state baseline - similar expressions" (b : @bench.T) {
   b.bench(fn() {
     let parser1 = IncrementalParser::new("x + 1")
     let result1 = parser1.parse()
