@@ -58,7 +58,9 @@ pub fn[T : Eq] Memo::new(rt : Runtime, compute : () -> T) -> Memo[T] {
   let cell_id = rt.alloc_cell_id()
   let memo : Memo[T] = { rt, cell_id, compute, value: None }
   // Create the type-erased recompute closure that bridges Memo[T] to CellMeta
-  let recompute_and_check : () -> Bool = fn() { memo.recompute_inner() }
+  let recompute_and_check : () -> Result[Bool, CycleError] = fn() {
+    memo.recompute_inner()
+  }
   let meta = CellMeta::new_derived(cell_id, recompute_and_check)
   rt.register_cell(meta)
   memo
@@ -86,31 +88,72 @@ pub fn[T : Eq] Memo::new(rt : Runtime, compute : () -> T) -> Memo[T] {
 /// # Panics
 ///
 /// Aborts if a cycle is detected (this memo transitively depends on itself).
+/// Use `get_result()` instead to handle cycles gracefully.
 pub fn[T : Eq] Memo::get(self : Memo[T]) -> T {
-  // Record dependency from current tracking context
-  self.rt.record_dependency(self.cell_id)
+  match self.get_result() {
+    Ok(value) => value
+    Err(CycleDetected(id)) =>
+      abort("Cycle detected: cell " + id.to_string() + " is already being computed")
+  }
+}
+
+///|
+/// Returns the memoized value as a Result, recomputing if necessary.
+///
+/// This is the error-returning version of `get()`. Use this method when you
+/// want to handle cycles gracefully instead of aborting.
+///
+/// # Returns
+///
+/// `Ok(value)` with the current (possibly recomputed) value, or
+/// `Err(CycleError)` if a cycle is detected
+///
+/// # Example
+///
+/// ```moonbit
+/// match memo.get_result() {
+///   Ok(value) => println("Got: " + value.to_string())
+///   Err(CycleDetected(id)) => println("Cycle at cell " + id.to_string())
+/// }
+/// ```
+pub fn[T : Eq] Memo::get_result(self : Memo[T]) -> Result[T, CycleError] {
   let cell = self.rt.get_cell(self.cell_id)
   // First computation: no cached value yet
   match self.value {
     None => {
-      self.force_recompute()
-      self.value.unwrap()
+      match self.force_recompute() {
+        Ok(_) => {
+          // Only record dependency on successful read to avoid poisoning
+          // the dependency graph with failed cyclic edges
+          self.rt.record_dependency(self.cell_id)
+          Ok(self.value.unwrap())
+        }
+        Err(e) => Err(e)
+      }
     }
     Some(_) => {
       // Fast path: already verified this revision
       if cell.verified_at == self.rt.current_revision {
-        return self.value.unwrap()
+        self.rt.record_dependency(self.cell_id)
+        return Ok(self.value.unwrap())
       }
       // Check if any dependency changed since last verification.
       // Note: maybe_changed_after may recompute this cell internally
       // (via recompute_and_check) to determine if value actually changed.
-      if not(maybe_changed_after(self.rt, self.cell_id, cell.verified_at)) {
-        // Green path: nothing changed, verified_at already set by maybe_changed_after
-        return self.value.unwrap()
+      match maybe_changed_after(self.rt, self.cell_id, cell.verified_at) {
+        Ok(false) => {
+          // Green path: nothing changed, verified_at already set by maybe_changed_after
+          self.rt.record_dependency(self.cell_id)
+          Ok(self.value.unwrap())
+        }
+        Ok(true) => {
+          // maybe_changed_after returned true AND already recomputed this cell.
+          // The value is now up-to-date in self.value.
+          self.rt.record_dependency(self.cell_id)
+          Ok(self.value.unwrap())
+        }
+        Err(e) => Err(e)
       }
-      // maybe_changed_after returned true AND already recomputed this cell.
-      // The value is now up-to-date in self.value.
-      self.value.unwrap()
     }
   }
 }
@@ -118,10 +161,12 @@ pub fn[T : Eq] Memo::get(self : Memo[T]) -> T {
 ///|
 /// Force recomputation: push tracking frame, execute compute, pop frame,
 /// update dependencies and value.
-fn[T : Eq] Memo::force_recompute(self : Memo[T]) -> Unit {
+///
+/// Returns `Ok(())` on success, or `Err(CycleError)` if a cycle is detected.
+fn[T : Eq] Memo::force_recompute(self : Memo[T]) -> Result[Unit, CycleError] {
   let cell = self.rt.get_cell(self.cell_id)
   if cell.in_progress {
-    abort("Cycle detected: cell " + cell.id.id.to_string() + " is already being recomputed")
+    return Err(CycleDetected(cell.id.id))
   }
   cell.in_progress = true
   // Push tracking frame to record dependencies
@@ -143,16 +188,22 @@ fn[T : Eq] Memo::force_recompute(self : Memo[T]) -> Unit {
   // else: backdate — keep old changed_at (key Salsa insight)
   cell.verified_at = self.rt.current_revision
   cell.in_progress = false
+  Ok(())
 }
 
 ///|
 /// Internal: recompute and return whether the value changed.
 /// This is the closure stored in CellMeta for type-erased recomputation.
-fn[T : Eq] Memo::recompute_inner(self : Memo[T]) -> Bool {
+///
+/// Returns `Ok(true)` if the value changed, `Ok(false)` if unchanged (backdated),
+/// or `Err(CycleError)` if a cycle is detected.
+fn[T : Eq] Memo::recompute_inner(self : Memo[T]) -> Result[Bool, CycleError] {
   let cell = self.rt.get_cell(self.cell_id)
   let old_changed_at = cell.changed_at
-  self.force_recompute()
-  cell.changed_at != old_changed_at
+  match self.force_recompute() {
+    Ok(_) => Ok(cell.changed_at != old_changed_at)
+    Err(e) => Err(e)
+  }
 }
 
 ///|

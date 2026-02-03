@@ -15,7 +15,7 @@
 ///
 /// 1. **Already verified**: If `verified_at == current_revision`, return immediately
 /// 2. **Durability shortcut**: If no input of this durability changed, return false
-/// 3. **Cycle detection**: If cell is `in_progress`, abort with cycle error
+/// 3. **Cycle detection**: If cell is `in_progress`, return `Err(CycleError)`
 ///
 /// # Parameters
 ///
@@ -25,20 +25,17 @@
 ///
 /// # Returns
 ///
-/// `true` if the cell's value may have changed after `after_revision`,
-/// `false` if the cell is definitely unchanged
-///
-/// # Panics
-///
-/// Aborts if a cycle is detected (cell depends on itself transitively)
+/// `Ok(true)` if the cell's value may have changed after `after_revision`,
+/// `Ok(false)` if the cell is definitely unchanged,
+/// `Err(CycleError)` if a cycle is detected
 fn maybe_changed_after(
   rt : Runtime,
   cell_id : CellId,
   after_revision : Revision,
-) -> Bool {
+) -> Result[Bool, CycleError] {
   let cell = rt.get_cell(cell_id)
   match cell.kind {
-    Input => cell.changed_at.after(after_revision)
+    Input => Ok(cell.changed_at.after(after_revision))
     Derived => maybe_changed_after_derived(rt, cell, after_revision)
   }
 }
@@ -59,22 +56,32 @@ priv struct VerifyFrame {
 }
 
 ///|
+/// Cleans up the verification stack by clearing in_progress flags
+/// on all cells. Called when an error occurs to restore consistent state.
+fn cleanup_stack(stack : Array[VerifyFrame]) -> Unit {
+  for i = 0; i < stack.length(); i = i + 1 {
+    stack[i].cell.in_progress = false
+  }
+}
+
+///|
 fn maybe_changed_after_derived(
   rt : Runtime,
   cell : CellMeta,
   after_revision : Revision,
-) -> Bool {
+) -> Result[Bool, CycleError] {
   // Use an explicit stack to avoid call-stack overflow on deep graphs
   let stack : Array[VerifyFrame] = []
   // Track the final result — set when the root frame completes
   let mut final_result = false
   // Try to start verification on the root cell; if fast paths apply, return early
   match try_start_verify(rt, cell, after_revision) {
-    Some(result) => return result
-    None => {
+    Ok(Some(result)) => return Ok(result)
+    Ok(None) => {
       // Need full dependency walk — push initial frame
       stack.push({ cell, after_revision, dep_index: 0, any_dep_changed: false })
     }
+    Err(e) => return Err(e)
   }
   // Iterative dependency walk
   // NOTE: Always access stack[top] directly to avoid copy semantics issues
@@ -82,14 +89,21 @@ fn maybe_changed_after_derived(
     let top = stack.length() - 1
     if stack[top].any_dep_changed {
       // A dependency changed — recompute this cell
-      let result = finish_frame_changed(rt, stack[top])
-      let _ = stack.pop()
-      if stack.length() > 0 {
-        if result {
-          stack[stack.length() - 1].any_dep_changed = true
+      match finish_frame_changed(rt, stack[top]) {
+        Ok(result) => {
+          let _ = stack.pop()
+          if stack.length() > 0 {
+            if result {
+              stack[stack.length() - 1].any_dep_changed = true
+            }
+          } else {
+            final_result = result
+          }
         }
-      } else {
-        final_result = result
+        Err(e) => {
+          cleanup_stack(stack)
+          return Err(e)
+        }
       }
       continue
     }
@@ -121,12 +135,12 @@ fn maybe_changed_after_derived(
       Derived => {
         // Check fast paths for the derived dependency
         match try_start_verify(rt, dep_cell, stack[top].cell.verified_at) {
-          Some(changed) => {
+          Ok(Some(changed)) => {
             if changed {
               stack[top].any_dep_changed = true
             }
           }
-          None => {
+          Ok(None) => {
             // Need full walk — push a new frame for this dependency
             stack.push(
               {
@@ -137,57 +151,70 @@ fn maybe_changed_after_derived(
               },
             )
           }
+          Err(e) => {
+            cleanup_stack(stack)
+            return Err(e)
+          }
         }
       }
     }
   }
-  final_result
+  Ok(final_result)
 }
 
 ///|
-/// Try to resolve a derived cell via fast paths. Returns Some(result) if
-/// resolved, None if a full dependency walk is needed.
-/// Sets in_progress flag if returning None.
+/// Try to resolve a derived cell via fast paths. Returns `Ok(Some(result))` if
+/// resolved, `Ok(None)` if a full dependency walk is needed, or
+/// `Err(CycleError)` if a cycle is detected.
+/// Sets in_progress flag if returning `Ok(None)`.
 fn try_start_verify(
   rt : Runtime,
   cell : CellMeta,
   after_revision : Revision,
-) -> Bool? {
+) -> Result[Bool?, CycleError] {
   // Fast path: already verified this revision
   if cell.verified_at == rt.current_revision {
-    return Some(cell.changed_at.after(after_revision))
+    return Ok(Some(cell.changed_at.after(after_revision)))
   }
   // Durability shortcut
   let dur_idx = cell.durability.index()
   if not(rt.durability_last_changed[dur_idx].after(after_revision)) {
     cell.verified_at = rt.current_revision
-    return Some(false)
+    return Ok(Some(false))
   }
   // Cycle detection
   if cell.in_progress {
-    abort(
-      "Cycle detected: cell " + cell.id.id.to_string() + " is already being verified",
-    )
+    return Err(CycleDetected(cell.id.id))
   }
   cell.in_progress = true
-  None
+  Ok(None)
 }
 
 ///|
 /// Finish a frame where a dependency changed: recompute and return result.
 /// Clear in_progress before recompute because force_recompute has its own
 /// cycle detection. Set verified_at after recompute to maintain cache invariants.
-fn finish_frame_changed(_rt : Runtime, frame : VerifyFrame) -> Bool {
+///
+/// Returns `Ok(changed)` where `changed` indicates if the value changed,
+/// or `Err(CycleError)` if a cycle is detected during recomputation.
+fn finish_frame_changed(
+  _rt : Runtime,
+  frame : VerifyFrame,
+) -> Result[Bool, CycleError] {
   let cell = frame.cell
   // Clear in_progress before recompute — force_recompute handles its own cycle detection
   cell.in_progress = false
   match cell.recompute_and_check {
     Some(recompute) => {
-      let _ = recompute()
-      // force_recompute already sets verified_at and changed_at
-      cell.changed_at.after(frame.after_revision)
+      match recompute() {
+        Ok(_) => {
+          // force_recompute already sets verified_at and changed_at
+          Ok(cell.changed_at.after(frame.after_revision))
+        }
+        Err(e) => Err(e)
+      }
     }
-    None => true
+    None => Ok(true)
   }
 }
 

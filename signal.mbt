@@ -86,6 +86,21 @@ pub fn[T] Signal::get(self : Signal[T]) -> T {
 }
 
 ///|
+/// Returns the current value of the signal as a Result.
+///
+/// This method exists for API consistency with `Memo::get_result()`.
+/// Since signals cannot have cycles (they are input cells with no dependencies),
+/// this method always returns `Ok(value)`.
+///
+/// # Returns
+///
+/// `Ok(value)` with the current value of the signal
+pub fn[T] Signal::get_result(self : Signal[T]) -> Result[T, CycleError] {
+  self.rt.record_dependency(self.cell_id)
+  Ok(self.value)
+}
+
+///|
 /// Sets the signal to a new value.
 ///
 /// If the new value equals the current value (via `Eq`), this is a no-op:

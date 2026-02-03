@@ -45,8 +45,9 @@ priv struct CellMeta {
   mut dependencies : Array[CellId]
   mut durability : Durability
   /// For derived cells: recomputes and returns true if value changed.
+  /// Returns Err(CycleError) if a cycle is detected during recomputation.
   /// None for input cells.
-  recompute_and_check : (() -> Bool)?
+  recompute_and_check : (() -> Result[Bool, CycleError])?
   /// For input cells during batch: commits pending value and returns true
   /// if the committed value differs from the current value.
   /// None for derived cells or inputs outside a batch.
@@ -87,8 +88,8 @@ fn CellMeta::new_input(id : CellId, durability : Durability) -> CellMeta {
 ///
 /// - `id`: The unique identifier for this cell
 /// - `recompute_and_check`: A closure that recomputes the memo's value and
-///   returns `true` if the value changed, `false` if it stayed the same
-///   (enabling backdating)
+///   returns `Ok(true)` if the value changed, `Ok(false)` if it stayed the same
+///   (enabling backdating), or `Err(CycleError)` if a cycle is detected
 ///
 /// # Returns
 ///
@@ -96,7 +97,7 @@ fn CellMeta::new_input(id : CellId, durability : Durability) -> CellMeta {
 /// (durability is updated after first computation based on dependencies)
 fn CellMeta::new_derived(
   id : CellId,
-  recompute_and_check : () -> Bool,
+  recompute_and_check : () -> Result[Bool, CycleError],
 ) -> CellMeta {
   {
     id,
