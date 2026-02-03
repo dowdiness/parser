@@ -12,13 +12,15 @@
 pub struct IncrementalParser {
   mut source : String // Current source text
   mut tree : TermNode? // Current parse tree
+  mut green_tree : GreenNode? // Current green tree (for subtree reuse)
   mut token_buffer : TokenBuffer? // Incremental token buffer
+  mut last_reuse_count : Int // Number of nodes reused in last parse
 }
 
 ///|
 /// Create a new incremental parser
 pub fn IncrementalParser::new(source : String) -> IncrementalParser {
-  { source, tree: None, token_buffer: None }
+  { source, tree: None, green_tree: None, token_buffer: None, last_reuse_count: 0 }
 }
 
 ///|
@@ -27,15 +29,18 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> TermNode {
   let tree = try {
     let buffer = TokenBuffer::new(self.source)
     self.token_buffer = Some(buffer)
-    let tokens = match self.token_buffer {
-      Some(b) => b.get_tokens()
-      None => []
-    }
-    let (parsed_tree, _errors) = parse_with_error_recovery_tokens(tokens)
+    // Parse through green tree for subtree reuse support
+    let (green, _diagnostics) = parse_green_recover(self.source)
+    self.green_tree = Some(green)
+    self.last_reuse_count = 0
+    let parsed_tree = green_to_term_node(green, 0, Ref::new(0))
     parsed_tree
   } catch {
     TokenizationError(msg) => {
       let error_msg = "Tokenization error: " + msg
+      self.green_tree = None
+      self.token_buffer = None
+      self.last_reuse_count = 0
       TermNode::error(error_msg, 0, 0)
     }
   }
@@ -66,7 +71,9 @@ pub fn IncrementalParser::edit(
           let error_msg = "Tokenization error: " + msg
           let tree = TermNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
+          self.green_tree = None
           self.token_buffer = None
+          self.last_reuse_count = 0
           return tree
         }
       }
@@ -77,6 +84,9 @@ pub fn IncrementalParser::edit(
           let error_msg = "Tokenization error: " + msg
           let tree = TermNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
+          self.green_tree = None
+          self.token_buffer = None
+          self.last_reuse_count = 0
           return tree
         }
       }
@@ -113,11 +123,11 @@ pub fn IncrementalParser::edit(
 }
 
 ///|
-/// Incremental reparse with Wagner-Graham approach
+/// Incremental reparse with Wagner-Graham approach and subtree reuse
 ///
 /// Strategy:
 /// 1. Attempt whole-tree reuse if damage is completely outside tree bounds
-/// 2. Otherwise full reparse
+/// 2. Otherwise use cursor-based subtree reuse during parsing
 fn IncrementalParser::incremental_reparse(
   self : IncrementalParser,
   source : String,
@@ -134,9 +144,23 @@ fn IncrementalParser::incremental_reparse(
     return adjusted_tree
   }
 
-  // Full reparse
-  let (tree, _errors) = parse_with_error_recovery_tokens(tokens)
-  tree
+  // Create cursor from old green tree for subtree reuse
+  let cursor : ReuseCursor? = match self.green_tree {
+    Some(old_green) => Some(ReuseCursor::new(old_green, damaged_range, tokens))
+    None => None
+  }
+
+  // Parse with cursor-based reuse
+  let (new_green, _diagnostics, reuse_count) = parse_green_recover_with_tokens(
+    source, tokens, cursor,
+  )
+
+  // Update stored green tree and reuse stats
+  self.green_tree = Some(new_green)
+  self.last_reuse_count = reuse_count
+
+  // Convert to TermNode
+  green_to_term_node(new_green, 0, Ref::new(0))
 }
 
 ///|
@@ -223,4 +247,12 @@ pub fn IncrementalParser::stats(self : IncrementalParser) -> String {
   "IncrementalParser { source_length: " +
   self.source.length().to_string() +
   " }"
+}
+
+///|
+/// Get the number of nodes reused in the last parse
+pub fn IncrementalParser::get_last_reuse_count(
+  self : IncrementalParser,
+) -> Int {
+  self.last_reuse_count
 }

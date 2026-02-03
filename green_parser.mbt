@@ -10,6 +10,8 @@ priv struct GreenParser {
   events : EventBuffer
   errors : Array[ParseDiagnostic]
   mut error_count : Int
+  cursor : ReuseCursor? // Optional reuse cursor for incremental parsing
+  mut reuse_count : Int // Count of reused nodes (for statistics)
 }
 
 ///|
@@ -37,6 +39,37 @@ pub fn parse_green_recover(
 }
 
 ///|
+/// Parse with reuse cursor for incremental parsing with subtree reuse.
+/// Returns (green_tree, diagnostics, reuse_count).
+pub fn parse_green_with_cursor(
+  source : String,
+  tokens : Array[TokenInfo],
+  cursor : ReuseCursor,
+) -> (GreenNode, Array[ParseDiagnostic], Int) {
+  let parser = GreenParser::new_with_cursor(tokens, source, cursor)
+  parser.parse_source_file()
+  let tree = build_tree(parser.events.events)
+  (tree, parser.errors, parser.reuse_count)
+}
+
+///|
+/// Parse with pre-tokenized input and optional reuse cursor.
+/// Returns (green_tree, diagnostics, reuse_count).
+pub fn parse_green_recover_with_tokens(
+  source : String,
+  tokens : Array[TokenInfo],
+  cursor : ReuseCursor?,
+) -> (GreenNode, Array[ParseDiagnostic], Int) {
+  let parser = match cursor {
+    Some(c) => GreenParser::new_with_cursor(tokens, source, c)
+    None => GreenParser::new(tokens, source)
+  }
+  parser.parse_source_file()
+  let tree = build_tree(parser.events.events)
+  (tree, parser.errors, parser.reuse_count)
+}
+
+///|
 fn GreenParser::new(tokens : Array[TokenInfo], source : String) -> GreenParser {
   {
     tokens,
@@ -46,6 +79,27 @@ fn GreenParser::new(tokens : Array[TokenInfo], source : String) -> GreenParser {
     events: EventBuffer::new(),
     errors: [],
     error_count: 0,
+    cursor: None,
+    reuse_count: 0,
+  }
+}
+
+///|
+fn GreenParser::new_with_cursor(
+  tokens : Array[TokenInfo],
+  source : String,
+  cursor : ReuseCursor,
+) -> GreenParser {
+  {
+    tokens,
+    source,
+    position: 0,
+    last_end: 0,
+    events: EventBuffer::new(),
+    errors: [],
+    error_count: 0,
+    cursor: Some(cursor),
+    reuse_count: 0,
   }
 }
 
@@ -110,6 +164,72 @@ fn GreenParser::emit_token(self : GreenParser, kind : SyntaxKind) -> Unit {
   self.events.push(Token(kind, text))
   self.last_end = info.end
   self.advance()
+}
+
+///|
+/// Emit events to reconstruct a reused green node.
+/// Does NOT update position/last_end - caller must do that.
+fn GreenParser::emit_reused_node_events(
+  self : GreenParser,
+  node : GreenNode,
+) -> Unit {
+  self.events.push(StartNode(node.kind))
+  for child in node.children {
+    match child {
+      GreenElement::Token(t) => self.events.push(Token(t.kind, t.text))
+      GreenElement::Node(n) => self.emit_reused_node_events(n)
+    }
+  }
+  self.events.push(FinishNode)
+}
+
+///|
+/// Count non-whitespace tokens in a green node (recursive).
+/// This matches how the lexer produces tokens (whitespace is skipped).
+fn count_tokens_in_green(node : GreenNode) -> Int {
+  let mut count = 0
+  for child in node.children {
+    match child {
+      GreenElement::Token(t) =>
+        // Only count non-whitespace tokens to match lexer output
+        if t.kind != WhitespaceToken {
+          count = count + 1
+        }
+      GreenElement::Node(n) => count = count + count_tokens_in_green(n)
+    }
+  }
+  count
+}
+
+///|
+/// Try to reuse a node at current position for given expected kind
+fn GreenParser::try_reuse(self : GreenParser, expected_kind : SyntaxKind) -> Bool {
+  match self.cursor {
+    None => false
+    Some(cursor) => {
+      // Get the current byte offset from the current token
+      let info = self.peek_info()
+      let byte_offset = info.start
+      match cursor.try_reuse(expected_kind, byte_offset, self.position) {
+        None => false
+        Some(node) => {
+          // Emit whitespace before the reused node
+          self.emit_whitespace_before(info)
+          // Emit the reused node events
+          self.emit_reused_node_events(node)
+          // Update position by non-whitespace token count
+          let token_count = count_tokens_in_green(node)
+          self.position = self.position + token_count
+          // Update last_end: node starts at info.start (after any leading whitespace)
+          self.last_end = info.start + node.text_len
+          self.reuse_count = self.reuse_count + 1
+          // Advance cursor past the reused node
+          cursor.advance_past(node)
+          true
+        }
+      }
+    }
+  }
 }
 
 ///|
@@ -257,6 +377,25 @@ fn GreenParser::parse_atom(self : GreenParser) -> Unit {
   if self.error_count >= max_errors {
     return
   }
+
+  // Try reuse for each atom kind before parsing fresh
+  if self.try_reuse(IntLiteral) {
+    return
+  }
+  if self.try_reuse(VarRef) {
+    return
+  }
+  if self.try_reuse(LambdaExpr) {
+    return
+  }
+  if self.try_reuse(IfExpr) {
+    return
+  }
+  if self.try_reuse(ParenExpr) {
+    return
+  }
+
+  // No reuse possible, parse fresh
   match self.peek() {
     Integer(_) => {
       self.start_node(IntLiteral)
