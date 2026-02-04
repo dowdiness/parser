@@ -27,8 +27,8 @@ Concrete, actionable tasks for the `incr` library.
 ## Testing
 
 - [x] Stress test: deep dependency chain (250 levels) to verify iterative verification
-- [ ] Wide fanout test: single signal with many downstream memos
-- [ ] Test `Memo` with custom `Eq` types where structural equality differs from identity
+- [x] Wide fanout test: single signal with many downstream memos
+- [x] Test `Memo` with custom `Eq` types where structural equality differs from identity
 - [x] Test cycle detection across 3+ mutually recursive memos
 
 ## Documentation
