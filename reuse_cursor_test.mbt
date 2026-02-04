@@ -7,7 +7,7 @@ test "ReuseCursor::new creates cursor" {
   let tokens = tokenize(source)
   let damaged_range = Range::new(0, 0) // No damage
   let cursor = ReuseCursor::new(green, damaged_range, tokens)
-  inspect(cursor.old_tree.kind, content="SourceFile")
+  inspect(cursor.old_tree().kind, content="SourceFile")
 }
 
 ///|

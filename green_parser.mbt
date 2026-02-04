@@ -210,6 +210,10 @@ fn GreenParser::try_reuse(
   match self.cursor {
     None => false
     Some(cursor) => {
+      // Fast path: skip all work if reuse is globally disabled
+      if cursor.is_reuse_disabled() {
+        return false
+      }
       // Get the current byte offset from the current token
       let info = self.peek_info()
       let byte_offset = info.start

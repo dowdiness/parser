@@ -22,13 +22,12 @@ test "phase4: correctness on 50+ token input - localized edit" {
   // (incremental == full parse), not reuse rate.
   let mut source = "a"
   let letters = [
-    "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p",
-    "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+    "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q",
+    "r", "s", "t", "u", "v", "w", "x", "y", "z",
   ]
   for letter in letters {
     source = source + " + " + letter
   }
-
   let parser = IncrementalParser::new(source)
   let _ = parser.parse()
 
@@ -107,7 +106,6 @@ test "phase4: edit at binary operator boundary" {
   let edit = Edit::replace(6, 7, 7)
   let incr_tree = parser.edit(edit, "a + b + c")
   let full_tree = parse_tree("a + b + c")
-
   inspect(print_term_node(incr_tree), content=print_term_node(full_tree))
 }
 
@@ -138,7 +136,6 @@ test "phase4: edit changes app to standalone var" {
   let edit = Edit::delete(1, 3)
   let incr_tree = parser.edit(edit, "f")
   let full_tree = parse_tree("f")
-
   inspect(print_term_node(incr_tree), content=print_term_node(full_tree))
 }
 
@@ -152,7 +149,6 @@ test "phase4: edit extends expression" {
   let edit = Edit::insert(1, 2)
   let incr_tree = parser.edit(edit, "x y")
   let full_tree = parse_tree("x y")
-
   inspect(print_term_node(incr_tree), content=print_term_node(full_tree))
 }
 

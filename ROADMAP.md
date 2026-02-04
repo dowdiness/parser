@@ -1062,6 +1062,23 @@ Mitigated by: The differential testing oracle (see Cross-Cutting Concern section
 - Reuse is conservative around leading whitespace because reuse is anchored to the first non-whitespace token offset, reducing reuse on whitespace-only edits.
 - Adjacent damage is treated as unsafe (strict inequality), which prevents false reuse for grammar-sensitive boundaries like application.
 
+**Findings (performance profiling):**
+- Hot path for root-invalidating edits was `find_node_at_offset` recursion (many
+  calls, zero reuse hits), causing search overhead to dominate when reuse is
+  unlikely.
+- **Implemented optimizations:**
+  1. **Fast path skip:** When byte offset is within damaged range [start, end),
+     skip tree search immediately. For root-invalidating edits, this avoids all
+     `find_node_at_offset` calls (measured: `fast_path_skips: 45`,
+     `find_node_calls: 0`).
+  2. **Stateful cursor:** `ReuseCursor` maintains a stack of `CursorFrame`s
+     tracking position in the tree. Sequential lookups are O(depth) instead of
+     O(tree). Measured: 4 lookups in 10 total steps (avg 2.5 steps/lookup).
+- **Why timing benchmarks show minimal change:** Lambda calculus trees are
+  small (~15-30 tokens), and Wagner-Graham damage expansion causes any edit to
+  expand damage to the entire root for single-expression files. The real win
+  comes with Phase 5's `let` bindings creating independent subtrees.
+
 ### Milestone 6: Grammar Expansion (Phase 5)
 **Confidence: High**
 

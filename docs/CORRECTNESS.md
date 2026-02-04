@@ -99,6 +99,60 @@ These are documented to keep the correctness story honest:
 - Adjacent damage is treated as unsafe, which avoids false reuse at
   grammar-sensitive boundaries (application).
 
+## Performance Findings (Profiling)
+
+### Problem Identified
+
+Root-invalidating edits produce many reuse attempts with zero hits. The hot path
+was recursive `find_node_at_offset` searches starting from the root on every
+call — O(tree) per lookup.
+
+### Optimizations Implemented
+
+Two optimizations reduce search overhead:
+
+1. **Fast path skip:** When the byte offset being queried falls within the
+   damaged range (half-open: [start, end)), skip the expensive tree search
+   immediately. Tracked via `fast_path_skips` in perf stats.
+
+2. **Stateful cursor:** `ReuseCursor` maintains traversal state using a stack of
+   `CursorFrame`s (node + child_index + start_offset). Instead of searching from
+   root on every call, the cursor advances incrementally through the tree:
+   - Sequential lookups (left-to-right parsing): O(depth) per lookup
+   - Backward seeks (shouldn't happen normally): O(tree) reset, then O(depth)
+
+### Measured Results (During Development)
+
+Direct cursor test (4 sequential VarRef lookups in "a b c d e"):
+- 4 find_node calls
+- 10 total steps (avg 2.5 steps per lookup)
+- 1 successful reuse hit
+
+With O(tree) search, each lookup would traverse the entire tree from root.
+
+Note: Production code has instrumentation removed to avoid overhead. These
+measurements were taken during profiling.
+
+### Why Timing Benchmarks Show Minimal Change
+
+1. **Small test trees:** Current lambda calculus examples have ~15-30 tokens.
+   The O(tree) vs O(depth) difference is more pronounced with larger trees.
+
+2. **Wagner-Graham damage expansion:** For single-expression files, any edit
+   causes the root node to overlap with damage, expanding damage to the entire
+   tree. This triggers the fast-path skip for all positions.
+
+3. **Tree structure:** Lambda calculus produces deeply nested left-leaning
+   spines. The real performance win comes with Phase 5's `let` bindings, which
+   create independent top-level subtrees where localized damage is possible.
+
+### When These Optimizations Help
+
+- **Fast path skip:** Any root-invalidating edit (edit at start, structural
+  changes) — avoids all tree traversal.
+- **Stateful cursor:** Large trees with localized damage and multiple sequential
+  reuse lookups — achieves O(depth) instead of O(tree) per lookup.
+
 ## Scope of Correctness
 
 Correctness here is strictly about parse tree equivalence between incremental

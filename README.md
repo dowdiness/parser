@@ -23,6 +23,25 @@ This module provides a complete parsing pipeline for a Lambda Calculus-based lan
 - [docs/CORRECTNESS.md](docs/CORRECTNESS.md) — Correctness goals and verification
 - [ROADMAP.md](ROADMAP.md) — Architecture and phased plan
 
+## Benchmarks
+
+Performance benchmarks measure incremental parsing efficiency:
+
+```bash
+moon bench --release
+```
+
+Key benchmarks:
+- `incremental vs full - edit at start/end/middle` — Measures edit performance
+- `worst case - full invalidation` — Edit that invalidates entire tree
+- `best case - cosmetic change` — Localized edit with potential reuse
+
+### Cursor Optimization
+
+The `ReuseCursor` uses a stateful traversal (stack of frames) instead of
+searching from root on every call, achieving O(depth) per lookup instead of
+O(tree).
+
 ## Language Syntax
 
 ### Basic Elements
