@@ -134,7 +134,7 @@ fn token_matches_syntax_kind(
       }
     IntToken =>
       match token {
-        Integer(_) => true // Value doesn't need to match, text does
+        Integer(_) => true // Kind match is sufficient; damage tracking ensures text correctness
         _ => false
       }
     _ =>
@@ -181,6 +181,11 @@ fn leading_token_matches(
 
 ///|
 /// Check if the trailing context matches
+///
+/// TODO(Option B): Implement proper follow-token comparison for stronger
+/// trailing context validation. Currently this check is permissive and relies
+/// on damage tracking + leading token checks for correctness. See CORRECTNESS.md
+/// for details on the conservative reuse protocol.
 fn trailing_context_matches(
   tokens : Array[TokenInfo],
   token_pos : Int,
@@ -192,15 +197,11 @@ fn trailing_context_matches(
     // At EOF, no trailing context to check
     return true
   }
-  // For safety, we check if the next token is a structural token.
-  // If the position is correct and we're outside damage, the trailing
-  // context should be consistent.
-  let after_token = tokens[after_pos]
-  match after_token.token {
-    EOF | RightParen | Then | Else => true
-    Plus | Minus => true
-    _ => true
-  }
+  // Currently permissive: relies on other reuse conditions (damage range,
+  // leading token match) for correctness. A stricter check would compare
+  // the follow token against the grammar's FOLLOW set for the node kind.
+  let _after_token = tokens[after_pos]
+  true
 }
 
 ///|
