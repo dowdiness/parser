@@ -1,5 +1,8 @@
 # Lezer-style Incremental Repair: Explanation
 
+> **Archived:** See [docs/README.md](../README.md) for the documentation index and
+> [ROADMAP.md](../../ROADMAP.md) for the current architecture.
+>
 ## Overview
 
 This document explains what Lezer-style incremental repair is, based on the official Lezer documentation and how it compares to the Wagner-Graham approach currently implemented in this CRDT project.

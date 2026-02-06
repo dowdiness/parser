@@ -1,12 +1,15 @@
 # Incremental Parser Implementation - Completion Summary
 
-> **Note (2026-02-01):** This document predates the Phase 0 cleanup. The `TokenCache`, `ParseCache`, and `RecoveringParser` described below have been **deleted** — they were never consulted during parsing. See [ROADMAP.md](../ROADMAP.md) for the current architecture and forward plan.
+> **Archived:** See [docs/README.md](../README.md) for the documentation index and
+> [ROADMAP.md](../../ROADMAP.md) for the current architecture.
+>
+> **Note (2026-02-01):** This document predates the Phase 0 cleanup. The `TokenCache`, `ParseCache`, and `RecoveringParser` described below have been **deleted** — they were never consulted during parsing. See [ROADMAP.md](../../ROADMAP.md) for the current architecture and forward plan.
 
 ## Overview
 
 Wagner-Graham incremental parser for Lambda Calculus with CRDT integration support.
 
-**Status:** Phase 0 cleanup complete. See [ROADMAP.md](../ROADMAP.md) for current state.
+**Status:** Phase 0 cleanup complete. See [ROADMAP.md](../../ROADMAP.md) for current state.
 
 ---
 

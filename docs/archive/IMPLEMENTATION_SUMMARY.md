@@ -1,6 +1,9 @@
 # Incremental Parser Implementation Summary
 
-> **Note (2026-02-01):** This document predates the Phase 0 cleanup. The `TokenCache`, `ParseCache`, and `RecoveringParser` described below have been **deleted** — they were never consulted during parsing. See [ROADMAP.md](../ROADMAP.md) for the current architecture and forward plan.
+> **Archived:** See [docs/README.md](../README.md) for the documentation index and
+> [ROADMAP.md](../../ROADMAP.md) for the current architecture.
+>
+> **Note (2026-02-01):** This document predates the Phase 0 cleanup. The `TokenCache`, `ParseCache`, and `RecoveringParser` described below have been **deleted** — they were never consulted during parsing. See [ROADMAP.md](../../ROADMAP.md) for the current architecture and forward plan.
 
 ## Overview
 

@@ -1,5 +1,5 @@
 // Detailed performance benchmarks for incremental parser
-// Measures scaling behavior and cache effectiveness
+// Measures scaling behavior and incremental-state overhead
 // Run with: moon bench --package parser --release
 
 ///|
@@ -98,8 +98,8 @@ test "sequential edits - backspace simulation" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: Cache effectiveness - repeated parsing
-test "cache effectiveness - repeated parsing" (b : @bench.T) {
+/// Benchmark: Incremental state baseline - repeated parsing
+test "incremental state baseline - repeated parsing" (b : @bench.T) {
   b.bench(fn() {
     let parser = IncrementalParser::new("λx.x")
     let _ = parser.parse()
@@ -116,8 +116,8 @@ test "cache effectiveness - repeated parsing" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: Cache effectiveness - similar expressions
-test "cache effectiveness - similar expressions" (b : @bench.T) {
+/// Benchmark: Incremental state baseline - similar expressions
+test "incremental state baseline - similar expressions" (b : @bench.T) {
   b.bench(fn() {
     let parser1 = IncrementalParser::new("x + 1")
     let result1 = parser1.parse()
@@ -234,6 +234,99 @@ test "best case - cosmetic change" (b : @bench.T) {
     // Change just the constant
     let edit = Edit::replace(4, 5, 5)
     let result = parser.edit(edit, "x + 2")
+    b.keep(result)
+  })
+}
+
+// --- Phase 1: Incremental Lexer Benchmarks (110 tokens) ---
+//
+// Generates "1 + 2 + 3 + ... + 55" (110 tokens: 55 integers + 54 plus + EOF, 263 chars).
+// Compares full tokenize() vs TokenBuffer.update() for single-char edits.
+// Each incremental benchmark includes TokenBuffer::new (which calls tokenize internally),
+// so the measured overhead beyond full tokenize reflects the update cost.
+
+///|
+fn make_token_source() -> String {
+  let mut s = "1"
+  for i = 2; i <= 55; i = i + 1 {
+    s = s + " + " + i.to_string()
+  }
+  s
+}
+
+///|
+fn make_token_source_replace(target : Int) -> String {
+  let mut s = if target == 1 { "99" } else { "1" }
+  for i = 2; i <= 55; i = i + 1 {
+    s = s + " + " + (if i == target { "99" } else { i.to_string() })
+  }
+  s
+}
+
+///|
+/// Benchmark: Full tokenization of 110-token input (baseline for incremental comparison)
+test "phase1: full tokenize - 110 tokens" (b : @bench.T) {
+  let source = make_token_source()
+  b.bench(fn() {
+    let result = tokenize(source) catch { _ => abort("benchmark failed") }
+    b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Incremental tokenize - replace "1" at start with "99"
+/// Edit: position [0,1) → [0,2), adds 1 char
+test "phase1: incremental tokenize - edit at start (110 tokens)" (b : @bench.T) {
+  let source = make_token_source()
+  let new_source = make_token_source_replace(1)
+  let edit = Edit::replace(0, 1, 2)
+  b.bench(fn() {
+    let buf = TokenBuffer::new(source) catch { _ => abort("benchmark failed") }
+    let result = buf.update(edit, new_source) catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Incremental tokenize - replace "28" at middle with "99"
+/// Edit: position [126,128) → [126,128), same-length replacement
+test "phase1: incremental tokenize - edit in middle (110 tokens)" (b : @bench.T) {
+  let source = make_token_source()
+  let new_source = make_token_source_replace(28)
+  let edit = Edit::replace(126, 128, 128)
+  b.bench(fn() {
+    let buf = TokenBuffer::new(source) catch { _ => abort("benchmark failed") }
+    let result = buf.update(edit, new_source) catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Incremental tokenize - replace "55" at end with "99"
+/// Edit: position [261,263) → [261,263), same-length replacement
+test "phase1: incremental tokenize - edit at end (110 tokens)" (b : @bench.T) {
+  let source = make_token_source()
+  let new_source = make_token_source_replace(55)
+  let edit = Edit::replace(261, 263, 263)
+  b.bench(fn() {
+    let buf = TokenBuffer::new(source) catch { _ => abort("benchmark failed") }
+    let result = buf.update(edit, new_source) catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Full re-tokenize of edited source (comparison: what you'd pay without incremental)
+test "phase1: full re-tokenize after edit - 110 tokens" (b : @bench.T) {
+  let new_source = make_token_source_replace(28)
+  b.bench(fn() {
+    let result = tokenize(new_source) catch { _ => abort("benchmark failed") }
     b.keep(result)
   })
 }

@@ -9,19 +9,41 @@ import {
 // Values
 pub fn ast_to_crdt(TermNode) -> CRDTNode
 
+pub fn build_tree(Array[ParseEvent]) -> GreenNode
+
 pub fn collect_errors(TermNode) -> Array[String]
 
 pub fn crdt_to_source(CRDTNode) -> String
 
+pub fn green_to_term(GreenNode) -> Term
+
+pub fn green_to_term_node(GreenNode, Int, Ref[Int]) -> TermNode
+
 pub fn has_errors(TermNode) -> Bool
+
+pub fn has_green_errors(GreenNode) -> Bool
 
 pub fn node_to_term(TermNode) -> Term
 
 pub fn parse(String) -> Term raise
 
+pub fn parse_green(String) -> GreenNode raise
+
+pub fn parse_green_recover(String) -> (GreenNode, Array[ParseDiagnostic]) raise TokenizationError
+
+pub fn parse_green_recover_with_tokens(String, Array[TokenInfo], ReuseCursor?) -> (GreenNode, Array[ParseDiagnostic], Int)
+
+pub fn parse_green_to_term_node(String) -> TermNode raise
+
+pub fn parse_green_with_cursor(String, Array[TokenInfo], ReuseCursor) -> (GreenNode, Array[ParseDiagnostic], Int)
+
 pub fn parse_tree(String) -> TermNode raise
 
+pub fn parse_tree_from_tokens(Array[TokenInfo]) -> TermNode raise
+
 pub fn parse_with_error_recovery(String) -> (TermNode, Array[String])
+
+pub fn parse_with_error_recovery_tokens(Array[TokenInfo]) -> (TermNode, Array[String])
 
 pub fn print_crdt_tree(CRDTNode, Int) -> String
 
@@ -37,9 +59,13 @@ pub fn print_token_infos(Array[TokenInfo]) -> String
 
 pub fn print_tokens(Array[Token]) -> String
 
+pub fn red_to_term_node(RedNode, Ref[Int]) -> TermNode
+
 pub fn term_node_to_dot(TermNode) -> String
 
 pub fn tokenize(String) -> Array[TokenInfo] raise TokenizationError
+
+pub fn tokenize_range(String, Int, Int) -> Array[TokenInfo] raise TokenizationError
 
 // Errors
 pub suberror ParseError {
@@ -100,16 +126,73 @@ pub fn Edit::to_string(Self) -> String
 pub impl Eq for Edit
 pub impl Show for Edit
 
+pub struct EventBuffer {
+  events : Array[ParseEvent]
+}
+pub fn EventBuffer::mark(Self) -> Int
+pub fn EventBuffer::new() -> Self
+pub fn EventBuffer::push(Self, ParseEvent) -> Unit
+pub fn EventBuffer::start_at(Self, Int, SyntaxKind) -> Unit
+
+pub enum GreenElement {
+  Token(GreenToken)
+  Node(GreenNode)
+}
+pub fn GreenElement::kind(Self) -> SyntaxKind
+pub fn GreenElement::text_len(Self) -> Int
+pub impl Eq for GreenElement
+pub impl Show for GreenElement
+
+pub struct GreenNode {
+  kind : SyntaxKind
+  children : Array[GreenElement]
+  text_len : Int
+}
+pub fn GreenNode::kind(Self) -> SyntaxKind
+pub fn GreenNode::new(SyntaxKind, Array[GreenElement]) -> Self
+pub impl Eq for GreenNode
+pub impl Show for GreenNode
+
+pub struct GreenToken {
+  kind : SyntaxKind
+  text : String
+}
+pub fn GreenToken::new(SyntaxKind, String) -> Self
+pub fn GreenToken::text_len(Self) -> Int
+pub impl Eq for GreenToken
+pub impl Show for GreenToken
+
 pub struct IncrementalParser {
   mut source : String
   mut tree : TermNode?
+  mut green_tree : GreenNode?
+  mut token_buffer : TokenBuffer?
+  mut last_reuse_count : Int
 }
 pub fn IncrementalParser::edit(Self, Edit, String) -> TermNode
+pub fn IncrementalParser::get_last_reuse_count(Self) -> Int
 pub fn IncrementalParser::get_source(Self) -> String
 pub fn IncrementalParser::get_tree(Self) -> TermNode?
 pub fn IncrementalParser::new(String) -> Self
 pub fn IncrementalParser::parse(Self) -> TermNode
 pub fn IncrementalParser::stats(Self) -> String
+
+pub struct ParseDiagnostic {
+  message : String
+  token : Token
+  start : Int
+  end : Int
+}
+pub impl Show for ParseDiagnostic
+
+pub enum ParseEvent {
+  StartNode(SyntaxKind)
+  FinishNode
+  Token(SyntaxKind, String)
+  Tombstone
+}
+pub impl Eq for ParseEvent
+pub impl Show for ParseEvent
 
 pub struct ParsedDocument {
   mut source : String
@@ -137,6 +220,56 @@ pub impl Compare for Range
 pub impl Eq for Range
 pub impl Hash for Range
 pub impl Show for Range
+
+pub struct RedNode {
+  green : GreenNode
+  parent : RedNode?
+  offset : Int
+}
+pub fn RedNode::children(Self) -> Array[Self]
+pub fn RedNode::end(Self) -> Int
+pub fn RedNode::from_green(GreenNode) -> Self
+pub fn RedNode::kind(Self) -> SyntaxKind
+pub fn RedNode::new(GreenNode, Self?, Int) -> Self
+pub fn RedNode::start(Self) -> Int
+
+pub struct ReuseCursor {
+  old_tree : GreenNode
+  damaged_range : Range
+  tokens : Array[TokenInfo]
+}
+pub fn ReuseCursor::advance_past(Self, GreenNode) -> Unit
+pub fn ReuseCursor::new(GreenNode, Range, Array[TokenInfo]) -> Self
+pub fn ReuseCursor::try_reuse(Self, SyntaxKind, Int, Int) -> GreenNode?
+
+pub enum SyntaxKind {
+  LambdaToken
+  DotToken
+  LeftParenToken
+  RightParenToken
+  PlusToken
+  MinusToken
+  IfKeyword
+  ThenKeyword
+  ElseKeyword
+  IdentToken
+  IntToken
+  WhitespaceToken
+  ErrorToken
+  EofToken
+  LambdaExpr
+  AppExpr
+  BinaryExpr
+  IfExpr
+  ParenExpr
+  IntLiteral
+  VarRef
+  ErrorNode
+  SourceFile
+}
+pub fn SyntaxKind::is_token(Self) -> Bool
+pub impl Eq for SyntaxKind
+pub impl Show for SyntaxKind
 
 pub(all) enum Term {
   Int(Int)
@@ -191,6 +324,17 @@ pub enum Token {
 }
 pub impl Eq for Token
 pub impl Show for Token
+
+pub struct TokenBuffer {
+  mut tokens : Array[TokenInfo]
+  mut source : String
+  mut version : Int
+}
+pub fn TokenBuffer::get_source(Self) -> String
+pub fn TokenBuffer::get_tokens(Self) -> Array[TokenInfo]
+pub fn TokenBuffer::get_version(Self) -> Int
+pub fn TokenBuffer::new(String) -> Self raise TokenizationError
+pub fn TokenBuffer::update(Self, Edit, String) -> Array[TokenInfo] raise TokenizationError
 
 pub struct TokenInfo {
   token : Token

@@ -6,6 +6,14 @@ pub suberror ParseError {
 }
 
 ///|
+pub struct ParseDiagnostic {
+  message : String
+  token : Token
+  start : Int
+  end : Int
+} derive(Show)
+
+///|
 /// Parse the input string into a Term (without position information)
 ///
 /// This is a wrapper around parse_tree that discards position information.
@@ -69,8 +77,17 @@ fn expect(parser : Parser, expected : Token) -> Parser raise ParseError {
 
 ///|
 /// Parse the input string into a TermNode with position tracking
+///
+/// Routes through the green tree (CST) as the canonical intermediate
+/// representation: parse_green → green_to_term_node.
 pub fn parse_tree(input : String) -> TermNode raise {
-  let tokens = tokenize(input)
+  let green = parse_green(input)
+  green_to_term_node(green, 0, Ref::new(0))
+}
+
+///|
+/// Parse a pre-tokenized input into a TermNode with position tracking
+pub fn parse_tree_from_tokens(tokens : Array[TokenInfo]) -> TermNode raise {
   let parser = make_parser(tokens)
   letrec parse_expression = fn(parser : Parser) -> (Parser, TermNode) raise {
     parse_binary_op(parser)

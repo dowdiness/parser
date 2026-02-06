@@ -1,16 +1,35 @@
 // Error recovery for parsing
-// Wraps parse_tree with try-catch to produce partial trees on failure
+// Uses the integrated error-recovering green parser
 
 ///|
 /// Parse with error recovery (returns partial tree with error nodes)
 pub fn parse_with_error_recovery(input : String) -> (TermNode, Array[String]) {
   let errors : Array[String] = []
-  let tree = parse_tree(input) catch {
+  let result = parse_green_recover(input) catch {
     TokenizationError(msg) => {
       let error_msg = "Tokenization error: " + msg
       errors.push(error_msg)
-      TermNode::error(error_msg, 0, 0)
+      return (TermNode::error(error_msg, 0, 0), errors)
     }
+  }
+  let (green, diagnostics) = result
+  // Map diagnostics to error strings
+  for diag in diagnostics {
+    errors.push(
+      "Parse error: " + diag.message + " at token " + print_token(diag.token),
+    )
+  }
+  let tree = green_to_term_node(green, 0, Ref::new(0))
+  (tree, errors)
+}
+
+///|
+/// Parse pre-tokenized input with error recovery
+pub fn parse_with_error_recovery_tokens(
+  tokens : Array[TokenInfo],
+) -> (TermNode, Array[String]) {
+  let errors : Array[String] = []
+  let tree = parse_tree_from_tokens(tokens) catch {
     ParseError(msg, token) => {
       let error_msg = "Parse error: " + msg + " at token " + print_token(token)
       errors.push(error_msg)

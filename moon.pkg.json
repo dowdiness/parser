@@ -4,6 +4,13 @@
     "moonbitlang/core/cmp",
     "moonbitlang/core/hashmap",
     "moonbitlang/core/json",
-    "moonbitlang/core/quickcheck"
+    "moonbitlang/core/quickcheck",
+    "moonbitlang/core/strconv"
+  ],
+  "test-import": [
+    {
+      "path": "moonbitlang/quickcheck",
+      "alias": "qc"
+    }
   ]
 }

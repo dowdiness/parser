@@ -17,6 +17,31 @@ This module provides a complete parsing pipeline for a Lambda Calculus-based lan
 - **Robust Error Handling**: Custom error types for tokenization and parsing failures
 - **Pretty Printing**: Convert AST back to readable string representations
 
+## Documentation
+
+- [docs/README.md](docs/README.md) — Documentation index
+- [docs/CORRECTNESS.md](docs/CORRECTNESS.md) — Correctness goals and verification
+- [ROADMAP.md](ROADMAP.md) — Architecture and phased plan
+
+## Benchmarks
+
+Performance benchmarks measure incremental parsing efficiency:
+
+```bash
+moon bench --release
+```
+
+Key benchmarks:
+- `incremental vs full - edit at start/end/middle` — Measures edit performance
+- `worst case - full invalidation` — Edit that invalidates entire tree
+- `best case - cosmetic change` — Localized edit with potential reuse
+
+### Cursor Optimization
+
+The `ReuseCursor` uses a stateful traversal (stack of frames) instead of
+searching from root on every call, achieving O(depth) per lookup instead of
+O(tree).
+
 ## Language Syntax
 
 ### Basic Elements
@@ -120,6 +145,47 @@ Parses an input string directly into a Term AST. Raises errors if tokenization f
 ```moonbit
 let ast = parse("λx.x + 1")
 // Lam("x", Bop(Plus, Var("x"), Int(1)))
+```
+
+### Concrete Syntax Tree (CST)
+
+The parser produces a lossless Concrete Syntax Tree using a green/red tree architecture before converting to the semantic AST.
+
+```moonbit
+pub fn parse_green(String) -> GreenNode raise
+```
+
+Parses a string into an immutable green tree (CST). Green nodes store relative widths, enabling structural sharing.
+
+```moonbit
+pub fn parse_tree(String) -> TermNode raise
+```
+
+Parses a string into a `TermNode` with position tracking. Routes through the green tree internally: `parse_green` -> `green_to_term_node`.
+
+```moonbit
+pub fn green_to_term_node(GreenNode, Int, Ref[Int]) -> TermNode
+```
+
+Converts a `GreenNode` to a `TermNode`. The `Int` parameter is the byte offset, and `Ref[Int]` is a node ID counter. Internally wraps the green node in a `RedNode` for position computation.
+
+```moonbit
+pub fn red_to_term_node(RedNode, Ref[Int]) -> TermNode
+```
+
+Converts a `RedNode` (position-aware CST facade) directly to a `TermNode`.
+
+**Key types:**
+
+- `GreenNode` -- Immutable CST node storing kind, children, and text width. Position-independent.
+- `GreenToken` -- Leaf token in the green tree with kind and text.
+- `RedNode` -- Ephemeral wrapper around `GreenNode` that computes absolute byte positions on demand via parent pointers.
+
+**Example:**
+```moonbit
+let green = parse_green("λx.x + 1")
+let red = RedNode::from_green(green)
+let term_node = red_to_term_node(red, Ref::new(0))
 ```
 
 ### Pretty Printing
@@ -243,6 +309,20 @@ try {
 
 ## Implementation Details
 
+### Parse Pipeline
+
+The canonical parse pipeline is:
+
+```
+Source string -> Lexer -> Green Tree (CST) -> Red Tree -> TermNode -> Term
+```
+
+1. **Lexer** tokenizes the source into a stream of tokens
+2. **Green Parser** produces an immutable green tree (lossless CST with relative widths)
+3. **Red Tree** wraps the green tree to compute absolute byte positions on demand
+4. **Conversion** transforms the red tree into `TermNode` (typed AST with positions)
+5. **Simplification** converts `TermNode` to `Term` (semantic AST without positions)
+
 ### Lexer ([lexer.mbt](lexer.mbt))
 
 The lexer performs character-by-character scanning with:
@@ -252,20 +332,31 @@ The lexer performs character-by-character scanning with:
 - **Identifier reading**: Supports alphanumeric variable names
 - **Unicode support**: Accepts both `λ` (U+03BB) and `\` for lambda
 
+### Green Parser ([green_parser.mbt](green_parser.mbt))
+
+Produces a lossless Concrete Syntax Tree using an event buffer pattern:
+- Emits `ParseEvent`s (StartNode, FinishNode, Token) into a flat buffer
+- Uses `mark()`/`start_at()` for retroactive wrapping (binary expressions, applications)
+- `build_tree()` replays events to construct the immutable `GreenNode` tree
+- Preserves all whitespace as `WhitespaceToken` nodes for lossless round-tripping
+
+### Red Tree ([red_tree.mbt](red_tree.mbt))
+
+Ephemeral facade over the green tree for position queries:
+- Computes absolute byte offsets from the green tree's relative widths
+- Maintains parent pointers for upward traversal
+- Created on demand, not stored persistently
+
+### Green-to-AST Conversion ([green_convert.mbt](green_convert.mbt))
+
+Converts the CST to typed AST nodes using `RedNode` for position computation:
+- `convert_red()` walks the red tree, using `red.children()` for child iteration with correct offsets
+- `tight_span()` computes precise positions by skipping leading/trailing whitespace
+- `ParenExpr` nodes are unwrapped to their inner expression's kind in the AST
+
 ### Parser ([parser.mbt](parser.mbt))
 
-The parser uses recursive descent with mutual recursion:
-
-1. **`parse_expression`**: Entry point, delegates to binary operations
-2. **`parse_binary_op`**: Handles left-associative `+` and `-` operators
-3. **`parse_application`**: Handles left-associative function application
-4. **`parse_atom`**: Parses terminals and parenthesized expressions
-
-**Key Features:**
-- **Left-associative application**: `f x y` parses as `((f x) y)`
-- **Left-associative operators**: `1 + 2 - 3` parses as `((1 + 2) - 3)`
-- **Right-associative lambda**: `λx.λy.x` parses with nested abstractions
-- **Lookahead parsing**: Uses `peek()` to inspect next token without consuming
+The `parse_tree` function routes through the green tree as the canonical path. A legacy `parse_tree_from_tokens` function provides direct recursive descent for the `IncrementalParser` token-based path.
 
 ### Pretty Printer ([term.mbt](term.mbt))
 
@@ -287,7 +378,13 @@ The module includes comprehensive tests ([parser_test.mbt](parser_test.mbt)) cov
 
 Run tests with:
 ```bash
-moon test parser
+moon test --package parser
+
+# Fast differential checks (CI-friendly per-PR)
+moon test --package parser --filter '*differential-fast*'
+
+# Longer deterministic differential fuzz pass (nightly/local)
+moon test --package parser --filter '*differential-long*'
 ```
 
 ## Relation to CRDT
@@ -314,4 +411,4 @@ Possible extensions for the parser:
 3. **Let Bindings**: Local variable definitions
 4. **Pattern Matching**: Advanced lambda parameter patterns
 5. **Source Locations**: Track line/column information for better error messages
-6. **Incremental Parsing**: Support for parsing partial/updated input (for CRDT integration)
+6. **Semantics-Aware Reuse**: Follow-set checks for projectional/live editing contexts
