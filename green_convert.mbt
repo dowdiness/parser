@@ -126,8 +126,6 @@ fn convert_source_file_children(
     }
     // All children are errors — wrap them under a single error node
     // so none are discarded
-  } else if children.length() == 1 {
-    children[0]
   } else {
     let mut start = children[0].start
     let mut end = children[0].end

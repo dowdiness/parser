@@ -220,14 +220,17 @@ fn GreenParser::try_reuse(
       match cursor.try_reuse(expected_kind, byte_offset, self.position) {
         None => false
         Some(node) => {
-          // Emit whitespace before the reused node
+          // Emit whitespace before the reused node (gap between last_end and token start)
           self.emit_whitespace_before(info)
+          // Set last_end to node start before emitting reused events,
+          // so internal whitespace in the reused node is not double-counted
+          self.last_end = info.start
           // Emit the reused node events
           self.emit_reused_node_events(node)
           // Update position by non-whitespace token count
           let token_count = count_tokens_in_green(node)
           self.position = self.position + token_count
-          // Update last_end: node starts at info.start (after any leading whitespace)
+          // Update last_end past the reused node
           self.last_end = info.start + node.text_len
           self.reuse_count = self.reuse_count + 1
           // Advance cursor past the reused node

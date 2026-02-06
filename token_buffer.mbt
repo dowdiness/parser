@@ -53,9 +53,9 @@ pub fn TokenBuffer::update(
     left_index = left_index - 1
   }
   if left_index > right_index {
-    let tmp = left_index
-    left_index = right_index
-    right_index = tmp
+    let tmp = right_index
+    right_index = left_index
+    left_index = tmp
   }
   if right_index < eof_index {
     right_index = right_index + 1
@@ -87,7 +87,13 @@ pub fn TokenBuffer::update(
   let delta = edit.delta()
   for i = right_index + 1; i < eof_index; i = i + 1 {
     let t = old_tokens[i]
-    new_tokens.push(TokenInfo::new(t.token, t.start + delta, t.end + delta))
+    new_tokens.push(
+      TokenInfo::new(
+        t.token,
+        clamp_offset(t.start + delta, new_len),
+        clamp_offset(t.end + delta, new_len),
+      ),
+    )
   }
   new_tokens.push(TokenInfo::new(EOF, new_len, new_len))
   self.tokens = new_tokens
