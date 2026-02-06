@@ -1,6 +1,6 @@
 // Detailed performance benchmarks for incremental parser
 // Measures scaling behavior and incremental-state overhead
-// Run with: moon bench --package parser --release
+// Run with: moon bench --package dowdiness/parser/benchmarks --release
 
 ///|
 /// Benchmark: Parse scaling - small input (5 tokens)

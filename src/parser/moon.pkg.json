@@ -5,7 +5,9 @@
     "dowdiness/parser/term",
     "dowdiness/parser/lexer",
     "dowdiness/parser/syntax",
-    "moonbitlang/core/strconv",
+    "moonbitlang/core/strconv"
+  ],
+  "test-import": [
     "moonbitlang/core/quickcheck"
   ]
 }

@@ -1,5 +1,5 @@
 // Benchmarks for incremental parser performance
-// Run with: moon bench --package parser --release
+// Run with: moon bench --package dowdiness/parser/benchmarks --release
 
 ///|
 /// Benchmark: Full parse of simple expression
