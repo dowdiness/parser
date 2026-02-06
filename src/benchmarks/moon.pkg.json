@@ -1,0 +1,13 @@
+{
+  "import": [
+    "dowdiness/parser/edit",
+    "dowdiness/parser/lexer",
+    {
+      "path": "dowdiness/parser/parser",
+      "alias": "parse"
+    },
+    "dowdiness/parser/incremental",
+    "dowdiness/parser/crdt",
+    "moonbitlang/core/bench"
+  ]
+}

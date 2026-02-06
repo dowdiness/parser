@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser/token"
+
+// Values
+pub fn print_token(Token) -> String
+
+pub fn print_token_info(TokenInfo) -> String
+
+pub fn print_token_infos(Array[TokenInfo]) -> String
+
+pub fn print_tokens(Array[Token]) -> String
+
+// Errors
+
+// Types and methods
+pub(all) enum Token {
+  Lambda
+  Dot
+  LeftParen
+  RightParen
+  Plus
+  Minus
+  If
+  Then
+  Else
+  Identifier(String)
+  Integer(Int)
+  EOF
+}
+pub impl Eq for Token
+pub impl Show for Token
+
+pub(all) struct TokenInfo {
+  token : Token
+  start : Int
+  end : Int
+}
+pub fn TokenInfo::new(Token, Int, Int) -> Self
+pub impl Eq for TokenInfo
+pub impl Show for TokenInfo
+
+// Type aliases
+
+// Traits
+

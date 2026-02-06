@@ -1,0 +1,11 @@
+{
+  "import": [
+    "dowdiness/parser/token",
+    "dowdiness/parser/range",
+    "dowdiness/parser/term",
+    "dowdiness/parser/lexer",
+    "dowdiness/parser/syntax",
+    "moonbitlang/core/strconv",
+    "moonbitlang/core/quickcheck"
+  ]
+}
