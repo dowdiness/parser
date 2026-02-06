@@ -1,0 +1,34 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser/lexer"
+
+import {
+  "dowdiness/parser/edit",
+  "dowdiness/parser/token",
+}
+
+// Values
+pub fn tokenize(String) -> Array[@token.TokenInfo] raise TokenizationError
+
+pub fn tokenize_range(String, Int, Int) -> Array[@token.TokenInfo] raise TokenizationError
+
+// Errors
+pub suberror TokenizationError {
+  TokenizationError(String)
+}
+
+// Types and methods
+pub struct TokenBuffer {
+  mut tokens : Array[@token.TokenInfo]
+  mut source : String
+  mut version : Int
+}
+pub fn TokenBuffer::get_source(Self) -> String
+pub fn TokenBuffer::get_tokens(Self) -> Array[@token.TokenInfo]
+pub fn TokenBuffer::get_version(Self) -> Int
+pub fn TokenBuffer::new(String) -> Self raise TokenizationError
+pub fn TokenBuffer::update(Self, @edit.Edit, String) -> Array[@token.TokenInfo] raise TokenizationError
+
+// Type aliases
+
+// Traits
+

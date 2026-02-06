@@ -1,0 +1,14 @@
+{
+  "import": [
+    "dowdiness/parser/term",
+    "dowdiness/parser/edit",
+    "dowdiness/parser/incremental",
+    "moonbitlang/core/hashmap"
+  ],
+  "test-import": [
+    {
+      "path": "dowdiness/parser/parser",
+      "alias": "parse"
+    }
+  ]
+}

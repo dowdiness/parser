@@ -1,0 +1,72 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser/incremental"
+
+import {
+  "dowdiness/parser/edit",
+  "dowdiness/parser/lexer",
+  "dowdiness/parser/range",
+  "dowdiness/parser/syntax",
+  "dowdiness/parser/term",
+}
+
+// Values
+pub fn count_tokens_in_node_instrumented(@syntax.GreenNode) -> Int
+
+pub fn perf_enable(Bool) -> Unit
+
+pub fn perf_report() -> String
+
+pub fn perf_reset() -> Unit
+
+pub fn perf_snapshot() -> PerfStats
+
+pub let perf_stats : PerfStats
+
+// Errors
+
+// Types and methods
+pub struct DamageTracker {
+  damaged_ranges : Array[@range.Range]
+}
+pub fn DamageTracker::add_range(Self, @range.Range) -> Unit
+pub fn DamageTracker::empty() -> Self
+pub fn DamageTracker::expand_for_node(Self, Int, Int) -> Unit
+pub fn DamageTracker::expand_for_tree(Self, @term.TermNode) -> Unit
+pub fn DamageTracker::is_damaged(Self, @range.Range) -> Bool
+pub fn DamageTracker::is_position_damaged(Self, Int) -> Bool
+pub fn DamageTracker::new(@edit.Edit) -> Self
+pub fn DamageTracker::range(Self) -> @range.Range
+pub fn DamageTracker::stats(Self) -> String
+
+pub struct IncrementalParser {
+  mut source : String
+  mut tree : @term.TermNode?
+  mut green_tree : @syntax.GreenNode?
+  mut token_buffer : @lexer.TokenBuffer?
+  mut last_reuse_count : Int
+}
+pub fn IncrementalParser::adjust_tree_positions(Self, @term.TermNode, @edit.Edit) -> @term.TermNode
+pub fn IncrementalParser::edit(Self, @edit.Edit, String) -> @term.TermNode
+pub fn IncrementalParser::get_last_reuse_count(Self) -> Int
+pub fn IncrementalParser::get_source(Self) -> String
+pub fn IncrementalParser::get_tree(Self) -> @term.TermNode?
+pub fn IncrementalParser::new(String) -> Self
+pub fn IncrementalParser::parse(Self) -> @term.TermNode
+pub fn IncrementalParser::stats(Self) -> String
+
+pub struct PerfStats {
+  enabled : Ref[Bool]
+  try_reuse_calls : Ref[Int]
+  try_reuse_hits : Ref[Int]
+  fast_path_skips : Ref[Int]
+  leading_checks : Ref[Int]
+  trailing_checks : Ref[Int]
+  find_node_calls : Ref[Int]
+  find_node_steps : Ref[Int]
+  count_tokens_calls : Ref[Int]
+}
+
+// Type aliases
+
+// Traits
+

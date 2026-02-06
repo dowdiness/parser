@@ -1,0 +1,12 @@
+{
+  "import": [
+    "dowdiness/parser/token",
+    "dowdiness/parser/edit"
+  ],
+  "test-import": [
+    {
+      "path": "moonbitlang/quickcheck",
+      "alias": "qc"
+    }
+  ]
+}

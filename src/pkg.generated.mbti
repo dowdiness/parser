@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser"
+
+import {
+  "dowdiness/parser/crdt",
+  "dowdiness/parser/incremental",
+  "dowdiness/parser/term",
+  "dowdiness/parser/token",
+}
+
+// Values
+pub fn ast_to_crdt(@term.TermNode) -> @crdt.CRDTNode
+
+pub fn crdt_to_source(@crdt.CRDTNode) -> String
+
+pub fn incremental(String) -> @incremental.IncrementalParser
+
+pub fn parse(String) -> @term.Term raise
+
+pub fn parse_tree(String) -> @term.TermNode raise
+
+pub fn parse_with_error_recovery(String) -> (@term.TermNode, Array[String])
+
+pub fn term_node_to_dot(@term.TermNode) -> String
+
+pub fn tokenize(String) -> Array[@token.TokenInfo] raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

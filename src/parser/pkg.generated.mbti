@@ -1,0 +1,75 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser/parser"
+
+import {
+  "dowdiness/parser/lexer",
+  "dowdiness/parser/range",
+  "dowdiness/parser/syntax",
+  "dowdiness/parser/term",
+  "dowdiness/parser/token",
+}
+
+// Values
+pub fn collect_errors(@term.TermNode) -> Array[String]
+
+pub fn green_to_term(@syntax.GreenNode) -> @term.Term
+
+pub fn green_to_term_node(@syntax.GreenNode, Int, Ref[Int]) -> @term.TermNode
+
+pub fn has_errors(@term.TermNode) -> Bool
+
+pub fn parse(String) -> @term.Term raise
+
+pub fn parse_green(String) -> @syntax.GreenNode raise
+
+pub fn parse_green_recover(String) -> (@syntax.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError
+
+pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], ReuseCursor?) -> (@syntax.GreenNode, Array[ParseDiagnostic], Int)
+
+pub fn parse_green_to_term_node(String) -> @term.TermNode raise
+
+pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], ReuseCursor) -> (@syntax.GreenNode, Array[ParseDiagnostic], Int)
+
+pub fn parse_tree(String) -> @term.TermNode raise
+
+pub fn parse_tree_from_tokens(Array[@token.TokenInfo]) -> @term.TermNode raise
+
+pub fn parse_with_error_recovery(String) -> (@term.TermNode, Array[String])
+
+pub fn parse_with_error_recovery_tokens(Array[@token.TokenInfo]) -> (@term.TermNode, Array[String])
+
+pub fn red_to_term_node(@syntax.RedNode, Ref[Int]) -> @term.TermNode
+
+// Errors
+pub suberror ParseError {
+  ParseError(String, @token.Token)
+}
+
+// Types and methods
+type CursorFrame
+
+pub(all) struct ParseDiagnostic {
+  message : String
+  token : @token.Token
+  start : Int
+  end : Int
+}
+pub impl Show for ParseDiagnostic
+
+pub struct ReuseCursor {
+  stack : Array[CursorFrame]
+  mut current_offset : Int
+  damaged_range : @range.Range
+  tokens : Array[@token.TokenInfo]
+  reuse_globally_disabled : Bool
+}
+pub fn ReuseCursor::advance_past(Self, @syntax.GreenNode) -> Unit
+pub fn ReuseCursor::is_reuse_disabled(Self) -> Bool
+pub fn ReuseCursor::new(@syntax.GreenNode, @range.Range, Array[@token.TokenInfo]) -> Self
+pub fn ReuseCursor::old_tree(Self) -> @syntax.GreenNode
+pub fn ReuseCursor::try_reuse(Self, @syntax.SyntaxKind, Int, Int) -> @syntax.GreenNode?
+
+// Type aliases
+
+// Traits
+
