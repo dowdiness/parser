@@ -48,18 +48,40 @@ pub fn build_tree(events : Array[ParseEvent]) -> GreenNode {
         kinds.push(kind)
       }
       FinishNode => {
-        let children = stack.pop().unwrap()
-        let kind = kinds.pop().unwrap()
+        let children = match stack.pop() {
+          Some(c) => c
+          None =>
+            abort(
+              "build_tree: unbalanced FinishNode — no matching StartNode",
+            )
+        }
+        let kind = match kinds.pop() {
+          Some(k) => k
+          None =>
+            abort("build_tree: kind stack underflow on FinishNode")
+        }
         let node = GreenNode::new(kind, children)
-        stack.last().unwrap().push(Node(node))
+        match stack.last() {
+          Some(parent) => parent.push(Node(node))
+          None =>
+            abort(
+              "build_tree: parent stack empty when attaching node",
+            )
+        }
       }
       Token(kind, text) => {
         let token = GreenToken::new(kind, text)
-        stack.last().unwrap().push(GreenElement::Token(token))
+        match stack.last() {
+          Some(top) => top.push(GreenElement::Token(token))
+          None => abort("build_tree: stack empty when adding token")
+        }
       }
       Tombstone => ()
     }
   }
-  let children = stack.pop().unwrap()
+  let children = match stack.pop() {
+    Some(c) => c
+    None => abort("build_tree: stack empty at end — mismatched events")
+  }
   GreenNode::new(SourceFile, children)
 }

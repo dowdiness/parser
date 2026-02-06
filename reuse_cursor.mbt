@@ -180,6 +180,24 @@ fn leading_token_matches(
 }
 
 ///|
+/// Get the last non-whitespace token kind from a green node
+fn last_token_kind(node : GreenNode) -> SyntaxKind? {
+  let children = node.children
+  for i = children.length() - 1; i >= 0; i = i - 1 {
+    match children[i] {
+      Token(t) => if t.kind != WhitespaceToken { return Some(t.kind) }
+      Node(n) => {
+        let result = last_token_kind(n)
+        if result is Some(_) {
+          return result
+        }
+      }
+    }
+  }
+  None
+}
+
+///|
 /// Check if the trailing context matches
 ///
 /// TODO(Option B): Implement proper follow-token comparison for stronger
@@ -187,6 +205,7 @@ fn leading_token_matches(
 /// on damage tracking + leading token checks for correctness. See CORRECTNESS.md
 /// for details on the conservative reuse protocol.
 fn trailing_context_matches(
+  node : GreenNode,
   tokens : Array[TokenInfo],
   token_pos : Int,
   node_token_count : Int,
@@ -197,11 +216,30 @@ fn trailing_context_matches(
     // At EOF, no trailing context to check
     return true
   }
-  // Currently permissive: relies on other reuse conditions (damage range,
-  // leading token match) for correctness. A stricter check would compare
-  // the follow token against the grammar's FOLLOW set for the node kind.
-  let _after_token = tokens[after_pos]
-  true
+  // Compare the last token of the old node against the token following it
+  // in the new stream. If the follow token changed, the node boundary may
+  // have shifted (e.g. identifier merging) so reuse is unsafe.
+  let after_token = tokens[after_pos]
+  match last_token_kind(node) {
+    Some(last_kind) => {
+      // If the last token in the node is an identifier or integer, verify
+      // the follow token is not the same kind (which could indicate merging)
+      match last_kind {
+        IdentToken =>
+          match after_token.token {
+            Identifier(_) => false
+            _ => true
+          }
+        IntToken =>
+          match after_token.token {
+            Integer(_) => false
+            _ => true
+          }
+        _ => true
+      }
+    }
+    None => true
+  }
 }
 
 ///|
@@ -352,7 +390,9 @@ pub fn ReuseCursor::try_reuse(
         // Condition 4: Trailing context matches
         let node_token_count = count_tokens_in_node(node)
         if not(
-            trailing_context_matches(self.tokens, token_pos, node_token_count),
+            trailing_context_matches(
+              node, self.tokens, token_pos, node_token_count,
+            ),
           ) {
           None
         } else {
