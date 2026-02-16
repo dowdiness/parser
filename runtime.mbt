@@ -53,6 +53,27 @@ pub fn Runtime::new() -> Runtime {
 }
 
 ///|
+/// Structured metadata about a cell in the dependency graph.
+///
+/// This structure provides a uniform view of both Signal and Memo cells.
+/// For signals, the `dependencies` array will be empty.
+///
+/// # Fields
+///
+/// - `id`: The unique identifier for this cell
+/// - `changed_at`: When this cell's value last actually changed
+/// - `verified_at`: When this cell was last confirmed up-to-date
+/// - `durability`: How often this cell is expected to change
+/// - `dependencies`: Cell IDs this cell depends on (empty for signals)
+pub(all) struct CellInfo {
+  id : CellId
+  changed_at : Revision
+  verified_at : Revision
+  durability : Durability
+  dependencies : Array[CellId]
+}
+
+///|
 /// Registers cell metadata with the runtime.
 ///
 /// This is called internally when creating signals and memos. Users typically
