@@ -201,56 +201,86 @@ match memo.get_result() {
 
 ---
 
-## Introspection (Planned - Phase 2A)
-
-> **Note:** These APIs are planned but not yet implemented. See [roadmap.md](roadmap.md) for details.
+## Introspection and Debugging
 
 ### Signal Introspection
 
+#### `Signal::id(self) -> CellId`
+
+Returns the unique identifier for this signal.
+
+**Example:**
 ```moonbit
-pub fn[T] Signal::id(self) -> CellId
-pub fn[T] Signal::durability(self) -> Durability
-pub fn[T] Signal::debug(self) -> String
+let sig = Signal::new(rt, 42)
+let id = sig.id()
+```
+
+#### `Signal::durability(self) -> Durability`
+
+Returns the durability level of this signal (`Low`, `Medium`, or `High`).
+
+**Example:**
+```moonbit
+let config = Signal::new_with_durability(rt, "prod", High)
+inspect(config.durability(), content="High")
 ```
 
 ### Memo Introspection
 
+#### `Memo::id(self) -> CellId`
+
+Returns the unique identifier for this memo.
+
+#### `Memo::dependencies(self) -> Array[CellId]`
+
+Returns the list of cells this memo currently depends on. Empty if the memo has never been computed.
+
+**Example:**
 ```moonbit
-pub fn[T] Memo::id(self) -> CellId
-pub fn[T] Memo::dependencies(self) -> Array[CellId]
-pub fn[T] Memo::changed_at(self) -> Revision
-pub fn[T] Memo::verified_at(self) -> Revision
-pub fn[T] Memo::debug(self) -> String
+let x = Signal::new(rt, 1)
+let doubled = Memo::new(rt, fn() { x.get() * 2 })
+doubled.get() |> ignore
+inspect(doubled.dependencies().contains(x.id()), content="true")
 ```
+
+#### `Memo::changed_at(self) -> Revision`
+
+Returns when this memo's value last changed. Reflects backdating: if recomputation produces the same value, this timestamp is preserved.
+
+#### `Memo::verified_at(self) -> Revision`
+
+Returns when this memo was last verified up-to-date.
 
 ### Runtime Introspection
 
+#### `Runtime::cell_info(self, id : CellId) -> CellInfo?`
+
+Retrieves structured metadata for any cell. Returns `None` if the CellId is invalid.
+
+**Example:**
 ```moonbit
-pub fn Runtime::cell_info(self, id : CellId) -> CellInfo
-
-pub struct CellInfo {
-  id : CellId
-  kind : CellKind
-  changed_at : Revision
-  verified_at : Revision
-  durability : Durability
-  dependencies : Array[CellId]
-}
-```
-
-**Use case:**
-
-```moonbit
-// Debug: why did this memo recompute?
-if !expensive.is_up_to_date() {
-  for dep in expensive.dependencies() {
-    let info = rt.cell_info(dep)
-    if info.changed_at > expensive.verified_at() {
-      println("Recomputed due to cell " + dep.to_string())
-    }
+match rt.cell_info(memo.id()) {
+  Some(info) => {
+    println("Changed at: " + info.changed_at.value.to_string())
+    println("Dependencies: " + info.dependencies.length().to_string())
   }
+  None => println("Cell not found")
 }
 ```
+
+### CellInfo Structure
+
+```moonbit
+pub struct CellInfo {
+  pub id : CellId
+  pub changed_at : Revision
+  pub verified_at : Revision
+  pub durability : Durability
+  pub dependencies : Array[CellId]
+}
+```
+
+For signals, `dependencies` is empty.
 
 ---
 

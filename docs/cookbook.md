@@ -360,6 +360,96 @@ inspect(memo.get(), content="0")  // Returns fallback, doesn't abort
 
 ---
 
+## Debugging
+
+### Why Did This Memo Recompute?
+
+Use introspection to identify which dependency triggered recomputation:
+
+```moonbit
+let rt = Runtime::new()
+let x = Signal::new(rt, 10)
+let y = Signal::new(rt, 20)
+let sum = Memo::new(rt, fn() { x.get() + y.get() })
+
+sum.get() |> ignore
+let baseline = sum.verified_at()
+
+// Make some changes
+x.set(15)
+sum.get() |> ignore
+
+// Find the culprit
+for dep_id in sum.dependencies() {
+  match rt.cell_info(dep_id) {
+    Some(info) => {
+      if info.changed_at.value > baseline.value {
+        println("Dependency " + dep_id.id.to_string() + " changed")
+      }
+    }
+    None => ()
+  }
+}
+```
+
+### Analyzing Dependency Chains
+
+Trace the full dependency path:
+
+```moonbit
+fn print_dependencies(rt : Runtime, memo : Memo[Int], depth : Int) -> Unit {
+  let indent = "  ".repeat(depth)
+  println(indent + "Memo " + memo.id().id.to_string())
+
+  for dep_id in memo.dependencies() {
+    match rt.cell_info(dep_id) {
+      Some(info) => {
+        println(indent + "  -> Cell " + dep_id.id.to_string() +
+                " (changed_at=" + info.changed_at.value.to_string() + ")")
+      }
+      None => ()
+    }
+  }
+}
+```
+
+### Testing Dependency Tracking
+
+Verify that memos only depend on what they actually read:
+
+```moonbit
+test "memo only depends on x, not y" {
+  let rt = Runtime::new()
+  let x = Signal::new(rt, 1)
+  let y = Signal::new(rt, 2)
+  let uses_x_only = Memo::new(rt, fn() { x.get() * 2 })
+
+  uses_x_only.get() |> ignore
+
+  let deps = uses_x_only.dependencies()
+  inspect(deps.contains(x.id()), content="true")
+  inspect(deps.contains(y.id()), content="false")
+}
+```
+
+### Understanding Backdating
+
+Check if a memo's value actually changed:
+
+```moonbit
+let memo = Memo::new(rt, fn() { config.get().length() })
+memo.get() |> ignore
+let old_changed = memo.changed_at()
+
+config.set("same_length")  // Different string, same length
+memo.get() |> ignore
+
+// Backdating: value didn't change, so changed_at is preserved
+inspect(memo.changed_at() == old_changed, content="true")
+```
+
+---
+
 ## Debugging Tips
 
 ### Check if a Memo Recomputed

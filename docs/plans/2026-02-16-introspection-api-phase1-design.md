@@ -296,6 +296,7 @@ fn analyze_memo_dependencies(rt : Runtime, memo : Memo[Int]) -> Unit {
 
 ```moonbit
 test "memo only depends on x, not y" {
+  let rt = Runtime::new()
   let x = Signal::new(rt, 1)
   let y = Signal::new(rt, 2)
   let m = Memo::new(rt, fn() { x.get() * 2 })
