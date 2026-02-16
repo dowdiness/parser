@@ -36,7 +36,8 @@ test "runtime: cell_info() returns metadata for memo" {
 ///|
 test "runtime: cell_info() returns None for out-of-bounds CellId" {
   let rt = Runtime::new()
-  let invalid_id : CellId = { runtime_id: 0, id: 999 }
+  let sig = Signal::new(rt, 0)
+  let invalid_id : CellId = { runtime_id: sig.id().runtime_id, id: 999 }
 
   match rt.cell_info(invalid_id) {
     Some(_) => abort("Expected None for invalid ID")
@@ -48,10 +49,10 @@ test "runtime: cell_info() returns None for out-of-bounds CellId" {
 test "runtime: cell_info() returns None for unused slot" {
   let rt = Runtime::new()
   // Create and verify we have at least one cell
-  let _sig = Signal::new(rt, 1)
+  let sig = Signal::new(rt, 1)
 
   // Try to access a slot far beyond what's been allocated
-  let beyond_id : CellId = { runtime_id: 0, id: 1000 }
+  let beyond_id : CellId = { runtime_id: sig.id().runtime_id, id: 1000 }
 
   match rt.cell_info(beyond_id) {
     Some(_) => abort("Expected None for unused slot")
@@ -63,10 +64,10 @@ test "runtime: cell_info() returns None for unused slot" {
 test "runtime: cell_info() returns None for negative CellId" {
   let rt = Runtime::new()
   // Create a cell to ensure runtime has some cells
-  let _sig = Signal::new(rt, 42)
+  let sig = Signal::new(rt, 42)
 
   // Try to access with negative CellId
-  let negative_id : CellId = { runtime_id: 0, id: -1 }
+  let negative_id : CellId = { runtime_id: sig.id().runtime_id, id: -1 }
 
   match rt.cell_info(negative_id) {
     Some(_) => abort("Expected None for negative CellId")
