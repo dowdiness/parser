@@ -209,8 +209,8 @@ fn Runtime::fire_on_change(self : Runtime) -> Unit {
 /// - For memos, dependencies are populated after the first computation
 /// - The method performs bounds checking and returns None for invalid IDs
 pub fn Runtime::cell_info(self : Runtime, id : CellId) -> Option[CellInfo] {
-  // Check bounds
-  if id.id >= self.cells.length() {
+  // Check bounds (both negative and out of range)
+  if id.id < 0 || id.id >= self.cells.length() {
     return None
   }
 

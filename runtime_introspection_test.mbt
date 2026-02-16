@@ -58,3 +58,18 @@ test "runtime: cell_info() returns None for unused slot" {
     None => ()
   }
 }
+
+///|
+test "runtime: cell_info() returns None for negative CellId" {
+  let rt = Runtime::new()
+  // Create a cell to ensure runtime has some cells
+  let _sig = Signal::new(rt, 42)
+
+  // Try to access with negative CellId
+  let negative_id : CellId = { id: -1 }
+
+  match rt.cell_info(negative_id) {
+    Some(_) => abort("Expected None for negative CellId")
+    None => ()
+  }
+}
