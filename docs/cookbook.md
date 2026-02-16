@@ -419,6 +419,7 @@ Verify that memos only depend on what they actually read:
 
 ```moonbit
 test "memo only depends on x, not y" {
+  let rt = Runtime::new()
   let x = Signal::new(rt, 1)
   let y = Signal::new(rt, 2)
   let uses_x_only = Memo::new(rt, fn() { x.get() * 2 })

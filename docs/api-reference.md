@@ -261,7 +261,7 @@ Retrieves structured metadata for any cell. Returns `None` if the CellId is inva
 ```moonbit
 match rt.cell_info(memo.id()) {
   Some(info) => {
-    println("Changed at: " + info.changed_at.to_string())
+    println("Changed at: " + info.changed_at.value.to_string())
     println("Dependencies: " + info.dependencies.length().to_string())
   }
   None => println("Cell not found")

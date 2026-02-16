@@ -29,7 +29,7 @@ Concrete, actionable tasks for the `incr` library.
 - [x] Add `Memo::dependencies(self) -> Array[CellId]`
 - [x] Add `Memo::changed_at(self) -> Revision`
 - [x] Add `Memo::verified_at(self) -> Revision`
-- [x] Add `Runtime::cell_info(self, CellId) -> CellInfo` struct
+- [x] Add `Runtime::cell_info(self, CellId) -> CellInfo?` struct
 - [x] Define `CellInfo` struct with all cell metadata
 - [ ] Add `Signal::debug(self) -> String` for formatted output
 - [ ] Add `Memo::debug(self) -> String` for formatted output

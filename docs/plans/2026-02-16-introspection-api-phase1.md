@@ -517,8 +517,8 @@ Add to `runtime.mbt` after `Runtime::fire_on_change()`:
 /// }
 /// ```
 pub fn Runtime::cell_info(self : Runtime, id : CellId) -> CellInfo? {
-  // Check bounds
-  if id.id >= self.cells.length() {
+  // Check bounds (both negative and out of range)
+  if id.id < 0 || id.id >= self.cells.length() {
     return None
   }
 
