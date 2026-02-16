@@ -10,7 +10,7 @@
 ///
 /// # Example
 ///
-/// ```moonbit
+/// ```moonbit nocheck
 /// struct MyDb {
 ///   rt : @incr.Runtime
 /// }
@@ -33,7 +33,7 @@ pub(open) trait IncrDb {
 /// Use the trait bound in generic functions to write code that
 /// works with any readable node:
 ///
-/// ```moonbit
+/// ```moonbit nocheck
 /// fn[R : Readable] check(node : R) -> Bool {
 ///   node.is_up_to_date()
 /// }
@@ -147,8 +147,7 @@ pub fn[Db : IncrDb] batch(db : Db, f : () -> Unit) -> Unit {
 
 // === Pipeline Traits ===
 // These traits define the stages of a compilation/processing pipeline.
-// Users implement them for their own database types to get access to
-// generic composition functions like `all_diagnostics` and `compile_and_run`.
+// Users implement them for their own database types and compose them as needed.
 
 ///|
 /// A system that has source text input.
@@ -176,58 +175,4 @@ pub(open) trait Checkable {
 /// A system that can execute/evaluate and produce output.
 pub(open) trait Executable {
   run(Self) -> Array[String]
-}
-
-// === Composition Functions ===
-// These generic functions combine multiple traits to provide
-// higher-level operations. They replace default trait methods
-// (which can't express multi-trait constraints in MoonBit).
-
-///|
-/// Returns all diagnostics (parse errors + check errors) from a system
-/// that implements both Parseable and Checkable.
-///
-/// # Parameters
-///
-/// - `db`: Any type implementing both `Parseable` and `Checkable`
-///
-/// # Returns
-///
-/// Combined array of all parse and check errors
-pub fn[D : Parseable + Checkable] all_diagnostics(db : D) -> Array[String] {
-  let parse_errs = db.parse_errors()
-  let check_errs = db.check_errors()
-  let result : Array[String] = []
-  for i = 0; i < parse_errs.length(); i = i + 1 {
-    result.push(parse_errs[i])
-  }
-  for i = 0; i < check_errs.length(); i = i + 1 {
-    result.push(check_errs[i])
-  }
-  result
-}
-
-///|
-/// Compiles and runs a system that implements Parseable, Checkable,
-/// and Executable.
-///
-/// Returns `Ok(output)` if there are no diagnostics, or
-/// `Err(diagnostics)` if there are parse or check errors.
-///
-/// # Parameters
-///
-/// - `db`: Any type implementing `Parseable`, `Checkable`, and `Executable`
-///
-/// # Returns
-///
-/// `Ok(output)` on success, `Err(errors)` if diagnostics exist
-pub fn[D : Parseable + Checkable + Executable] compile_and_run(
-  db : D,
-) -> Result[Array[String], Array[String]] {
-  let diags = all_diagnostics(db)
-  if diags.length() > 0 {
-    Err(diags)
-  } else {
-    Ok(db.run())
-  }
 }

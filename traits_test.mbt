@@ -185,8 +185,35 @@ impl Executable for CalcPipeline with run(self) {
 }
 
 ///|
+fn all_diagnostics[D : Parseable + Checkable](db : D) -> Array[String] {
+  let parse_errs = db.parse_errors()
+  let check_errs = db.check_errors()
+  let result : Array[String] = []
+  for i = 0; i < parse_errs.length(); i = i + 1 {
+    result.push(parse_errs[i])
+  }
+  for i = 0; i < check_errs.length(); i = i + 1 {
+    result.push(check_errs[i])
+  }
+  result
+}
+
+///|
+fn compile_and_run[D : Parseable + Checkable + Executable](
+  db : D,
+) -> Result[Array[String], Array[String]] {
+  let diags = all_diagnostics(db)
+  if diags.length() > 0 {
+    Err(diags)
+  } else {
+    Ok(db.run())
+  }
+}
+
+///|
 test "trait: pipeline sourceable" {
   let db = CalcPipeline::new()
+  let _ = db.runtime()
   db.set_source_text("hello")
   inspect(db.source_text(), content="hello")
 }
