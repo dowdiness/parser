@@ -1,4 +1,13 @@
 ///|
+/// Global counter for assigning unique IDs to Runtime instances.
+///
+/// Each Runtime gets a unique ID to prevent CellIds from different
+/// runtimes being incorrectly queried against each other.
+///
+/// Note: This is a reference cell to enable mutable global state.
+let next_runtime_id : Ref[Int] = { val: 0 }
+
+///|
 /// Central coordinator for the incremental computation framework.
 ///
 /// The Runtime manages all bookkeeping for dependency tracking, revision
@@ -15,6 +24,7 @@
 /// let doubled = Memo::new(rt, fn() { x.get() * 2 })
 /// ```
 pub(all) struct Runtime {
+  priv runtime_id : Int
   priv mut current_revision : Revision
   priv cells : Array[CellMeta?]
   priv mut next_cell_id : Int
@@ -36,7 +46,10 @@ pub(all) struct Runtime {
 ///
 /// A new runtime ready to manage signals and memos
 pub fn Runtime::new() -> Runtime {
+  let id = next_runtime_id.val
+  next_runtime_id.val = next_runtime_id.val + 1
   {
+    runtime_id: id,
     current_revision: Revision::initial(),
     cells: [],
     next_cell_id: 0,
@@ -103,7 +116,7 @@ fn Runtime::register_cell(self : Runtime, meta : CellMeta) -> Unit {
 fn Runtime::alloc_cell_id(self : Runtime) -> CellId {
   let id = self.next_cell_id
   self.next_cell_id = id + 1
-  { id, }
+  { runtime_id: self.runtime_id, id }
 }
 
 ///|
@@ -209,6 +222,11 @@ fn Runtime::fire_on_change(self : Runtime) -> Unit {
 /// - For memos, dependencies are populated after the first computation
 /// - The method performs bounds checking and returns None for invalid IDs
 pub fn Runtime::cell_info(self : Runtime, id : CellId) -> CellInfo? {
+  // Validate runtime ownership - reject CellIds from other runtimes
+  if id.runtime_id != self.runtime_id {
+    return None
+  }
+
   // Check bounds (both negative and out of range)
   if id.id < 0 || id.id >= self.cells.length() {
     return None

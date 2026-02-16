@@ -36,7 +36,7 @@ test "runtime: cell_info() returns metadata for memo" {
 ///|
 test "runtime: cell_info() returns None for out-of-bounds CellId" {
   let rt = Runtime::new()
-  let invalid_id : CellId = { id: 999 }
+  let invalid_id : CellId = { runtime_id: 0, id: 999 }
 
   match rt.cell_info(invalid_id) {
     Some(_) => abort("Expected None for invalid ID")
@@ -51,7 +51,7 @@ test "runtime: cell_info() returns None for unused slot" {
   let _sig = Signal::new(rt, 1)
 
   // Try to access a slot far beyond what's been allocated
-  let beyond_id : CellId = { id: 1000 }
+  let beyond_id : CellId = { runtime_id: 0, id: 1000 }
 
   match rt.cell_info(beyond_id) {
     Some(_) => abort("Expected None for unused slot")
@@ -66,10 +66,45 @@ test "runtime: cell_info() returns None for negative CellId" {
   let _sig = Signal::new(rt, 42)
 
   // Try to access with negative CellId
-  let negative_id : CellId = { id: -1 }
+  let negative_id : CellId = { runtime_id: 0, id: -1 }
 
   match rt.cell_info(negative_id) {
     Some(_) => abort("Expected None for negative CellId")
     None => ()
+  }
+}
+
+///|
+test "runtime: cell_info() returns None for CellId from different runtime" {
+  let rt1 = Runtime::new()
+  let rt2 = Runtime::new()
+
+  // Create a signal in rt1
+  let sig1 = Signal::new(rt1, 100)
+
+  // Also create a signal in rt2 (will have same numeric ID but different runtime_id)
+  let sig2 = Signal::new(rt2, 200)
+
+  // Querying rt1's cell ID against rt2 should return None
+  match rt2.cell_info(sig1.id()) {
+    Some(_) => abort("Expected None for CellId from different runtime")
+    None => ()
+  }
+
+  // Querying rt2's cell ID against rt1 should return None
+  match rt1.cell_info(sig2.id()) {
+    Some(_) => abort("Expected None for CellId from different runtime")
+    None => ()
+  }
+
+  // Querying each runtime with its own cell ID should work
+  match rt1.cell_info(sig1.id()) {
+    Some(info) => inspect(info.id == sig1.id(), content="true")
+    None => abort("Expected Some for CellId from same runtime")
+  }
+
+  match rt2.cell_info(sig2.id()) {
+    Some(info) => inspect(info.id == sig2.id(), content="true")
+    None => abort("Expected Some for CellId from same runtime")
   }
 }
