@@ -92,9 +92,10 @@ pub fn[T : Eq] Memo::new(rt : Runtime, compute : () -> T) -> Memo[T] {
 pub fn[T : Eq] Memo::get(self : Memo[T]) -> T {
   match self.get_result() {
     Ok(value) => value
-    Err(CycleDetected(id)) =>
+    Err(CycleDetected(cell, path)) =>
       abort(
-        "Cycle detected: cell " + id.to_string() + " is already being computed",
+        "Cycle detected at cell " + cell.to_string() +
+        ", path length: " + path.length().to_string(),
       )
   }
 }
@@ -115,7 +116,10 @@ pub fn[T : Eq] Memo::get(self : Memo[T]) -> T {
 /// ```moonbit nocheck
 /// match memo.get_result() {
 ///   Ok(value) => println("Got: " + value.to_string())
-///   Err(CycleDetected(id)) => println("Cycle at cell " + id.to_string())
+///   Err(err) => {
+///     println("Cycle at " + err.cell().to_string())
+///     println("Path: " + err.format_path(rt))
+///   }
 /// }
 /// ```
 pub fn[T : Eq] Memo::get_result(self : Memo[T]) -> Result[T, CycleError] {
@@ -167,11 +171,19 @@ pub fn[T : Eq] Memo::get_result(self : Memo[T]) -> Result[T, CycleError] {
 fn[T : Eq] Memo::force_recompute(self : Memo[T]) -> Result[Unit, CycleError] {
   let cell = self.rt.get_cell(self.cell_id)
   if cell.in_progress {
-    return Err(CycleDetected(cell.id.id))
+    // Build the full cycle path from the tracking stack
+    let path : Array[CellId] = []
+    // Collect cell IDs from all frames in the tracking stack
+    for i = 0; i < self.rt.tracking_stack.length(); i = i + 1 {
+      path.push(self.rt.tracking_stack[i].cell_id)
+    }
+    // Append current cell to show the cycle closes
+    path.push(cell.id)
+    return Err(CycleDetected(cell.id, path))
   }
   cell.in_progress = true
   // Push tracking frame to record dependencies
-  self.rt.push_tracking()
+  self.rt.push_tracking(self.cell_id)
   let new_value = (self.compute)()
   let new_deps = self.rt.pop_tracking()
   cell.dependencies = new_deps

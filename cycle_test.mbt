@@ -149,10 +149,9 @@ test "Signal::get_result always returns Ok" {
 }
 
 ///|
-test "CycleError::cell_id returns correct cell ID" {
-  // To test cell_id(), we need to observe the error, which means
-  // not handling it in compute. We use a different pattern where
-  // we verify the cell_id matches expectations based on the sentinel.
+test "CycleError::cell_id returns correct cell ID (backward compatibility)" {
+  // This test verifies backward compatibility - we can still access the cell ID
+  // via the new cell() method which returns a CellId
   let rt = Runtime::new()
   let memo_ref : Ref[Memo[Int]?] = { val: None }
   let captured_id : Ref[Int] = { val: -1 }
@@ -162,7 +161,7 @@ test "CycleError::cell_id returns correct cell ID" {
         match m.get_result() {
           Ok(v) => v + 1
           Err(err) => {
-            captured_id.val = err.cell_id()
+            captured_id.val = err.cell().id
             -999
           }
         }
@@ -173,6 +172,116 @@ test "CycleError::cell_id returns correct cell ID" {
   let _ = memo.get_result()
   // The captured cell_id should be 0 (first memo created)
   inspect(captured_id.val, content="0")
+}
+
+// =============================================================================
+// Enhanced Cycle Error Diagnostics Tests (Phase 2A)
+// =============================================================================
+
+///|
+test "CycleError::cell() returns the cycle-causing cell ID" {
+  let rt = Runtime::new()
+  let memo_ref : Ref[Memo[Int]?] = { val: None }
+  let captured_cell : Ref[CellId?] = { val: None }
+  let memo = Memo::new(rt, fn() {
+    match memo_ref.val {
+      Some(m) =>
+        match m.get_result() {
+          Ok(v) => v + 1
+          Err(err) => {
+            captured_cell.val = Some(err.cell())
+            -999
+          }
+        }
+      None => 0
+    }
+  })
+  memo_ref.val = Some(memo)
+  let _ = memo.get_result()
+  // Verify captured cell matches memo's ID
+  match captured_cell.val {
+    Some(cell_id) => inspect(cell_id == memo.id(), content="true")
+    None => fail("Expected cycle error to be captured")
+  }
+}
+
+///|
+test "CycleError::path() returns the full dependency cycle" {
+  let rt = Runtime::new()
+  let memo_ref : Ref[Memo[Int]?] = { val: None }
+  let captured_path : Ref[Array[CellId]?] = { val: None }
+  let memo = Memo::new(rt, fn() {
+    match memo_ref.val {
+      Some(m) =>
+        match m.get_result() {
+          Ok(v) => v + 1
+          Err(err) => {
+            captured_path.val = Some(err.path())
+            -999
+          }
+        }
+      None => 0
+    }
+  })
+  memo_ref.val = Some(memo)
+  let _ = memo.get_result()
+  // Note: Path tracking is now implemented (Task 2)
+  // Path is populated with the cycle information
+  match captured_path.val {
+    Some(path) => {
+      // Path is populated by Task 2
+      inspect(path.length() == 2, content="true")
+    }
+    None => fail("Expected cycle path to be captured")
+  }
+}
+
+///|
+test "CycleError::format_path() produces readable output" {
+  let rt = Runtime::new()
+  let memo_ref : Ref[Memo[Int]?] = { val: None }
+  let captured_message : Ref[String] = { val: "" }
+  let memo = Memo::new(rt, fn() {
+    match memo_ref.val {
+      Some(m) =>
+        match m.get_result() {
+          Ok(v) => v + 1
+          Err(err) => {
+            captured_message.val = err.format_path(rt)
+            -999
+          }
+        }
+      None => 0
+    }
+  })
+  memo_ref.val = Some(memo)
+  let _ = memo.get_result()
+  inspect(captured_message.val.contains("Cycle detected:"), content="true")
+  inspect(captured_message.val.contains(" → "), content="true")
+}
+
+///|
+test "CycleError::format_path() returns non-empty string for self-referencing memo" {
+  let rt = Runtime::new()
+  let captured_message : Ref[String] = { val: "" }
+  let memo_ref : Ref[Memo[Int]?] = { val: None }
+  let memo = Memo::new(rt, fn() {
+    match memo_ref.val {
+      Some(m) =>
+        match m.get_result() {
+          Ok(v) => v + 1
+          Err(err) => {
+            captured_message.val = err.format_path(rt)
+            -999
+          }
+        }
+      None => 0
+    }
+  })
+  memo_ref.val = Some(memo)
+  let _ = memo.get_result()
+  inspect(captured_message.val.contains("Cycle detected:"), content="true")
+  inspect(captured_message.val.contains(" → "), content="true")
 }
 
 ///|

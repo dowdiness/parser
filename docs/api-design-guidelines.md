@@ -19,7 +19,7 @@ let config = Signal::new_with_durability(rt, 100, High)
 let memo = Memo::new(rt, fn() {
   match other_memo.get_result() {
     Ok(v) => v + 1
-    Err(CycleDetected(_)) => 0
+    Err(CycleDetected(_, _)) => 0
   }
 })
 ```
@@ -90,7 +90,7 @@ let value = memo.get()  // Aborts on cycle
 // Production: graceful handling
 match memo.get_result() {
   Ok(v) => use(v)
-  Err(CycleDetected(id)) => fallback()
+  Err(CycleDetected(cell, path)) => fallback()
 }
 ```
 
@@ -211,7 +211,7 @@ let config = Signal::builder(rt)
 
 **Migration:** Keep existing `new()` and `new_with_durability()` — builder is additive.
 
-### Phase 2D: Enhanced Error Diagnostics (Medium Priority)
+### Phase 2A: Enhanced Error Diagnostics (High Priority) — Implemented
 
 **Goal:** Better debugging for cycle errors.
 
@@ -228,9 +228,9 @@ pub fn CycleError::format_path(self, rt : Runtime) -> String
 
 ```moonbit
 match memo.get_result() {
-  Err(CycleDetected(id, path)) => {
-    println("Cycle detected: " + format_cycle_path(path))
-    // "A (id=0) → B (id=1) → C (id=2) → A"
+  Err(err) => {
+    println(err.format_path(rt))
+    // "Cycle detected: Cell[0] → Cell[1] → Cell[2] → Cell[0]"
   }
   Ok(v) => v
 }
@@ -325,7 +325,7 @@ trait MyFullCompiler : IncrDb + Sourceable + Parseable + Checkable { ... }
 let memo = Memo::new(rt, fn() {
   match potentially_cyclic.get_result() {
     Ok(v) => v + 1
-    Err(CycleDetected(_)) => 0  // Base case
+    Err(CycleDetected(_, _)) => 0  // Base case
   }
 })
 ```

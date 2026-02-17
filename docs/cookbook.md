@@ -336,7 +336,7 @@ let memo = Memo::new(rt, fn() {
     Some(m) =>
       match m.get_result() {
         Ok(v) => v + 1
-        Err(CycleDetected(_)) => 0  // Base case on cycle
+        Err(CycleDetected(_, _)) => 0  // Base case on cycle
       }
     None => 0
   }
@@ -447,6 +447,41 @@ memo.get() |> ignore
 // Backdating: value didn't change, so changed_at is preserved
 inspect(memo.changed_at() == old_changed, content="true")
 ```
+
+### Debugging Cycles
+
+When you encounter a cycle error, use the path information to understand the dependency chain:
+
+```moonbit
+match computation.get_result() {
+  Err(err) => {
+    let path = err.path()
+    let formatted = err.format_path(rt)
+
+    println("Cycle detected!")
+    println(formatted)
+
+    // Analyze the cycle
+    println("\nDetailed path:")
+    for i = 0; i < path.length(); i = i + 1 {
+      match rt.cell_info(path[i]) {
+        Some(info) => {
+          println("  Step " + i.to_string() + ": Cell " + path[i].to_string())
+          println("    Changed at: " + info.changed_at.value.to_string())
+          println("    Dependencies: " + info.dependencies.length().to_string())
+        }
+        None => println("  Step " + i.to_string() + ": Unknown cell")
+      }
+    }
+  }
+  Ok(result) => use_result(result)
+}
+```
+
+This helps identify:
+- Which cells form the cycle
+- The order of dependencies that created the loop
+- Metadata about each cell in the cycle path
 
 ---
 
