@@ -31,8 +31,8 @@ Concrete, actionable tasks for the `incr` library.
 - [x] Add `Memo::verified_at(self) -> Revision`
 - [x] Add `Runtime::cell_info(self, CellId) -> CellInfo?` struct
 - [x] Define `CellInfo` struct with all cell metadata
-- [ ] Add `Signal::debug(self) -> String` for formatted output
-- [ ] Add `Memo::debug(self) -> String` for formatted output
+- [x] Add `Signal::debug(self) -> String` for formatted output
+- [x] Add `Memo::debug(self) -> String` for formatted output
 
 ### Error Diagnostics (Phase 2A - High Priority)
 
