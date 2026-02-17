@@ -29,6 +29,7 @@ pub(all) struct CellId {
 }
 pub impl Eq for CellId
 pub impl Show for CellId
+pub impl @debug.Debug for CellId
 
 pub(all) struct CellInfo {
   id : CellId
@@ -60,6 +61,7 @@ pub fn[T] Memo::is_up_to_date(Self[T]) -> Bool
 pub fn[T : Eq] Memo::new(Runtime, () -> T) -> Self[T]
 pub fn[T] Memo::verified_at(Self[T]) -> Revision
 pub impl[T] Readable for Memo[T]
+pub impl[T : @debug.Debug] @debug.Debug for Memo[T]
 
 pub(all) struct Revision {
   value : Int
@@ -92,6 +94,7 @@ pub fn[T] Signal::new_with_durability(Runtime, T, Durability) -> Self[T]
 pub fn[T : Eq] Signal::set(Self[T], T) -> Unit
 pub fn[T] Signal::set_unconditional(Self[T], T) -> Unit
 pub impl[T] Readable for Signal[T]
+pub impl[T : @debug.Debug] @debug.Debug for Signal[T]
 
 // Type aliases
 
