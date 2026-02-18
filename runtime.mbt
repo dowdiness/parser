@@ -360,7 +360,28 @@ fn Runtime::commit_batch(self : Runtime) -> Unit {
       meta.changed_at = rev
       meta.verified_at = rev
     }
+    // Collect callbacks before invoking.
+    let callbacks : Array[() -> Unit] = []
+    for i = 0; i < changed_ids.length(); i = i + 1 {
+      let meta = self.get_cell(changed_ids[i])
+      match meta.on_change {
+        Some(f) => callbacks.push(f)
+        None => ()
+      }
+    }
     self.batch_max_durability = Low
+    // Raise batch_depth while invoking callbacks so that any signal.set()
+    // inside a callback takes the batch path instead of set_unconditional,
+    // preventing re-entrant fire_on_change() calls.
+    self.batch_depth = self.batch_depth + 1
+    for i = 0; i < callbacks.length(); i = i + 1 {
+      callbacks[i]()
+    }
+    self.batch_depth = self.batch_depth - 1
+    // Commit any signals set during callbacks, then fire global once.
+    if self.batch_pending_signals.length() > 0 {
+      self.commit_batch()
+    }
     self.fire_on_change()
     return
   }

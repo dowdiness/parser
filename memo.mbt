@@ -216,7 +216,16 @@ fn[T : Eq] Memo::recompute_inner(self : Memo[T]) -> Result[Bool, CycleError] {
   let cell = self.rt.get_cell(self.cell_id)
   let old_changed_at = cell.changed_at
   match self.force_recompute() {
-    Ok(_) => Ok(cell.changed_at != old_changed_at)
+    Ok(_) => {
+      let changed = cell.changed_at != old_changed_at
+      if changed {
+        match cell.on_change {
+          Some(f) => f()
+          None => ()
+        }
+      }
+      Ok(changed)
+    }
     Err(e) => Err(e)
   }
 }
@@ -311,4 +320,34 @@ pub fn[T] Memo::verified_at(self : Memo[T]) -> Revision {
     Some(m) => m.verified_at
     None => Revision::initial()
   }
+}
+
+///|
+/// Registers a callback that fires whenever this memo's value changes.
+///
+/// The callback fires lazily — only during `get()` when recomputation
+/// produces a new value that differs from the previous value. It does not
+/// fire on the first computation (which establishes the initial value),
+/// and does not fire if the memo backdates (recomputes to the same value).
+/// Only one callback can be registered at a time; calling this again
+/// replaces the previous callback.
+///
+/// # Parameters
+///
+/// - `f`: Called with the new value whenever this memo's value changes
+pub fn[T] Memo::on_change(self : Memo[T], f : (T) -> Unit) -> Unit {
+  let cell = self.rt.get_cell(self.cell_id)
+  cell.on_change = Some(fn() {
+    match self.value {
+      Some(v) => f(v)
+      None => ()
+    }
+  })
+}
+
+///|
+/// Removes the `on_change` callback for this memo.
+pub fn[T] Memo::clear_on_change(self : Memo[T]) -> Unit {
+  let cell = self.rt.get_cell(self.cell_id)
+  cell.on_change = None
 }

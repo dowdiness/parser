@@ -43,13 +43,13 @@ Concrete, actionable tasks for the `incr` library.
 
 ### Per-Cell Callbacks (Phase 2B - High Priority)
 
-- [ ] Add `on_change : (() -> Unit)?` field to `CellMeta` (or type-erased callback)
-- [ ] Add `Signal::on_change(self, f : (T) -> Unit) -> Unit`
-- [ ] Add `Memo::on_change(self, f : (T) -> Unit) -> Unit`
-- [ ] Add `Signal::clear_on_change(self) -> Unit`
-- [ ] Add `Memo::clear_on_change(self) -> Unit`
-- [ ] Fire per-cell callbacks before `Runtime::fire_on_change()`
-- [ ] Test callback execution order (per-cell before global)
+- [x] Add `on_change : (() -> Unit)?` field to `CellMeta` (or type-erased callback)
+- [x] Add `Signal::on_change(self, f : (T) -> Unit) -> Unit`
+- [x] Add `Memo::on_change(self, f : (T) -> Unit) -> Unit`
+- [x] Add `Signal::clear_on_change(self) -> Unit`
+- [x] Add `Memo::clear_on_change(self) -> Unit`
+- [x] Fire per-cell callbacks before `Runtime::fire_on_change()`
+- [x] Test callback execution order (per-cell before global)
 
 ### Builder Pattern (Phase 2C - Medium Priority)
 
