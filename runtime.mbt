@@ -360,14 +360,20 @@ fn Runtime::commit_batch(self : Runtime) -> Unit {
       meta.changed_at = rev
       meta.verified_at = rev
     }
+    // Collect callbacks before invoking to avoid re-entrancy: a callback
+    // calling signal.set() while batch_depth==0 would take the non-batch path.
+    let callbacks : Array[() -> Unit] = []
     for i = 0; i < changed_ids.length(); i = i + 1 {
       let meta = self.get_cell(changed_ids[i])
       match meta.on_change {
-        Some(f) => f()
+        Some(f) => callbacks.push(f)
         None => ()
       }
     }
     self.batch_max_durability = Low
+    for i = 0; i < callbacks.length(); i = i + 1 {
+      callbacks[i]()
+    }
     self.fire_on_change()
     return
   }

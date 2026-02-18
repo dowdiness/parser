@@ -270,6 +270,10 @@ fn[T] Signal::commit_unconditional(self : Signal[T]) -> Bool {
 /// but before `Runtime::fire_on_change()`. Only one callback can be
 /// registered at a time; calling this again replaces the previous callback.
 ///
+/// Note: When using `set_unconditional`, the callback fires even if the
+/// new value equals the current value, since `set_unconditional` bypasses
+/// the equality check.
+///
 /// # Parameters
 ///
 /// - `f`: Called with the new value whenever this signal changes

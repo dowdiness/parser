@@ -40,7 +40,7 @@ test "Memo callback fires on get() when value changed" {
 test "Memo callback does not fire when value backdated" {
   let rt = Runtime::new()
   let s = Signal::new(rt, 2)
-  let m = Memo::new(rt, fn() { s.get() / s.get() })
+  let m = Memo::new(rt, fn() { s.get() * 0 + 1 })
   let _ = m.get()
   let count : Ref[Int] = { val: 0 }
   m.on_change(fn(_v) { count.val = count.val + 1 })

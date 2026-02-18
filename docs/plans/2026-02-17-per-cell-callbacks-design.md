@@ -136,8 +136,9 @@ signals were registered in the batch (`batch_pending_signals` order).
 3. **Memo callback fires on `get()` when value changed** — change upstream signal, call `memo.get()`, verify callback fired
 4. **Memo callback does not fire when value backdated** — signal changes but memo recomputes to same value, verify callback not called
 5. **Per-cell callback fires before global `on_change`** — verify ordering with both registered
-6. **`clear_on_change` removes the callback** — register, clear, change, verify not called
+6. **`clear_on_change` removes Signal callback** — register, set signal, clear, set again, verify callback fired exactly once
 7. **Batch: per-cell callbacks fire once per changed signal at batch end** — two signals with callbacks in batch, verify each fires exactly once
+8. **`clear_on_change` removes Memo callback** — register Memo callback, call `get()` to prime, clear, mutate upstream signal, call `get()` again, verify callback not invoked after clear
 
 ## Files Changed
 
@@ -147,5 +148,5 @@ signals were registered in the batch (`batch_pending_signals` order).
 | `signal.mbt` | Add `Signal::on_change` and `Signal::clear_on_change`; fire in `set_unconditional` |
 | `memo.mbt` | Add `Memo::on_change` and `Memo::clear_on_change`; fire in `recompute_inner` |
 | `runtime.mbt` | Fire per-cell callbacks in `commit_batch` before global `fire_on_change` |
-| `callback_test.mbt` | New file with 7 tests |
+| `callback_test.mbt` | New file with 8 tests |
 | `docs/todo.md` | Mark Phase 2B items as done |
