@@ -2,6 +2,8 @@
 package "dowdiness/parser/green-tree"
 
 // Values
+pub fn build_tree(Array[ParseEvent], RawKind) -> GreenNode
+
 pub fn combine_hash(Int, Int) -> Int
 
 pub fn string_hash(String) -> Int
@@ -9,6 +11,14 @@ pub fn string_hash(String) -> Int
 // Errors
 
 // Types and methods
+pub struct EventBuffer {
+  events : Array[ParseEvent]
+}
+pub fn EventBuffer::mark(Self) -> Int
+pub fn EventBuffer::new() -> Self
+pub fn EventBuffer::push(Self, ParseEvent) -> Unit
+pub fn EventBuffer::start_at(Self, Int, RawKind) -> Unit
+
 pub(all) enum GreenElement {
   Token(GreenToken)
   Node(GreenNode)
@@ -40,12 +50,33 @@ pub fn GreenToken::text_len(Self) -> Int
 pub impl Eq for GreenToken
 pub impl Show for GreenToken
 
+pub(all) enum ParseEvent {
+  StartNode(RawKind)
+  FinishNode
+  Token(RawKind, String)
+  Tombstone
+}
+pub impl Eq for ParseEvent
+pub impl Show for ParseEvent
+
 pub(all) struct RawKind(Int)
 #deprecated
 pub fn RawKind::inner(Self) -> Int
 pub impl Eq for RawKind
 pub impl Hash for RawKind
 pub impl Show for RawKind
+
+pub struct RedNode {
+  green : GreenNode
+  parent : RedNode?
+  offset : Int
+}
+pub fn RedNode::children(Self) -> Array[Self]
+pub fn RedNode::end(Self) -> Int
+pub fn RedNode::from_green(GreenNode) -> Self
+pub fn RedNode::kind(Self) -> RawKind
+pub fn RedNode::new(GreenNode, Self?, Int) -> Self
+pub fn RedNode::start(Self) -> Int
 
 // Type aliases
 
