@@ -1,5 +1,5 @@
 ///|
-let max_errors : Int = 50
+const MAX_ERRORS : Int = 50
 
 ///|
 /// Convert SyntaxKind to RawKind for green-tree events.
@@ -28,6 +28,7 @@ priv struct GreenParser {
   mut error_count : Int
   cursor : ReuseCursor? // Optional reuse cursor for incremental parsing
   mut reuse_count : Int // Count of reused nodes (for statistics)
+  mut open_nodes : Int // Number of currently open StartNode events
 }
 
 ///|
@@ -50,6 +51,7 @@ pub fn parse_green_recover(
   let tokens = @lexer.tokenize(source)
   let parser = GreenParser::new(tokens, source)
   parser.parse_source_file()
+  parser.assert_event_balance()
   let tree = @green_tree.build_tree(
     parser.events.events,
     raw(@syntax.SourceFile),
@@ -67,6 +69,7 @@ pub fn parse_green_with_cursor(
 ) -> (@green_tree.GreenNode, Array[ParseDiagnostic], Int) {
   let parser = GreenParser::new_with_cursor(tokens, source, cursor)
   parser.parse_source_file()
+  parser.assert_event_balance()
   let tree = @green_tree.build_tree(
     parser.events.events,
     raw(@syntax.SourceFile),
@@ -87,6 +90,7 @@ pub fn parse_green_recover_with_tokens(
     None => GreenParser::new(tokens, source)
   }
   parser.parse_source_file()
+  parser.assert_event_balance()
   let tree = @green_tree.build_tree(
     parser.events.events,
     raw(@syntax.SourceFile),
@@ -109,6 +113,7 @@ fn GreenParser::new(
     error_count: 0,
     cursor: None,
     reuse_count: 0,
+    open_nodes: 0,
   }
 }
 
@@ -128,6 +133,7 @@ fn GreenParser::new_with_cursor(
     error_count: 0,
     cursor: Some(cursor),
     reuse_count: 0,
+    open_nodes: 0,
   }
 }
 
@@ -136,12 +142,48 @@ fn GreenParser::start_node(
   self : GreenParser,
   kind : @syntax.SyntaxKind,
 ) -> Unit {
+  // Producer-side invariant tracking for StartNode/FinishNode balance.
+  self.open_nodes = self.open_nodes + 1
   self.events.push(@green_tree.StartNode(raw(kind)))
 }
 
 ///|
+fn GreenParser::mark_node(self : GreenParser) -> Int {
+  // mark() reserves a Tombstone that may later be claimed by start_marked_node.
+  self.events.mark()
+}
+
+///|
+fn GreenParser::start_marked_node(
+  self : GreenParser,
+  mark : Int,
+  kind : @syntax.SyntaxKind,
+) -> Unit {
+  // Marked starts must also participate in open_nodes accounting.
+  self.events.start_at(mark, raw(kind))
+  self.open_nodes = self.open_nodes + 1
+}
+
+///|
 fn GreenParser::finish_node(self : GreenParser) -> Unit {
+  if self.open_nodes <= 0 {
+    abort("GreenParser::finish_node: FinishNode without matching StartNode")
+  }
+  self.open_nodes = self.open_nodes - 1
   self.events.push(@green_tree.FinishNode)
+}
+
+///|
+fn GreenParser::assert_event_balance(self : GreenParser) -> Unit {
+  // SourceFile is an implicit root passed to @green_tree.build_tree(root_kind).
+  // It is not emitted as StartNode/FinishNode events, so a balanced stream
+  // must end with open_nodes == 0.
+  if self.open_nodes != 0 {
+    abort(
+      "GreenParser: unbalanced parse events, open_nodes=" +
+      self.open_nodes.to_string(),
+    )
+  }
 }
 
 ///|
@@ -215,6 +257,9 @@ fn GreenParser::emit_reused_node_events(
   self : GreenParser,
   node : @green_tree.GreenNode,
 ) -> Unit {
+  // Re-emitting a reused subtree is logically equivalent to emitting a fresh
+  // balanced StartNode ... FinishNode region.
+  self.open_nodes = self.open_nodes + 1
   self.events.push(@green_tree.StartNode(node.kind))
   for child in node.children {
     match child {
@@ -223,6 +268,7 @@ fn GreenParser::emit_reused_node_events(
       @green_tree.GreenElement::Node(n) => self.emit_reused_node_events(n)
     }
   }
+  self.open_nodes = self.open_nodes - 1
   self.events.push(@green_tree.FinishNode)
 }
 
@@ -399,12 +445,12 @@ fn GreenParser::parse_expression(self : GreenParser) -> Unit {
 
 ///|
 fn GreenParser::parse_binary_op(self : GreenParser) -> Unit {
-  let mark = self.events.mark()
+  let mark = self.mark_node()
   self.parse_application()
   match self.peek() {
     @token.Plus | @token.Minus => {
-      self.events.start_at(mark, raw(@syntax.BinaryExpr))
-      while self.error_count < max_errors {
+      self.start_marked_node(mark, @syntax.BinaryExpr)
+      while self.error_count < MAX_ERRORS {
         match self.peek() {
           @token.Plus => {
             self.emit_token(@syntax.PlusToken)
@@ -425,15 +471,15 @@ fn GreenParser::parse_binary_op(self : GreenParser) -> Unit {
 
 ///|
 fn GreenParser::parse_application(self : GreenParser) -> Unit {
-  let mark = self.events.mark()
+  let mark = self.mark_node()
   self.parse_atom()
   match self.peek() {
     @token.LeftParen
     | @token.Identifier(_)
     | @token.Integer(_)
     | @token.Lambda => {
-      self.events.start_at(mark, raw(@syntax.AppExpr))
-      while self.error_count < max_errors {
+      self.start_marked_node(mark, @syntax.AppExpr)
+      while self.error_count < MAX_ERRORS {
         match self.peek() {
           @token.LeftParen
           | @token.Identifier(_)
@@ -450,7 +496,7 @@ fn GreenParser::parse_application(self : GreenParser) -> Unit {
 
 ///|
 fn GreenParser::parse_atom(self : GreenParser) -> Unit {
-  if self.error_count >= max_errors {
+  if self.error_count >= MAX_ERRORS {
     return
   }
 

@@ -23,6 +23,8 @@ pub fn EventBuffer::push(self : EventBuffer, event : ParseEvent) -> Unit {
 
 ///|
 /// Reserve a slot and return its index. Used for retroactive StartNode placement.
+/// The slot must either be claimed exactly once via start_at() or remain as
+/// Tombstone (which build_tree ignores).
 pub fn EventBuffer::mark(self : EventBuffer) -> Int {
   let index = self.events.length()
   self.events.push(Tombstone)
@@ -31,18 +33,41 @@ pub fn EventBuffer::mark(self : EventBuffer) -> Int {
 
 ///|
 /// Retroactively fill a Tombstone slot with StartNode(kind).
+/// This function enforces the mark/start_at contract:
+/// - mark must be in bounds
+/// - mark must still point to Tombstone
 pub fn EventBuffer::start_at(
   self : EventBuffer,
   mark : Int,
   kind : RawKind,
 ) -> Unit {
-  self.events[mark] = StartNode(kind)
+  if mark < 0 || mark >= self.events.length() {
+    abort(
+      "EventBuffer::start_at: mark out of bounds, mark=" +
+      mark.to_string() +
+      ", len=" +
+      self.events.length().to_string(),
+    )
+  }
+  match self.events[mark] {
+    Tombstone => self.events[mark] = StartNode(kind)
+    _ =>
+      abort(
+        "EventBuffer::start_at: mark does not point to Tombstone, mark=" +
+        mark.to_string(),
+      )
+  }
 }
 
 ///|
 /// Build a green tree from a flat event stream.
 /// root_kind is the kind of the implicit root node (e.g., SourceFile).
 pub fn build_tree(events : Array[ParseEvent], root_kind : RawKind) -> GreenNode {
+  // stack and kinds move in lockstep:
+  // - StartNode pushes one frame + one kind
+  // - FinishNode pops one frame + one kind
+  //
+  // stack[0] / kinds[0] represent the implicit root passed in root_kind.
   let stack : Array[Array[GreenElement]] = [[]]
   let kinds : Array[RawKind] = [root_kind]
   for event in events {
@@ -74,12 +99,17 @@ pub fn build_tree(events : Array[ParseEvent], root_kind : RawKind) -> GreenNode 
           None => abort("build_tree: stack empty when adding token")
         }
       }
+      // Unclaimed marks are expected and intentionally ignored.
       Tombstone => ()
     }
   }
-  let children = match stack.pop() {
-    Some(c) => c
-    None => abort("build_tree: stack empty at end — mismatched events")
+  // If stack is not back to the implicit root frame, we are missing one or
+  // more FinishNode events.
+  if stack.length() != 1 {
+    abort(
+      "build_tree: unbalanced StartNode — missing FinishNode(s), stack=" +
+      stack.length().to_string(),
+    )
   }
-  GreenNode::new(root_kind, children)
+  GreenNode::new(root_kind, stack[0])
 }

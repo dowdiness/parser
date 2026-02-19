@@ -63,6 +63,27 @@ Green tree nodes are immutable. Reused subtrees are literally the same nodes,
 not copies. This provides a strong correctness foundation for reuse and for
 structural comparisons in tests.
 
+### 6) Event-Stream Balance Guard Rails
+
+Green tree construction depends on a balanced parse-event stream:
+
+- Every emitted StartNode must have a matching FinishNode.
+- `mark()` / `start_at()` must only claim Tombstone slots exactly once.
+- The SourceFile root is implicit and supplied as `root_kind` to
+  `build_tree`, not emitted as StartNode/FinishNode events.
+
+To make this robust and maintainable, checks exist at two layers:
+
+- Producer-side (`GreenParser`):
+  `open_nodes` tracks StartNode/FinishNode balance during event emission and
+  `assert_event_balance()` verifies the stream before calling `build_tree`.
+- Consumer-side (`EventBuffer` / `build_tree`):
+  `start_at()` validates mark bounds + Tombstone ownership, and `build_tree`
+  aborts on unbalanced FinishNode or missing FinishNode at end-of-stream.
+
+This two-layer approach catches regressions both where events are emitted and
+where they are consumed.
+
 ## Continuous Verification
 
 ### Differential Oracle
@@ -85,6 +106,8 @@ Any bug found becomes a permanent regression test. The test captures:
 - Source before the edit
 - Edit specification
 - Expected tree after edit
+- Event-stream invariant tests:
+  `src/green-tree/event_wbtest.mbt` and `src/parser/green_parser_wbtest.mbt`
 
 ## Current Edge-Case Findings
 

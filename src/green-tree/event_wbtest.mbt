@@ -40,3 +40,26 @@ test "Tombstone events are ignored by build_tree" {
   let root = build_tree(events, RawKind(22))
   inspect(root.children.length(), content="1")
 }
+
+///|
+test "panic EventBuffer::start_at rejects out-of-bounds mark" {
+  let buf = EventBuffer::new()
+  buf.start_at(0, RawKind(20))
+}
+
+///|
+test "panic EventBuffer::start_at rejects non-Tombstone mark" {
+  let buf = EventBuffer::new()
+  buf.push(ParseEvent::Token(RawKind(9), "x"))
+  buf.start_at(0, RawKind(20))
+}
+
+///|
+test "panic build_tree: missing FinishNode aborts" {
+  ignore(
+    build_tree(
+      [ParseEvent::StartNode(RawKind(19)), ParseEvent::Token(RawKind(10), "5")],
+      RawKind(22),
+    ),
+  )
+}
