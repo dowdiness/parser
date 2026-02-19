@@ -8,7 +8,7 @@ pub(all) enum ParseEvent {
 
 ///|
 pub struct EventBuffer {
-  pub events : Array[ParseEvent]
+  events : Array[ParseEvent]
 }
 
 ///|
