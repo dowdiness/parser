@@ -7,68 +7,68 @@
 ///|
 test "green tree: simple integer" {
   let green = parse_green("42")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   inspect(green.children.length() > 0, content="true")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="IntLiteral")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="IntLiteral")
 }
 
 ///|
 test "green tree: simple variable" {
   let green = parse_green("x")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="VarRef")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="VarRef")
 }
 
 ///|
 test "green tree: lambda expression" {
   let green = parse_green("λx.x")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="LambdaExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="LambdaExpr")
 }
 
 ///|
 test "green tree: application" {
   let green = parse_green("f x")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="AppExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="AppExpr")
 }
 
 ///|
 test "green tree: binary operation" {
   let green = parse_green("1 + 2")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="BinaryExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="BinaryExpr")
 }
 
 ///|
 test "green tree: if-then-else" {
   let green = parse_green("if x then 1 else 2")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="IfExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="IfExpr")
 }
 
 // ============================================================================
@@ -78,13 +78,13 @@ test "green tree: if-then-else" {
 ///|
 test "green tree: ParenExpr is present" {
   let green = parse_green("(x)")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
   // (x) should have ParenExpr as the outer node
-  inspect(child.kind, content="ParenExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="ParenExpr")
 }
 
 ///|
@@ -92,16 +92,16 @@ test "green tree: x vs (x) have different structure" {
   let green_bare = parse_green("x")
   let green_paren = parse_green("(x)")
   let bare_child = match green_bare.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
   let paren_child = match green_paren.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
   // bare x is VarRef, (x) is ParenExpr
-  inspect(bare_child.kind, content="VarRef")
-  inspect(paren_child.kind, content="ParenExpr")
+  inspect(@syntax.SyntaxKind::from_raw(bare_child.kind), content="VarRef")
+  inspect(@syntax.SyntaxKind::from_raw(paren_child.kind), content="ParenExpr")
   // They must be different
   inspect(bare_child.kind != paren_child.kind, content="true")
 }
@@ -110,20 +110,20 @@ test "green tree: x vs (x) have different structure" {
 test "green tree: nested parentheses ((x))" {
   let green = parse_green("((x))")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="ParenExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="ParenExpr")
   // The inner expression should also be a ParenExpr
   let mut inner_paren_found = false
   for elem in child.children {
     match elem {
-      @syntax.GreenElement::Node(n) =>
-        match n.kind {
+      @green_tree.GreenElement::Node(n) =>
+        match @syntax.SyntaxKind::from_raw(n.kind) {
           @syntax.ParenExpr => inner_paren_found = true
           _ => ()
         }
-      @syntax.GreenElement::Token(_) => continue
+      @green_tree.GreenElement::Token(_) => continue
     }
   }
   inspect(inner_paren_found, content="true")
@@ -132,15 +132,15 @@ test "green tree: nested parentheses ((x))" {
 ///|
 test "green tree: deeply nested parentheses (((1)))" {
   let green = parse_green("(((1)))")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   // Count the nesting depth of ParenExpr
-  fn count_paren_depth(node : @syntax.GreenNode) -> Int {
-    match node.kind {
+  fn count_paren_depth(node : @green_tree.GreenNode) -> Int {
+    match @syntax.SyntaxKind::from_raw(node.kind) {
       @syntax.ParenExpr => {
         for elem in node.children {
           match elem {
-            @syntax.GreenElement::Node(n) => return 1 + count_paren_depth(n)
-            @syntax.GreenElement::Token(_) => continue
+            @green_tree.GreenElement::Node(n) => return 1 + count_paren_depth(n)
+            @green_tree.GreenElement::Token(_) => continue
           }
         }
         1
@@ -150,8 +150,8 @@ test "green tree: deeply nested parentheses (((1)))" {
   }
 
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
   inspect(count_paren_depth(child), content="3")
 }
@@ -163,7 +163,7 @@ test "green tree: deeply nested parentheses (((1)))" {
 ///|
 test "green tree: RedNode positions for simple expression" {
   let green = parse_green("x + y")
-  let red = @syntax.RedNode::from_green(green)
+  let red = @green_tree.RedNode::from_green(green)
   inspect(red.start(), content="0")
   inspect(red.end(), content="5")
 }
@@ -171,7 +171,7 @@ test "green tree: RedNode positions for simple expression" {
 ///|
 test "green tree: RedNode positions for integer" {
   let green = parse_green("42")
-  let red = @syntax.RedNode::from_green(green)
+  let red = @green_tree.RedNode::from_green(green)
   inspect(red.start(), content="0")
   inspect(red.end(), content="2")
 }
@@ -179,7 +179,7 @@ test "green tree: RedNode positions for integer" {
 ///|
 test "green tree: RedNode positions for lambda" {
   let green = parse_green("λx.x")
-  let red = @syntax.RedNode::from_green(green)
+  let red = @green_tree.RedNode::from_green(green)
   inspect(red.start(), content="0")
   inspect(red.end(), content="4")
 }
@@ -187,11 +187,14 @@ test "green tree: RedNode positions for lambda" {
 ///|
 test "green tree: RedNode children positions" {
   let green = parse_green("1 + 2")
-  let red = @syntax.RedNode::from_green(green)
+  let red = @green_tree.RedNode::from_green(green)
   let children = red.children()
   inspect(children.length(), content="1")
   let binary_expr = children[0]
-  inspect(binary_expr.kind(), content="BinaryExpr")
+  inspect(
+    @syntax.SyntaxKind::from_raw(binary_expr.kind()),
+    content="BinaryExpr",
+  )
   inspect(binary_expr.start(), content="0")
   inspect(binary_expr.end(), content="5")
 }
@@ -199,11 +202,11 @@ test "green tree: RedNode children positions" {
 ///|
 test "green tree: RedNode child positions in application" {
   let green = parse_green("f x")
-  let red = @syntax.RedNode::from_green(green)
+  let red = @green_tree.RedNode::from_green(green)
   let children = red.children()
   inspect(children.length(), content="1")
   let app_expr = children[0]
-  inspect(app_expr.kind(), content="AppExpr")
+  inspect(@syntax.SyntaxKind::from_raw(app_expr.kind()), content="AppExpr")
   let app_children = app_expr.children()
   inspect(app_children.length(), content="2")
   inspect(app_children[0].start(), content="0")
@@ -347,16 +350,16 @@ test "green tree: backward compatibility - complex expression" {
 ///|
 test "green tree: identical integer tokens have same text" {
   let green = parse_green("1 + 1")
-  fn collect_int_tokens(node : @syntax.GreenNode) -> Array[String] {
+  fn collect_int_tokens(node : @green_tree.GreenNode) -> Array[String] {
     let tokens : Array[String] = []
     for elem in node.children {
       match elem {
-        @syntax.GreenElement::Token(t) =>
-          match t.kind {
-            @syntax.IntToken => tokens.push(t.text)
-            _ => ()
+        @green_tree.GreenElement::Token(t) =>
+          if t.kind == @syntax.IntToken.to_raw() {
+            tokens.push(t.text)
           }
-        @syntax.GreenElement::Node(n) => tokens.append(collect_int_tokens(n))
+        @green_tree.GreenElement::Node(n) =>
+          tokens.append(collect_int_tokens(n))
       }
     }
     tokens
@@ -372,16 +375,16 @@ test "green tree: identical integer tokens have same text" {
 ///|
 test "green tree: identical identifier tokens have same text" {
   let green = parse_green("x + x")
-  fn collect_ident_tokens(node : @syntax.GreenNode) -> Array[String] {
+  fn collect_ident_tokens(node : @green_tree.GreenNode) -> Array[String] {
     let tokens : Array[String] = []
     for elem in node.children {
       match elem {
-        @syntax.GreenElement::Token(t) =>
-          match t.kind {
-            @syntax.IdentToken => tokens.push(t.text)
-            _ => ()
+        @green_tree.GreenElement::Token(t) =>
+          if t.kind == @syntax.IdentToken.to_raw() {
+            tokens.push(t.text)
           }
-        @syntax.GreenElement::Node(n) => tokens.append(collect_ident_tokens(n))
+        @green_tree.GreenElement::Node(n) =>
+          tokens.append(collect_ident_tokens(n))
       }
     }
     tokens
@@ -397,15 +400,16 @@ test "green tree: identical identifier tokens have same text" {
 ///|
 test "green tree: token text is preserved correctly" {
   let green = parse_green("abc + 123")
-  fn find_first_ident(node : @syntax.GreenNode) -> String? {
+  fn find_first_ident(node : @green_tree.GreenNode) -> String? {
     for elem in node.children {
       match elem {
-        @syntax.GreenElement::Token(t) =>
-          match t.kind {
-            @syntax.IdentToken => return Some(t.text)
-            _ => continue
+        @green_tree.GreenElement::Token(t) =>
+          if t.kind == @syntax.IdentToken.to_raw() {
+            return Some(t.text)
+          } else {
+            continue
           }
-        @syntax.GreenElement::Node(n) => {
+        @green_tree.GreenElement::Node(n) => {
           let result = find_first_ident(n)
           match result {
             Some(s) => return Some(s)
@@ -417,15 +421,16 @@ test "green tree: token text is preserved correctly" {
     None
   }
 
-  fn find_first_int(node : @syntax.GreenNode) -> String? {
+  fn find_first_int(node : @green_tree.GreenNode) -> String? {
     for elem in node.children {
       match elem {
-        @syntax.GreenElement::Token(t) =>
-          match t.kind {
-            @syntax.IntToken => return Some(t.text)
-            _ => continue
+        @green_tree.GreenElement::Token(t) =>
+          if t.kind == @syntax.IntToken.to_raw() {
+            return Some(t.text)
+          } else {
+            continue
           }
-        @syntax.GreenElement::Node(n) => {
+        @green_tree.GreenElement::Node(n) => {
           let result = find_first_int(n)
           match result {
             Some(s) => return Some(s)
@@ -448,53 +453,53 @@ test "green tree: token text is preserved correctly" {
 ///|
 test "green tree: lambda with application body" {
   let green = parse_green("λf.f x")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="LambdaExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="LambdaExpr")
 }
 
 ///|
 test "green tree: nested if-then-else" {
   let green = parse_green("if x then if y then 1 else 2 else 3")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="IfExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="IfExpr")
 }
 
 ///|
 test "green tree: parenthesized lambda" {
   let green = parse_green("(λx.x)")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="ParenExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="ParenExpr")
 }
 
 ///|
 test "green tree: application with parenthesized argument" {
   let green = parse_green("f (x)")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="AppExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="AppExpr")
 }
 
 ///|
 test "green tree: binary with parenthesized operands" {
   let green = parse_green("(1) + (2)")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="BinaryExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="BinaryExpr")
 }
 
 ///|
@@ -509,7 +514,7 @@ test "green tree: text_len is computed correctly" {
 test "green tree: GreenElement kind accessor" {
   let green = parse_green("42")
   let elem = green.children[0]
-  inspect(elem.kind(), content="IntLiteral")
+  inspect(@syntax.SyntaxKind::from_raw(elem.kind()), content="IntLiteral")
 }
 
 ///|
@@ -535,12 +540,12 @@ test "green tree: structural sharing - identical GreenNodes are equal" {
   let green1 = parse_green("x")
   let green2 = parse_green("x")
   let node1 = match green1.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
   let node2 = match green2.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
   inspect(node1 == node2, content="true")
 }
@@ -552,27 +557,36 @@ test "green tree: structural sharing - identical GreenNodes are equal" {
 ///|
 test "green tree: has_green_errors on valid input" {
   let green = parse_green("42")
-  inspect(@syntax.has_green_errors(green), content="false")
+  inspect(
+    green.has_errors(@syntax.ErrorNode.to_raw(), @syntax.ErrorToken.to_raw()),
+    content="false",
+  )
 }
 
 ///|
 test "green tree: has_green_errors on valid lambda" {
   let green = parse_green("λx.x")
-  inspect(@syntax.has_green_errors(green), content="false")
+  inspect(
+    green.has_errors(@syntax.ErrorNode.to_raw(), @syntax.ErrorToken.to_raw()),
+    content="false",
+  )
 }
 
 ///|
 test "green tree: error recovery - missing param produces ErrorToken" {
   let (green, diagnostics) = parse_green_recover("λ.x")
-  inspect(@syntax.has_green_errors(green), content="true")
+  inspect(
+    green.has_errors(@syntax.ErrorNode.to_raw(), @syntax.ErrorToken.to_raw()),
+    content="true",
+  )
   inspect(diagnostics.length(), content="1")
   // Should still have SourceFile > LambdaExpr structure
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="LambdaExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="LambdaExpr")
 }
 
 ///|
@@ -584,13 +598,13 @@ test "green tree: error recovery - extra tokens wrapped in ErrorNode" {
   let mut found_error = false
   for elem in green.children {
     match elem {
-      @syntax.GreenElement::Node(n) =>
-        match n.kind {
+      @green_tree.GreenElement::Node(n) =>
+        match @syntax.SyntaxKind::from_raw(n.kind) {
           @syntax.IntLiteral => found_int = true
           @syntax.ErrorNode => found_error = true
           _ => ()
         }
-      @syntax.GreenElement::Token(_) => ()
+      @green_tree.GreenElement::Token(_) => ()
     }
   }
   inspect(found_int, content="true")
@@ -601,12 +615,12 @@ test "green tree: error recovery - extra tokens wrapped in ErrorNode" {
 test "green tree: error recovery - missing else in if" {
   let (green, diagnostics) = parse_green_recover("if x then y")
   inspect(diagnostics.length() > 0, content="true")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @syntax.GreenElement::Node(n) => n
-    @syntax.GreenElement::Token(_) => abort("Expected node, got token")
+    @green_tree.GreenElement::Node(n) => n
+    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
   }
-  inspect(child.kind, content="IfExpr")
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="IfExpr")
 }
 
 ///|
@@ -621,7 +635,7 @@ test "green tree: error recovery - multiple errors" {
   let (green, diagnostics) = parse_green_recover("λ.x + )")
   // Should have at least 2 errors: missing param, extra ")"
   inspect(diagnostics.length() >= 2, content="true")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
 }
 
 ///|

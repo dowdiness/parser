@@ -1,14 +1,14 @@
 ///|
 /// Collect token text from all children of an ErrorNode.
-fn extract_error_text(green : @syntax.GreenNode) -> String {
+fn extract_error_text(green : @green_tree.GreenNode) -> String {
   let parts : Array[String] = []
   for elem in green.children {
     match elem {
-      @syntax.GreenElement::Token(t) =>
-        if t.kind != @syntax.WhitespaceToken && t.text != "" {
+      @green_tree.GreenElement::Token(t) =>
+        if t.kind != @syntax.WhitespaceToken.to_raw() && t.text != "" {
           parts.push(t.text)
         }
-      @syntax.GreenElement::Node(_) => ()
+      @green_tree.GreenElement::Node(_) => ()
     }
   }
   parts.join("")
@@ -16,12 +16,12 @@ fn extract_error_text(green : @syntax.GreenNode) -> String {
 
 ///|
 fn extract_token_text(
-  green : @syntax.GreenNode,
-  token_kind : @syntax.SyntaxKind,
+  green : @green_tree.GreenNode,
+  token_kind : @green_tree.RawKind,
 ) -> String? {
   for elem in green.children {
     match elem {
-      @syntax.GreenElement::Token(t) =>
+      @green_tree.GreenElement::Token(t) =>
         if t.kind == token_kind {
           return Some(t.text)
         }
@@ -34,7 +34,7 @@ fn extract_token_text(
 ///|
 /// Compute tight start/end positions for a green node, skipping leading and
 /// trailing whitespace tokens. Returns (start, end) relative to the given offset.
-fn tight_span(green : @syntax.GreenNode, offset : Int) -> (Int, Int) {
+fn tight_span(green : @green_tree.GreenNode, offset : Int) -> (Int, Int) {
   let mut pos = offset
   let mut tight_start = offset
   let mut tight_end = offset + green.text_len
@@ -42,15 +42,15 @@ fn tight_span(green : @syntax.GreenNode, offset : Int) -> (Int, Int) {
   for elem in green.children {
     let len = elem.text_len()
     match elem {
-      @syntax.GreenElement::Token(t) =>
-        if t.kind != @syntax.WhitespaceToken {
+      @green_tree.GreenElement::Token(t) =>
+        if t.kind != @syntax.WhitespaceToken.to_raw() {
           if not(found_start) {
             tight_start = pos
             found_start = true
           }
           tight_end = pos + len
         }
-      @syntax.GreenElement::Node(_) => {
+      @green_tree.GreenElement::Node(_) => {
         if not(found_start) {
           tight_start = pos
           found_start = true
@@ -64,15 +64,15 @@ fn tight_span(green : @syntax.GreenNode, offset : Int) -> (Int, Int) {
 }
 
 ///|
-fn collect_binary_ops(green : @syntax.GreenNode) -> Array[@term.Bop] {
+fn collect_binary_ops(green : @green_tree.GreenNode) -> Array[@term.Bop] {
   let ops : Array[@term.Bop] = []
   for elem in green.children {
     match elem {
-      @syntax.GreenElement::Token(t) =>
-        match t.kind {
-          @syntax.PlusToken => ops.push(@term.Bop::Plus)
-          @syntax.MinusToken => ops.push(@term.Bop::Minus)
-          _ => ()
+      @green_tree.GreenElement::Token(t) =>
+        if t.kind == @syntax.PlusToken.to_raw() {
+          ops.push(@term.Bop::Plus)
+        } else if t.kind == @syntax.MinusToken.to_raw() {
+          ops.push(@term.Bop::Minus)
         }
       _ => ()
     }
@@ -156,7 +156,7 @@ fn convert_source_file_children(
 ///|
 /// Convert a RedNode to a TermNode. Uses RedNode's offset-based position
 /// computation instead of manual offset tracking.
-fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
+fn convert_red(red : @green_tree.RedNode, counter : Ref[Int]) -> @term.TermNode {
   fn next_id() -> Int {
     let id = counter.val
     counter.val = id + 1
@@ -165,9 +165,9 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
 
   let g = red.green
   let off = red.start()
-  match g.kind {
+  match @syntax.SyntaxKind::from_raw(g.kind) {
     @syntax.IntLiteral => {
-      let text = extract_token_text(g, @syntax.IntToken).unwrap_or("")
+      let text = extract_token_text(g, @syntax.IntToken.to_raw()).unwrap_or("")
       let value = @strconv.parse_int(text) catch { _ => 0 }
       let (tight_start, tight_end) = tight_span(g, off)
       @term.TermNode::new(
@@ -179,7 +179,9 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
       )
     }
     @syntax.VarRef => {
-      let name = extract_token_text(g, @syntax.IdentToken).unwrap_or("")
+      let name = extract_token_text(g, @syntax.IdentToken.to_raw()).unwrap_or(
+        "",
+      )
       let (tight_start, tight_end) = tight_span(g, off)
       @term.TermNode::new(
         @term.TermKind::Var(name),
@@ -190,7 +192,9 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
       )
     }
     @syntax.LambdaExpr => {
-      let param = extract_token_text(g, @syntax.IdentToken).unwrap_or("")
+      let param = extract_token_text(g, @syntax.IdentToken.to_raw()).unwrap_or(
+        "",
+      )
       let (tight_start, tight_end) = tight_span(g, off)
       let red_children = red.children()
       for child in red_children {
@@ -336,7 +340,7 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
 ///|
 /// Convert a RedNode (position-aware CST facade) to a TermNode.
 pub fn red_to_term_node(
-  red : @syntax.RedNode,
+  red : @green_tree.RedNode,
   node_id_counter : Ref[Int],
 ) -> @term.TermNode {
   convert_red(red, node_id_counter)
@@ -346,16 +350,16 @@ pub fn red_to_term_node(
 /// Convert a GreenNode to a TermNode. Preserved for backward compatibility.
 /// Internally creates a RedNode and delegates to convert_red.
 pub fn green_to_term_node(
-  green : @syntax.GreenNode,
+  green : @green_tree.GreenNode,
   offset : Int,
   node_id_counter : Ref[Int],
 ) -> @term.TermNode {
-  let red = @syntax.RedNode::new(green, None, offset)
+  let red = @green_tree.RedNode::new(green, None, offset)
   convert_red(red, node_id_counter)
 }
 
 ///|
-pub fn green_to_term(green : @syntax.GreenNode) -> @term.Term {
+pub fn green_to_term(green : @green_tree.GreenNode) -> @term.Term {
   let node = green_to_term_node(green, 0, Ref::new(0))
   @term.node_to_term(node)
 }

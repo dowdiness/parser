@@ -12,7 +12,7 @@
 pub struct IncrementalParser {
   mut source : String // Current source text
   mut tree : @term.TermNode? // Current parse tree
-  mut green_tree : @syntax.GreenNode? // Current green tree (for subtree reuse)
+  mut green_tree : @green_tree.GreenNode? // Current green tree (for subtree reuse)
   mut token_buffer : @lexer.TokenBuffer? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
 }
@@ -153,7 +153,7 @@ fn IncrementalParser::incremental_reparse(
   // Create cursor from old green tree for subtree reuse
   let cursor : @parse.ReuseCursor? = match self.green_tree {
     Some(old_green) =>
-      Some(@parse.ReuseCursor::new(old_green, damaged_range, tokens))
+      Some(@parse.make_reuse_cursor(old_green, damaged_range, tokens))
     None => None
   }
 

@@ -160,14 +160,14 @@ test "parse_green_recover returns diagnostics" {
   inspect(diagnostics.length(), content="1")
   inspect(diagnostics[0].message, content="Expected parameter after λ")
   // Green tree should be a valid SourceFile
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
 }
 
 ///|
 test "parse_green_recover no errors on valid input" {
   let (green, diagnostics) = parse_green_recover("λx.x")
   inspect(diagnostics.length(), content="0")
-  inspect(green.kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
 }
 
 ///|

@@ -2,6 +2,7 @@
 package "dowdiness/parser/parser"
 
 import {
+  "dowdiness/parser/green-tree",
   "dowdiness/parser/lexer",
   "dowdiness/parser/range",
   "dowdiness/parser/syntax",
@@ -12,23 +13,25 @@ import {
 // Values
 pub fn collect_errors(@term.TermNode) -> Array[String]
 
-pub fn green_to_term(@syntax.GreenNode) -> @term.Term
+pub fn green_to_term(@green-tree.GreenNode) -> @term.Term
 
-pub fn green_to_term_node(@syntax.GreenNode, Int, Ref[Int]) -> @term.TermNode
+pub fn green_to_term_node(@green-tree.GreenNode, Int, Ref[Int]) -> @term.TermNode
 
 pub fn has_errors(@term.TermNode) -> Bool
 
+pub fn make_reuse_cursor(@green-tree.GreenNode, @range.Range, Array[@token.TokenInfo]) -> ReuseCursor
+
 pub fn parse(String) -> @term.Term raise
 
-pub fn parse_green(String) -> @syntax.GreenNode raise
+pub fn parse_green(String) -> @green-tree.GreenNode raise
 
-pub fn parse_green_recover(String) -> (@syntax.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError
+pub fn parse_green_recover(String) -> (@green-tree.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError
 
-pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], ReuseCursor?) -> (@syntax.GreenNode, Array[ParseDiagnostic], Int)
+pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], ReuseCursor?) -> (@green-tree.GreenNode, Array[ParseDiagnostic], Int)
 
 pub fn parse_green_to_term_node(String) -> @term.TermNode raise
 
-pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], ReuseCursor) -> (@syntax.GreenNode, Array[ParseDiagnostic], Int)
+pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], ReuseCursor) -> (@green-tree.GreenNode, Array[ParseDiagnostic], Int)
 
 pub fn parse_tree(String) -> @term.TermNode raise
 
@@ -38,7 +41,7 @@ pub fn parse_with_error_recovery(String) -> (@term.TermNode, Array[String])
 
 pub fn parse_with_error_recovery_tokens(Array[@token.TokenInfo]) -> (@term.TermNode, Array[String])
 
-pub fn red_to_term_node(@syntax.RedNode, Ref[Int]) -> @term.TermNode
+pub fn red_to_term_node(@green-tree.RedNode, Ref[Int]) -> @term.TermNode
 
 // Errors
 pub suberror ParseError {

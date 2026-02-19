@@ -3,6 +3,7 @@ package "dowdiness/parser/incremental"
 
 import {
   "dowdiness/parser/edit",
+  "dowdiness/parser/green-tree",
   "dowdiness/parser/lexer",
   "dowdiness/parser/range",
   "dowdiness/parser/syntax",
@@ -41,7 +42,7 @@ pub fn DamageTracker::stats(Self) -> String
 pub struct IncrementalParser {
   mut source : String
   mut tree : @term.TermNode?
-  mut green_tree : @syntax.GreenNode?
+  mut green_tree : @green-tree.GreenNode?
   mut token_buffer : @lexer.TokenBuffer?
   mut last_reuse_count : Int
 }

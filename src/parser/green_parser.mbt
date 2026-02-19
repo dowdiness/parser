@@ -8,40 +8,56 @@ fn raw(kind : @syntax.SyntaxKind) -> @green_tree.RawKind {
 }
 
 ///|
-/// Convert @green_tree.GreenElement to @syntax.GreenElement.
-/// Used to bridge the internal @green_tree event representation back to the
-/// stable @syntax public API.
-fn gt_elem_to_syntax_inner(
-  elem : @green_tree.GreenElement,
-) -> @syntax.GreenElement {
+/// Bridge: convert @syntax.GreenNode to @green_tree.GreenNode.
+/// Used only in GreenParser::try_reuse to bridge the Task-7 shim.
+fn syntax_node_to_gt(node : @syntax.GreenNode) -> @green_tree.GreenNode {
+  let children = node.children.map(syntax_elem_to_gt)
+  @green_tree.GreenNode::new(raw(node.kind), children)
+}
+
+///|
+fn syntax_elem_to_gt(elem : @syntax.GreenElement) -> @green_tree.GreenElement {
+  match elem {
+    @syntax.GreenElement::Token(t) =>
+      @green_tree.GreenElement::Token(
+        @green_tree.GreenToken::new(raw(t.kind), t.text),
+      )
+    @syntax.GreenElement::Node(n) =>
+      @green_tree.GreenElement::Node(syntax_node_to_gt(n))
+  }
+}
+
+///|
+/// Bridge: convert @green_tree.GreenNode to @syntax.GreenNode.
+/// Temporary shim until Task 7 migrates reuse_cursor.mbt to RawKind.
+fn gt_node_to_syntax(node : @green_tree.GreenNode) -> @syntax.GreenNode {
+  let kind = @syntax.SyntaxKind::from_raw(node.kind)
+  let children = node.children.map(gt_elem_to_syntax)
+  @syntax.GreenNode::new(kind, children)
+}
+
+///|
+fn gt_elem_to_syntax(elem : @green_tree.GreenElement) -> @syntax.GreenElement {
   match elem {
     @green_tree.GreenElement::Token(t) =>
       @syntax.GreenElement::Token(
         @syntax.GreenToken::new(@syntax.SyntaxKind::from_raw(t.kind), t.text),
       )
     @green_tree.GreenElement::Node(n) =>
-      @syntax.GreenElement::Node(gt_node_to_syntax_inner(n))
+      @syntax.GreenElement::Node(gt_node_to_syntax(n))
   }
 }
 
 ///|
-/// Convert @green_tree.GreenNode to @syntax.GreenNode.
-/// Used to bridge the internal @green_tree event representation back to the
-/// stable @syntax public API.
-fn gt_node_to_syntax_inner(node : @green_tree.GreenNode) -> @syntax.GreenNode {
-  let kind = @syntax.SyntaxKind::from_raw(node.kind)
-  let children = node.children.map(gt_elem_to_syntax_inner)
-  @syntax.GreenNode::new(kind, children)
-}
-
-///|
-/// Build a @syntax.GreenNode from the event buffer (internal @green_tree events
-/// are converted back to the stable @syntax public type at the boundary).
-fn build_syntax_tree(
-  events : Array[@green_tree.ParseEvent],
-) -> @syntax.GreenNode {
-  let gt_node = @green_tree.build_tree(events, raw(@syntax.SourceFile))
-  gt_node_to_syntax_inner(gt_node)
+/// Create a ReuseCursor from a @green_tree.GreenNode.
+/// Temporary bridge until Task 7 migrates reuse_cursor.mbt to RawKind.
+pub fn make_reuse_cursor(
+  old_tree : @green_tree.GreenNode,
+  damaged_range : @range.Range,
+  tokens : Array[@token.TokenInfo],
+) -> ReuseCursor {
+  let syntax_tree = gt_node_to_syntax(old_tree)
+  ReuseCursor::new(syntax_tree, damaged_range, tokens)
 }
 
 ///|
@@ -59,7 +75,7 @@ priv struct GreenParser {
 
 ///|
 /// Strict: raises ParseError on first syntax error (backward compat)
-pub fn parse_green(source : String) -> @syntax.GreenNode raise {
+pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
   let (green, errors) = parse_green_recover(source)
   if errors.length() > 0 {
     let diag = errors[0]
@@ -73,11 +89,14 @@ pub fn parse_green(source : String) -> @syntax.GreenNode raise {
 /// Only raises for TokenizationError (unrecoverable).
 pub fn parse_green_recover(
   source : String,
-) -> (@syntax.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError {
+) -> (@green_tree.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError {
   let tokens = @lexer.tokenize(source)
   let parser = GreenParser::new(tokens, source)
   parser.parse_source_file()
-  let tree = build_syntax_tree(parser.events.events)
+  let tree = @green_tree.build_tree(
+    parser.events.events,
+    raw(@syntax.SourceFile),
+  )
   (tree, parser.errors)
 }
 
@@ -88,10 +107,13 @@ pub fn parse_green_with_cursor(
   source : String,
   tokens : Array[@token.TokenInfo],
   cursor : ReuseCursor,
-) -> (@syntax.GreenNode, Array[ParseDiagnostic], Int) {
+) -> (@green_tree.GreenNode, Array[ParseDiagnostic], Int) {
   let parser = GreenParser::new_with_cursor(tokens, source, cursor)
   parser.parse_source_file()
-  let tree = build_syntax_tree(parser.events.events)
+  let tree = @green_tree.build_tree(
+    parser.events.events,
+    raw(@syntax.SourceFile),
+  )
   (tree, parser.errors, parser.reuse_count)
 }
 
@@ -102,13 +124,16 @@ pub fn parse_green_recover_with_tokens(
   source : String,
   tokens : Array[@token.TokenInfo],
   cursor : ReuseCursor?,
-) -> (@syntax.GreenNode, Array[ParseDiagnostic], Int) {
+) -> (@green_tree.GreenNode, Array[ParseDiagnostic], Int) {
   let parser = match cursor {
     Some(c) => GreenParser::new_with_cursor(tokens, source, c)
     None => GreenParser::new(tokens, source)
   }
   parser.parse_source_file()
-  let tree = build_syntax_tree(parser.events.events)
+  let tree = @green_tree.build_tree(
+    parser.events.events,
+    raw(@syntax.SourceFile),
+  )
   (tree, parser.errors, parser.reuse_count)
 }
 
@@ -231,14 +256,14 @@ fn GreenParser::emit_token(
 /// Does NOT update position/last_end - caller must do that.
 fn GreenParser::emit_reused_node_events(
   self : GreenParser,
-  node : @syntax.GreenNode,
+  node : @green_tree.GreenNode,
 ) -> Unit {
-  self.events.push(@green_tree.StartNode(raw(node.kind)))
+  self.events.push(@green_tree.StartNode(node.kind))
   for child in node.children {
     match child {
-      @syntax.GreenElement::Token(t) =>
-        self.events.push(@green_tree.ParseEvent::Token(raw(t.kind), t.text))
-      @syntax.GreenElement::Node(n) => self.emit_reused_node_events(n)
+      @green_tree.GreenElement::Token(t) =>
+        self.events.push(@green_tree.ParseEvent::Token(t.kind, t.text))
+      @green_tree.GreenElement::Node(n) => self.emit_reused_node_events(n)
     }
   }
   self.events.push(@green_tree.FinishNode)
@@ -247,16 +272,17 @@ fn GreenParser::emit_reused_node_events(
 ///|
 /// Count non-whitespace tokens in a green node (recursive).
 /// This matches how the lexer produces tokens (whitespace is skipped).
-fn count_tokens_in_green(node : @syntax.GreenNode) -> Int {
+fn count_tokens_in_green(node : @green_tree.GreenNode) -> Int {
   let mut count = 0
   for child in node.children {
     match child {
-      @syntax.GreenElement::Token(t) =>
+      @green_tree.GreenElement::Token(t) =>
         // Only count non-whitespace tokens to match lexer output
-        if t.kind != @syntax.WhitespaceToken {
+        if t.kind != @syntax.WhitespaceToken.to_raw() {
           count = count + 1
         }
-      @syntax.GreenElement::Node(n) => count = count + count_tokens_in_green(n)
+      @green_tree.GreenElement::Node(n) =>
+        count = count + count_tokens_in_green(n)
     }
   }
   count
@@ -286,15 +312,17 @@ fn GreenParser::try_reuse(
         ) {
         None => false
         Some(node) => {
+          // Convert the @syntax.GreenNode shim result to @green_tree.GreenNode
+          let gt_node = syntax_node_to_gt(node)
           // Emit whitespace before the reused node (gap between last_end and token start)
           self.emit_whitespace_before(info)
           // Set last_end to node start before emitting reused events,
           // so internal whitespace in the reused node is not double-counted
           self.last_end = info.start
           // Emit the reused node events
-          self.emit_reused_node_events(node)
+          self.emit_reused_node_events(gt_node)
           // Update position by non-whitespace token count
-          let token_count = count_tokens_in_green(node)
+          let token_count = count_tokens_in_green(gt_node)
           self.position = self.position + token_count
           // Update last_end past the reused node
           self.last_end = info.start + node.text_len
