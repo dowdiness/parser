@@ -4,6 +4,7 @@ import {
   "dowdiness/parser/term",
   "dowdiness/parser/lexer",
   "dowdiness/parser/syntax",
+  "dowdiness/parser/green-tree" @green_tree,
   "moonbitlang/core/strconv",
 }
 

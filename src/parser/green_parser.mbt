@@ -2,12 +2,55 @@
 let max_errors : Int = 50
 
 ///|
+/// Convert SyntaxKind to RawKind for green-tree events.
+fn raw(kind : @syntax.SyntaxKind) -> @green_tree.RawKind {
+  kind.to_raw()
+}
+
+///|
+/// Convert @green_tree.GreenElement to @syntax.GreenElement.
+/// Used to bridge the internal @green_tree event representation back to the
+/// stable @syntax public API.
+fn gt_elem_to_syntax_inner(
+  elem : @green_tree.GreenElement,
+) -> @syntax.GreenElement {
+  match elem {
+    @green_tree.GreenElement::Token(t) =>
+      @syntax.GreenElement::Token(
+        @syntax.GreenToken::new(@syntax.SyntaxKind::from_raw(t.kind), t.text),
+      )
+    @green_tree.GreenElement::Node(n) =>
+      @syntax.GreenElement::Node(gt_node_to_syntax_inner(n))
+  }
+}
+
+///|
+/// Convert @green_tree.GreenNode to @syntax.GreenNode.
+/// Used to bridge the internal @green_tree event representation back to the
+/// stable @syntax public API.
+fn gt_node_to_syntax_inner(node : @green_tree.GreenNode) -> @syntax.GreenNode {
+  let kind = @syntax.SyntaxKind::from_raw(node.kind)
+  let children = node.children.map(gt_elem_to_syntax_inner)
+  @syntax.GreenNode::new(kind, children)
+}
+
+///|
+/// Build a @syntax.GreenNode from the event buffer (internal @green_tree events
+/// are converted back to the stable @syntax public type at the boundary).
+fn build_syntax_tree(
+  events : Array[@green_tree.ParseEvent],
+) -> @syntax.GreenNode {
+  let gt_node = @green_tree.build_tree(events, raw(@syntax.SourceFile))
+  gt_node_to_syntax_inner(gt_node)
+}
+
+///|
 priv struct GreenParser {
   tokens : Array[@token.TokenInfo]
   source : String
   mut position : Int
   mut last_end : Int // Track last token end to emit whitespace
-  events : @syntax.EventBuffer
+  events : @green_tree.EventBuffer
   errors : Array[ParseDiagnostic]
   mut error_count : Int
   cursor : ReuseCursor? // Optional reuse cursor for incremental parsing
@@ -34,7 +77,7 @@ pub fn parse_green_recover(
   let tokens = @lexer.tokenize(source)
   let parser = GreenParser::new(tokens, source)
   parser.parse_source_file()
-  let tree = @syntax.build_tree(parser.events.events)
+  let tree = build_syntax_tree(parser.events.events)
   (tree, parser.errors)
 }
 
@@ -48,7 +91,7 @@ pub fn parse_green_with_cursor(
 ) -> (@syntax.GreenNode, Array[ParseDiagnostic], Int) {
   let parser = GreenParser::new_with_cursor(tokens, source, cursor)
   parser.parse_source_file()
-  let tree = @syntax.build_tree(parser.events.events)
+  let tree = build_syntax_tree(parser.events.events)
   (tree, parser.errors, parser.reuse_count)
 }
 
@@ -65,7 +108,7 @@ pub fn parse_green_recover_with_tokens(
     None => GreenParser::new(tokens, source)
   }
   parser.parse_source_file()
-  let tree = @syntax.build_tree(parser.events.events)
+  let tree = build_syntax_tree(parser.events.events)
   (tree, parser.errors, parser.reuse_count)
 }
 
@@ -79,7 +122,7 @@ fn GreenParser::new(
     source,
     position: 0,
     last_end: 0,
-    events: @syntax.EventBuffer::new(),
+    events: @green_tree.EventBuffer::new(),
     errors: [],
     error_count: 0,
     cursor: None,
@@ -98,7 +141,7 @@ fn GreenParser::new_with_cursor(
     source,
     position: 0,
     last_end: 0,
-    events: @syntax.EventBuffer::new(),
+    events: @green_tree.EventBuffer::new(),
     errors: [],
     error_count: 0,
     cursor: Some(cursor),
@@ -111,12 +154,12 @@ fn GreenParser::start_node(
   self : GreenParser,
   kind : @syntax.SyntaxKind,
 ) -> Unit {
-  self.events.push(@syntax.StartNode(kind))
+  self.events.push(@green_tree.StartNode(raw(kind)))
 }
 
 ///|
 fn GreenParser::finish_node(self : GreenParser) -> Unit {
-  self.events.push(@syntax.FinishNode)
+  self.events.push(@green_tree.FinishNode)
 }
 
 ///|
@@ -162,7 +205,10 @@ fn GreenParser::emit_whitespace_before(
         _ => ""
       }
     self.events.push(
-      @syntax.ParseEvent::Token(@syntax.WhitespaceToken, ws_text.to_string()),
+      @green_tree.ParseEvent::Token(
+        raw(@syntax.WhitespaceToken),
+        ws_text.to_string(),
+      ),
     )
   }
 }
@@ -175,7 +221,7 @@ fn GreenParser::emit_token(
   let info = self.peek_info()
   self.emit_whitespace_before(info)
   let text = self.token_text(info)
-  self.events.push(@syntax.ParseEvent::Token(kind, text))
+  self.events.push(@green_tree.ParseEvent::Token(raw(kind), text))
   self.last_end = info.end
   self.advance()
 }
@@ -187,15 +233,15 @@ fn GreenParser::emit_reused_node_events(
   self : GreenParser,
   node : @syntax.GreenNode,
 ) -> Unit {
-  self.events.push(@syntax.StartNode(node.kind))
+  self.events.push(@green_tree.StartNode(raw(node.kind)))
   for child in node.children {
     match child {
       @syntax.GreenElement::Token(t) =>
-        self.events.push(@syntax.ParseEvent::Token(t.kind, t.text))
+        self.events.push(@green_tree.ParseEvent::Token(raw(t.kind), t.text))
       @syntax.GreenElement::Node(n) => self.emit_reused_node_events(n)
     }
   }
-  self.events.push(@syntax.FinishNode)
+  self.events.push(@green_tree.FinishNode)
 }
 
 ///|
@@ -220,7 +266,7 @@ fn count_tokens_in_green(node : @syntax.GreenNode) -> Int {
 /// Try to reuse a node at current position for given expected kind
 fn GreenParser::try_reuse(
   self : GreenParser,
-  expected_kind : @syntax.SyntaxKind,
+  expected_kind : @green_tree.RawKind,
 ) -> Bool {
   match self.cursor {
     None => false
@@ -232,7 +278,12 @@ fn GreenParser::try_reuse(
       // Get the current byte offset from the current token
       let info = self.peek_info()
       let byte_offset = info.start
-      match cursor.try_reuse(expected_kind, byte_offset, self.position) {
+      match
+        cursor.try_reuse(
+          @syntax.SyntaxKind::from_raw(expected_kind),
+          byte_offset,
+          self.position,
+        ) {
         None => false
         Some(node) => {
           // Emit whitespace before the reused node (gap between last_end and token start)
@@ -276,7 +327,7 @@ fn GreenParser::bump_error(self : GreenParser) -> Unit {
   let info = self.peek_info()
   self.emit_whitespace_before(info)
   let text = self.token_text(info)
-  self.events.push(@syntax.ParseEvent::Token(@syntax.ErrorToken, text))
+  self.events.push(@green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), text))
   self.last_end = info.end
   self.advance()
 }
@@ -308,7 +359,9 @@ fn GreenParser::expect(
         info.end,
       )
       // Emit zero-width ErrorToken — do NOT consume current token
-      self.events.push(@syntax.ParseEvent::Token(@syntax.ErrorToken, ""))
+      self.events.push(
+        @green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), ""),
+      )
     }
   }
 }
@@ -323,8 +376,8 @@ fn GreenParser::parse_source_file(self : GreenParser) -> Unit {
             _ => ""
           }
         self.events.push(
-          @syntax.ParseEvent::Token(
-            @syntax.WhitespaceToken,
+          @green_tree.ParseEvent::Token(
+            raw(@syntax.WhitespaceToken),
             ws_text.to_string(),
           ),
         )
@@ -350,8 +403,8 @@ fn GreenParser::parse_source_file(self : GreenParser) -> Unit {
             _ => ""
           }
         self.events.push(
-          @syntax.ParseEvent::Token(
-            @syntax.WhitespaceToken,
+          @green_tree.ParseEvent::Token(
+            raw(@syntax.WhitespaceToken),
             ws_text.to_string(),
           ),
         )
@@ -372,7 +425,7 @@ fn GreenParser::parse_binary_op(self : GreenParser) -> Unit {
   self.parse_application()
   match self.peek() {
     @token.Plus | @token.Minus => {
-      self.events.start_at(mark, @syntax.BinaryExpr)
+      self.events.start_at(mark, raw(@syntax.BinaryExpr))
       while self.error_count < max_errors {
         match self.peek() {
           @token.Plus => {
@@ -401,7 +454,7 @@ fn GreenParser::parse_application(self : GreenParser) -> Unit {
     | @token.Identifier(_)
     | @token.Integer(_)
     | @token.Lambda => {
-      self.events.start_at(mark, @syntax.AppExpr)
+      self.events.start_at(mark, raw(@syntax.AppExpr))
       while self.error_count < max_errors {
         match self.peek() {
           @token.LeftParen
@@ -424,19 +477,19 @@ fn GreenParser::parse_atom(self : GreenParser) -> Unit {
   }
 
   // Try reuse for each atom kind before parsing fresh
-  if self.try_reuse(@syntax.IntLiteral) {
+  if self.try_reuse(raw(@syntax.IntLiteral)) {
     return
   }
-  if self.try_reuse(@syntax.VarRef) {
+  if self.try_reuse(raw(@syntax.VarRef)) {
     return
   }
-  if self.try_reuse(@syntax.LambdaExpr) {
+  if self.try_reuse(raw(@syntax.LambdaExpr)) {
     return
   }
-  if self.try_reuse(@syntax.IfExpr) {
+  if self.try_reuse(raw(@syntax.IfExpr)) {
     return
   }
-  if self.try_reuse(@syntax.ParenExpr) {
+  if self.try_reuse(raw(@syntax.ParenExpr)) {
     return
   }
 
@@ -461,7 +514,9 @@ fn GreenParser::parse_atom(self : GreenParser) -> Unit {
           let info = self.peek_info()
           self.error("Expected parameter after λ", token, info.start, info.end)
           // Emit zero-width ErrorToken for missing identifier
-          self.events.push(@syntax.ParseEvent::Token(@syntax.ErrorToken, ""))
+          self.events.push(
+            @green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), ""),
+          )
         }
       }
       self.expect(@token.Dot, @syntax.DotToken)
@@ -491,7 +546,9 @@ fn GreenParser::parse_atom(self : GreenParser) -> Unit {
       if self.at_stop_token() {
         // Stop token: emit zero-width ErrorNode (don't consume)
         self.start_node(@syntax.ErrorNode)
-        self.events.push(@syntax.ParseEvent::Token(@syntax.ErrorToken, ""))
+        self.events.push(
+          @green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), ""),
+        )
         self.finish_node()
       } else {
         // Wrap current token in ErrorNode (consume it)
