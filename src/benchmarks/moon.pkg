@@ -4,5 +4,6 @@ import {
   "dowdiness/parser/parser" @parse,
   "dowdiness/parser/incremental",
   "dowdiness/parser/crdt",
+  "dowdiness/parser/green-tree" @green_tree,
   "moonbitlang/core/bench",
 }

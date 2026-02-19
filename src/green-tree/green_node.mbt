@@ -32,6 +32,12 @@ pub impl Eq for GreenToken with equal(self, other) {
 }
 
 ///|
+/// Hash implementation reuses the cached structural hash.
+pub impl Hash for GreenToken with hash_combine(self, hasher) {
+  hasher.combine_int(self.hash)
+}
+
+///|
 pub(all) enum GreenElement {
   Token(GreenToken)
   Node(GreenNode)
@@ -60,6 +66,19 @@ pub impl Eq for GreenElement with equal(self, other) {
     (Node(a), Node(b)) => a == b
     _ => false
   }
+}
+
+///|
+/// Include a variant tag to reduce cross-variant collisions.
+/// This is intentionally different from child_hash():
+/// - child_hash() is used only for internal cached structural hashing in GreenNode::new
+/// - Hash trait output adds a variant tag for safer external hash-table usage
+pub impl Hash for GreenElement with hash_combine(self, hasher) {
+  let h = match self {
+    Token(t) => combine_hash(1, t.hash)
+    Node(n) => combine_hash(2, n.hash)
+  }
+  hasher.combine_int(h)
 }
 
 ///|
@@ -114,6 +133,12 @@ pub impl Eq for GreenNode with equal(self, other) {
     }
   }
   true
+}
+
+///|
+/// Hash implementation reuses the cached structural hash.
+pub impl Hash for GreenNode with hash_combine(self, hasher) {
+  hasher.combine_int(self.hash)
 }
 
 ///|

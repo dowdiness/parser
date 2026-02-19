@@ -26,6 +26,7 @@ pub(all) enum GreenElement {
 pub fn GreenElement::kind(Self) -> RawKind
 pub fn GreenElement::text_len(Self) -> Int
 pub impl Eq for GreenElement
+pub impl Hash for GreenElement
 pub impl Show for GreenElement
 
 pub(all) struct GreenNode {
@@ -38,6 +39,7 @@ pub fn GreenNode::has_errors(Self, RawKind, RawKind) -> Bool
 pub fn GreenNode::kind(Self) -> RawKind
 pub fn GreenNode::new(RawKind, Array[GreenElement]) -> Self
 pub impl Eq for GreenNode
+pub impl Hash for GreenNode
 pub impl Show for GreenNode
 
 pub(all) struct GreenToken {
@@ -48,6 +50,7 @@ pub(all) struct GreenToken {
 pub fn GreenToken::new(RawKind, String) -> Self
 pub fn GreenToken::text_len(Self) -> Int
 pub impl Eq for GreenToken
+pub impl Hash for GreenToken
 pub impl Show for GreenToken
 
 pub(all) enum ParseEvent {
