@@ -41,7 +41,10 @@ fn write_node_and_edges(buf : StringBuilder, node : @term.TermNode) -> Unit {
 
     // Add edge label for clarity (optional, based on position)
     match node.kind {
-      @term.TermKind::Lam(_) => if i == 0 { buf.write_string(" [label=\"body\"]") }
+      @term.TermKind::Lam(_) =>
+        if i == 0 {
+          buf.write_string(" [label=\"body\"]")
+        }
       @term.TermKind::App =>
         if i == 0 {
           buf.write_string(" [label=\"func\"]")

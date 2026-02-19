@@ -15,10 +15,16 @@ fn extract_error_text(green : @syntax.GreenNode) -> String {
 }
 
 ///|
-fn extract_token_text(green : @syntax.GreenNode, token_kind : @syntax.SyntaxKind) -> String? {
+fn extract_token_text(
+  green : @syntax.GreenNode,
+  token_kind : @syntax.SyntaxKind,
+) -> String? {
   for elem in green.children {
     match elem {
-      @syntax.GreenElement::Token(t) => if t.kind == token_kind { return Some(t.text) }
+      @syntax.GreenElement::Token(t) =>
+        if t.kind == token_kind {
+          return Some(t.text)
+        }
       _ => continue
     }
   }
@@ -164,12 +170,24 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
       let text = extract_token_text(g, @syntax.IntToken).unwrap_or("")
       let value = @strconv.parse_int(text) catch { _ => 0 }
       let (tight_start, tight_end) = tight_span(g, off)
-      @term.TermNode::new(@term.TermKind::Int(value), tight_start, tight_end, next_id(), [])
+      @term.TermNode::new(
+        @term.TermKind::Int(value),
+        tight_start,
+        tight_end,
+        next_id(),
+        [],
+      )
     }
     @syntax.VarRef => {
       let name = extract_token_text(g, @syntax.IdentToken).unwrap_or("")
       let (tight_start, tight_end) = tight_span(g, off)
-      @term.TermNode::new(@term.TermKind::Var(name), tight_start, tight_end, next_id(), [])
+      @term.TermNode::new(
+        @term.TermKind::Var(name),
+        tight_start,
+        tight_end,
+        next_id(),
+        [],
+      )
     }
     @syntax.LambdaExpr => {
       let param = extract_token_text(g, @syntax.IdentToken).unwrap_or("")
@@ -185,7 +203,13 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
           [body],
         )
       }
-      @term.TermNode::new(@term.TermKind::Lam(param), tight_start, tight_end, next_id(), [])
+      @term.TermNode::new(
+        @term.TermKind::Lam(param),
+        tight_start,
+        tight_end,
+        next_id(),
+        [],
+      )
     }
     @syntax.AppExpr => {
       let children : Array[@term.TermNode] = []
@@ -221,7 +245,11 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
       if children.length() >= 2 {
         let mut result = children[0]
         for i = 1; i < children.length(); i = i + 1 {
-          let op = if i - 1 < ops.length() { ops[i - 1] } else { @term.Bop::Plus }
+          let op = if i - 1 < ops.length() {
+            ops[i - 1]
+          } else {
+            @term.Bop::Plus
+          }
           result = @term.TermNode::new(
             @term.TermKind::Bop(op),
             result.start,
@@ -249,7 +277,13 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
       } else {
         off + g.text_len
       }
-      @term.TermNode::new(@term.TermKind::If, tight_start, if_end, next_id(), children)
+      @term.TermNode::new(
+        @term.TermKind::If,
+        tight_start,
+        if_end,
+        next_id(),
+        children,
+      )
     }
     @syntax.ParenExpr => {
       let (tight_start, tight_end) = tight_span(g, off)
@@ -274,7 +308,13 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
       } else {
         "Syntax error"
       }
-      @term.TermNode::new(@term.TermKind::Error(msg), tight_start, tight_end, next_id(), [])
+      @term.TermNode::new(
+        @term.TermKind::Error(msg),
+        tight_start,
+        tight_end,
+        next_id(),
+        [],
+      )
     }
     @syntax.SourceFile => {
       let red_children = red.children()
@@ -295,7 +335,10 @@ fn convert_red(red : @syntax.RedNode, counter : Ref[Int]) -> @term.TermNode {
 
 ///|
 /// Convert a RedNode (position-aware CST facade) to a TermNode.
-pub fn red_to_term_node(red : @syntax.RedNode, node_id_counter : Ref[Int]) -> @term.TermNode {
+pub fn red_to_term_node(
+  red : @syntax.RedNode,
+  node_id_counter : Ref[Int],
+) -> @term.TermNode {
   convert_red(red, node_id_counter)
 }
 

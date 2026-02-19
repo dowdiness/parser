@@ -67,14 +67,22 @@ pub fn perf_snapshot() -> PerfStats {
 ///|
 pub fn perf_report() -> String {
   "PerfStats { " +
-  "try_reuse_calls: " + perf_stats.try_reuse_calls.val.to_string() +
-  ", try_reuse_hits: " + perf_stats.try_reuse_hits.val.to_string() +
-  ", fast_path_skips: " + perf_stats.fast_path_skips.val.to_string() +
-  ", leading_checks: " + perf_stats.leading_checks.val.to_string() +
-  ", trailing_checks: " + perf_stats.trailing_checks.val.to_string() +
-  ", find_node_calls: " + perf_stats.find_node_calls.val.to_string() +
-  ", find_node_steps: " + perf_stats.find_node_steps.val.to_string() +
-  ", count_tokens_calls: " + perf_stats.count_tokens_calls.val.to_string() +
+  "try_reuse_calls: " +
+  perf_stats.try_reuse_calls.val.to_string() +
+  ", try_reuse_hits: " +
+  perf_stats.try_reuse_hits.val.to_string() +
+  ", fast_path_skips: " +
+  perf_stats.fast_path_skips.val.to_string() +
+  ", leading_checks: " +
+  perf_stats.leading_checks.val.to_string() +
+  ", trailing_checks: " +
+  perf_stats.trailing_checks.val.to_string() +
+  ", find_node_calls: " +
+  perf_stats.find_node_calls.val.to_string() +
+  ", find_node_steps: " +
+  perf_stats.find_node_steps.val.to_string() +
+  ", count_tokens_calls: " +
+  perf_stats.count_tokens_calls.val.to_string() +
   " }"
 }
 
@@ -91,8 +99,12 @@ pub fn count_tokens_in_node_instrumented(node : @syntax.GreenNode) -> Int {
   let mut count = 0
   for child in node.children {
     match child {
-      @syntax.GreenElement::Token(t) => if t.kind != @syntax.WhitespaceToken { count = count + 1 }
-      @syntax.GreenElement::Node(n) => count = count + count_tokens_in_node_instrumented(n)
+      @syntax.GreenElement::Token(t) =>
+        if t.kind != @syntax.WhitespaceToken {
+          count = count + 1
+        }
+      @syntax.GreenElement::Node(n) =>
+        count = count + count_tokens_in_node_instrumented(n)
     }
   }
   count

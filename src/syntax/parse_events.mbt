@@ -51,22 +51,16 @@ pub fn build_tree(events : Array[ParseEvent]) -> GreenNode {
         let children = match stack.pop() {
           Some(c) => c
           None =>
-            abort(
-              "build_tree: unbalanced FinishNode — no matching StartNode",
-            )
+            abort("build_tree: unbalanced FinishNode — no matching StartNode")
         }
         let kind = match kinds.pop() {
           Some(k) => k
-          None =>
-            abort("build_tree: kind stack underflow on FinishNode")
+          None => abort("build_tree: kind stack underflow on FinishNode")
         }
         let node = GreenNode::new(kind, children)
         match stack.last() {
           Some(parent) => parent.push(Node(node))
-          None =>
-            abort(
-              "build_tree: parent stack empty when attaching node",
-            )
+          None => abort("build_tree: parent stack empty when attaching node")
         }
       }
       Token(kind, text) => {

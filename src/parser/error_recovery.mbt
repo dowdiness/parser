@@ -3,7 +3,9 @@
 
 ///|
 /// Parse with error recovery (returns partial tree with error nodes)
-pub fn parse_with_error_recovery(input : String) -> (@term.TermNode, Array[String]) {
+pub fn parse_with_error_recovery(
+  input : String,
+) -> (@term.TermNode, Array[String]) {
   let errors : Array[String] = []
   let result = parse_green_recover(input) catch {
     @lexer.TokenizationError(msg) => {
@@ -16,7 +18,10 @@ pub fn parse_with_error_recovery(input : String) -> (@term.TermNode, Array[Strin
   // Map diagnostics to error strings
   for diag in diagnostics {
     errors.push(
-      "Parse error: " + diag.message + " at token " + @token.print_token(diag.token),
+      "Parse error: " +
+      diag.message +
+      " at token " +
+      @token.print_token(diag.token),
     )
   }
   let tree = green_to_term_node(green, 0, Ref::new(0))
@@ -31,7 +36,10 @@ pub fn parse_with_error_recovery_tokens(
   let errors : Array[String] = []
   let tree = parse_tree_from_tokens(tokens) catch {
     ParseError(msg, token) => {
-      let error_msg = "Parse error: " + msg + " at token " + @token.print_token(token)
+      let error_msg = "Parse error: " +
+        msg +
+        " at token " +
+        @token.print_token(token)
       errors.push(error_msg)
       @term.TermNode::error(error_msg, 0, 0)
     }

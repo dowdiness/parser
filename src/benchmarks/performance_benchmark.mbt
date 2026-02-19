@@ -6,7 +6,9 @@
 /// Benchmark: Parse scaling - small input (5 tokens)
 test "parse scaling - small (5 tokens)" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_tree("1 + 2") catch { _ => abort("benchmark failed") }
+    let result = @parse.parse_tree("1 + 2") catch {
+      _ => abort("benchmark failed")
+    }
     b.keep(result)
   })
 }
@@ -39,7 +41,9 @@ test "parse scaling - large (30+ tokens)" (b : @bench.T) {
 /// Benchmark: Incremental vs Full - tiny edit at start
 test "incremental vs full - edit at start" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("λf.λx.if f x then x + 1 else x - 1")
+    let parser = @incremental.IncrementalParser::new(
+      "λf.λx.if f x then x + 1 else x - 1",
+    )
     let _ = parser.parse()
     let edit = @edit.Edit::replace(0, 1, 1)
     let result = parser.edit(edit, "\\f.λx.if f x then x + 1 else x - 1")
@@ -51,7 +55,9 @@ test "incremental vs full - edit at start" (b : @bench.T) {
 /// Benchmark: Incremental vs Full - tiny edit at end
 test "incremental vs full - edit at end" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("λf.λx.if f x then x + 1 else x - 1")
+    let parser = @incremental.IncrementalParser::new(
+      "λf.λx.if f x then x + 1 else x - 1",
+    )
     let _ = parser.parse()
     let edit = @edit.Edit::replace(32, 33, 33)
     let result = parser.edit(edit, "λf.λx.if f x then x + 1 else x - 2")
@@ -63,7 +69,9 @@ test "incremental vs full - edit at end" (b : @bench.T) {
 /// Benchmark: Incremental vs Full - edit in middle
 test "incremental vs full - edit in middle" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("λf.λx.if f x then x + 1 else x - 1")
+    let parser = @incremental.IncrementalParser::new(
+      "λf.λx.if f x then x + 1 else x - 1",
+    )
     let _ = parser.parse()
     let edit = @edit.Edit::replace(14, 15, 15)
     let result = parser.edit(edit, "λf.λx.if f x then y + 1 else x - 1")
@@ -111,7 +119,6 @@ test "incremental state baseline - repeated parsing" (b : @bench.T) {
     // Undo edit (should hit cache ideally)
     let edit2 = @edit.Edit::delete(4, 8)
     let _ = parser.edit(edit2, "λx.x")
-
   })
 }
 
@@ -133,7 +140,9 @@ test "damage tracking - localized damage" (b : @bench.T) {
   b.bench(fn() {
     let edit = @edit.Edit::replace(4, 5, 5)
     let damage = @incremental.DamageTracker::new(edit)
-    let tree = @parse.parse_tree("x + 1") catch { _ => abort("benchmark failed") }
+    let tree = @parse.parse_tree("x + 1") catch {
+      _ => abort("benchmark failed")
+    }
     damage.expand_for_tree(tree)
     b.keep(damage)
   })
@@ -183,7 +192,9 @@ test "crdt operations - nested structure" (b : @bench.T) {
 test "crdt operations - round trip" (b : @bench.T) {
   b.bench(fn() {
     let original = "λf.λx.f (f x)"
-    let ast = @parse.parse_tree(original) catch { _ => abort("benchmark failed") }
+    let ast = @parse.parse_tree(original) catch {
+      _ => abort("benchmark failed")
+    }
     let crdt = @crdt.ast_to_crdt(ast)
     let reconstructed = @crdt.crdt_to_source(crdt)
     let ast2 = @parse.parse_tree(reconstructed) catch {
@@ -214,7 +225,9 @@ test "memory pressure - large document" (b : @bench.T) {
 /// Benchmark: Worst case - invalidate entire cache
 test "worst case - full invalidation" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("λf.λx.if f x then x + 1 else x - 1")
+    let parser = @incremental.IncrementalParser::new(
+      "λf.λx.if f x then x + 1 else x - 1",
+    )
     let _ = parser.parse()
 
     // Change at start affects everything (λ → \)
@@ -268,7 +281,9 @@ fn make_token_source_replace(target : Int) -> String {
 test "phase1: full tokenize - 110 tokens" (b : @bench.T) {
   let source = make_token_source()
   b.bench(fn() {
-    let result = @lexer.tokenize(source) catch { _ => abort("benchmark failed") }
+    let result = @lexer.tokenize(source) catch {
+      _ => abort("benchmark failed")
+    }
     b.keep(result)
   })
 }
@@ -281,7 +296,9 @@ test "phase1: incremental tokenize - edit at start (110 tokens)" (b : @bench.T) 
   let new_source = make_token_source_replace(1)
   let edit = @edit.Edit::replace(0, 1, 2)
   b.bench(fn() {
-    let buf = @lexer.TokenBuffer::new(source) catch { _ => abort("benchmark failed") }
+    let buf = @lexer.TokenBuffer::new(source) catch {
+      _ => abort("benchmark failed")
+    }
     let result = buf.update(edit, new_source) catch {
       _ => abort("benchmark failed")
     }
@@ -297,7 +314,9 @@ test "phase1: incremental tokenize - edit in middle (110 tokens)" (b : @bench.T)
   let new_source = make_token_source_replace(28)
   let edit = @edit.Edit::replace(126, 128, 128)
   b.bench(fn() {
-    let buf = @lexer.TokenBuffer::new(source) catch { _ => abort("benchmark failed") }
+    let buf = @lexer.TokenBuffer::new(source) catch {
+      _ => abort("benchmark failed")
+    }
     let result = buf.update(edit, new_source) catch {
       _ => abort("benchmark failed")
     }
@@ -313,7 +332,9 @@ test "phase1: incremental tokenize - edit at end (110 tokens)" (b : @bench.T) {
   let new_source = make_token_source_replace(55)
   let edit = @edit.Edit::replace(261, 263, 263)
   b.bench(fn() {
-    let buf = @lexer.TokenBuffer::new(source) catch { _ => abort("benchmark failed") }
+    let buf = @lexer.TokenBuffer::new(source) catch {
+      _ => abort("benchmark failed")
+    }
     let result = buf.update(edit, new_source) catch {
       _ => abort("benchmark failed")
     }
@@ -326,7 +347,9 @@ test "phase1: incremental tokenize - edit at end (110 tokens)" (b : @bench.T) {
 test "phase1: full re-tokenize after edit - 110 tokens" (b : @bench.T) {
   let new_source = make_token_source_replace(28)
   b.bench(fn() {
-    let result = @lexer.tokenize(new_source) catch { _ => abort("benchmark failed") }
+    let result = @lexer.tokenize(new_source) catch {
+      _ => abort("benchmark failed")
+    }
     b.keep(result)
   })
 }

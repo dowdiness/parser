@@ -70,7 +70,10 @@ pub fn parse_green_recover_with_tokens(
 }
 
 ///|
-fn GreenParser::new(tokens : Array[@token.TokenInfo], source : String) -> GreenParser {
+fn GreenParser::new(
+  tokens : Array[@token.TokenInfo],
+  source : String,
+) -> GreenParser {
   {
     tokens,
     source,
@@ -104,7 +107,10 @@ fn GreenParser::new_with_cursor(
 }
 
 ///|
-fn GreenParser::start_node(self : GreenParser, kind : @syntax.SyntaxKind) -> Unit {
+fn GreenParser::start_node(
+  self : GreenParser,
+  kind : @syntax.SyntaxKind,
+) -> Unit {
   self.events.push(@syntax.StartNode(kind))
 }
 
@@ -138,7 +144,10 @@ fn GreenParser::advance(self : GreenParser) -> Unit {
 }
 
 ///|
-fn GreenParser::token_text(self : GreenParser, info : @token.TokenInfo) -> String {
+fn GreenParser::token_text(
+  self : GreenParser,
+  info : @token.TokenInfo,
+) -> String {
   let slice : StringView = self.source[info.start:info.end] catch { _ => "" }
   slice.to_string()
 }
@@ -152,12 +161,17 @@ fn GreenParser::emit_whitespace_before(
     let ws_text : StringView = self.source[self.last_end:info.start] catch {
         _ => ""
       }
-    self.events.push(@syntax.ParseEvent::Token(@syntax.WhitespaceToken, ws_text.to_string()))
+    self.events.push(
+      @syntax.ParseEvent::Token(@syntax.WhitespaceToken, ws_text.to_string()),
+    )
   }
 }
 
 ///|
-fn GreenParser::emit_token(self : GreenParser, kind : @syntax.SyntaxKind) -> Unit {
+fn GreenParser::emit_token(
+  self : GreenParser,
+  kind : @syntax.SyntaxKind,
+) -> Unit {
   let info = self.peek_info()
   self.emit_whitespace_before(info)
   let text = self.token_text(info)
@@ -176,7 +190,8 @@ fn GreenParser::emit_reused_node_events(
   self.events.push(@syntax.StartNode(node.kind))
   for child in node.children {
     match child {
-      @syntax.GreenElement::Token(t) => self.events.push(@syntax.ParseEvent::Token(t.kind, t.text))
+      @syntax.GreenElement::Token(t) =>
+        self.events.push(@syntax.ParseEvent::Token(t.kind, t.text))
       @syntax.GreenElement::Node(n) => self.emit_reused_node_events(n)
     }
   }
@@ -307,7 +322,12 @@ fn GreenParser::parse_source_file(self : GreenParser) -> Unit {
         let ws_text : StringView = self.source[self.last_end:self.source.length()] catch {
             _ => ""
           }
-        self.events.push(@syntax.ParseEvent::Token(@syntax.WhitespaceToken, ws_text.to_string()))
+        self.events.push(
+          @syntax.ParseEvent::Token(
+            @syntax.WhitespaceToken,
+            ws_text.to_string(),
+          ),
+        )
         self.last_end = self.source.length()
       }
     _ => {
@@ -329,7 +349,12 @@ fn GreenParser::parse_source_file(self : GreenParser) -> Unit {
         let ws_text : StringView = self.source[self.last_end:self.source.length()] catch {
             _ => ""
           }
-        self.events.push(@syntax.ParseEvent::Token(@syntax.WhitespaceToken, ws_text.to_string()))
+        self.events.push(
+          @syntax.ParseEvent::Token(
+            @syntax.WhitespaceToken,
+            ws_text.to_string(),
+          ),
+        )
         self.last_end = self.source.length()
       }
     }
@@ -372,11 +397,17 @@ fn GreenParser::parse_application(self : GreenParser) -> Unit {
   let mark = self.events.mark()
   self.parse_atom()
   match self.peek() {
-    @token.LeftParen | @token.Identifier(_) | @token.Integer(_) | @token.Lambda => {
+    @token.LeftParen
+    | @token.Identifier(_)
+    | @token.Integer(_)
+    | @token.Lambda => {
       self.events.start_at(mark, @syntax.AppExpr)
       while self.error_count < max_errors {
         match self.peek() {
-          @token.LeftParen | @token.Identifier(_) | @token.Integer(_) | @token.Lambda => self.parse_atom()
+          @token.LeftParen
+          | @token.Identifier(_)
+          | @token.Integer(_)
+          | @token.Lambda => self.parse_atom()
           _ => break
         }
       }

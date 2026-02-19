@@ -117,7 +117,10 @@ test "IncrementalParser::edit result equals full reparse" {
   let full_tree = @parse.parse_tree("x + 1")
 
   // Results should be equivalent (same printed form)
-  inspect(@term.print_term_node(incremental_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incremental_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -172,7 +175,10 @@ test "multiple incremental edits preserve correctness" {
 
   // Final result should match full reparse
   let full_tree = @parse.parse_tree("λy.λx.x + 2")
-  inspect(@term.print_term_node(tree3), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(tree3),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -203,7 +209,10 @@ test "Edge case: insertion at position 0" {
 
   // Should correctly parse the new structure
   let full_tree = @parse.parse_tree("λx.x")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -217,7 +226,10 @@ test "Edge case: insertion at end of document" {
 
   // Should correctly parse the new structure
   let full_tree = @parse.parse_tree("x + 1")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -242,7 +254,10 @@ test "Edge case: replace with longer text" {
   let edit = @edit.Edit::replace(0, 1, 15)
   let new_tree = parser.edit(edit, "λf.λx.f (f (x))")
   let full_tree = @parse.parse_tree("λf.λx.f (f (x))")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -254,7 +269,10 @@ test "Edge case: replace with shorter text" {
   let edit = @edit.Edit::replace(0, 15, 1)
   let new_tree = parser.edit(edit, "y")
   let full_tree = @parse.parse_tree("y")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -270,7 +288,10 @@ test "Edge case: consecutive insertions at same position" {
   let edit2 = @edit.Edit::insert(3, 2)
   let tree2 = parser.edit(edit2, "x y z")
   let full_tree = @parse.parse_tree("x y z")
-  inspect(@term.print_term_node(tree2), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(tree2),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -282,7 +303,10 @@ test "Edge case: insertion in middle of lambda parameter" {
   let edit = @edit.Edit::insert(2, 1)
   let new_tree = parser.edit(edit, "λxy.x")
   let full_tree = @parse.parse_tree("λxy.x")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -294,7 +318,10 @@ test "Edge case: deletion at boundary between nodes" {
   let edit = @edit.Edit::delete(2, 4)
   let new_tree = parser.edit(edit, "x y")
   let full_tree = @parse.parse_tree("x y")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -306,7 +333,10 @@ test "Edge case: structural change from leaf to compound" {
   let edit = @edit.Edit::insert(2, 4)
   let new_tree = parser.edit(edit, "42 + 1")
   let full_tree = @parse.parse_tree("42 + 1")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -318,7 +348,10 @@ test "Edge case: structural change from compound to leaf" {
   let edit = @edit.Edit::replace(0, 5, 1)
   let new_tree = parser.edit(edit, "z")
   let full_tree = @parse.parse_tree("z")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -330,7 +363,10 @@ test "Edge case: nested lambda insertion at start" {
   let edit = @edit.Edit::insert(0, 3)
   let new_tree = parser.edit(edit, "λy.λx.x + 1")
   let full_tree = @parse.parse_tree("λy.λx.x + 1")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -346,7 +382,10 @@ test "Edge case: multiple rapid edits in sequence" {
   let edit3 = @edit.Edit::insert(5, 2)
   let tree3 = parser.edit(edit3, "a b c d")
   let full_tree = @parse.parse_tree("a b c d")
-  inspect(@term.print_term_node(tree3), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(tree3),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -358,7 +397,10 @@ test "Edge case: edit that changes operator precedence" {
   let edit = @edit.Edit::replace(4, 5, 5)
   let new_tree = parser.edit(edit, "a + b + c")
   let full_tree = @parse.parse_tree("a + b + c")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -383,7 +425,10 @@ test "Edge case: validation with identical structure but different content" {
   let edit = @edit.Edit::replace(1, 2, 2)
   let new_tree = parser.edit(edit, "λy.x")
   let full_tree = @parse.parse_tree("λy.x")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -409,7 +454,10 @@ test "Edge case: zero-length edit (no-op)" {
   let new_tree = parser.edit(edit, "x + y")
 
   // Should produce same result
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(initial_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(initial_tree),
+  )
 }
 
 ///|
@@ -421,7 +469,10 @@ test "Edge case: position boundary at node start" {
   let edit = @edit.Edit::insert(3, 1)
   let new_tree = parser.edit(edit, "λx. λy.x")
   let full_tree = @parse.parse_tree("λx. λy.x")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -433,7 +484,10 @@ test "Edge case: position boundary at node end" {
   let edit = @edit.Edit::insert(7, 2)
   let new_tree = parser.edit(edit, "λx.λy.x y")
   let full_tree = @parse.parse_tree("λx.λy.x y")
-  inspect(@term.print_term_node(new_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(new_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 // ============================================================================
@@ -449,7 +503,10 @@ test "Differential: single token edit in middle" {
   let edit = @edit.Edit::replace(4, 5, 5)
   let incremental = parser.edit(edit, "a + x + c")
   let full = @parse.parse_tree("a + x + c")
-  inspect(@term.print_term_node(incremental), content=@term.print_term_node(full))
+  inspect(
+    @term.print_term_node(incremental),
+    content=@term.print_term_node(full),
+  )
 }
 
 ///|
@@ -461,7 +518,10 @@ test "Differential: insert at beginning" {
   let edit = @edit.Edit::insert(0, 3)
   let incremental = parser.edit(edit, "λx.y")
   let full = @parse.parse_tree("λx.y")
-  inspect(@term.print_term_node(incremental), content=@term.print_term_node(full))
+  inspect(
+    @term.print_term_node(incremental),
+    content=@term.print_term_node(full),
+  )
 }
 
 ///|
@@ -473,7 +533,10 @@ test "Differential: delete in middle" {
   let edit = @edit.Edit::delete(4, 8)
   let incremental = parser.edit(edit, "λx.x")
   let full = @parse.parse_tree("λx.x")
-  inspect(@term.print_term_node(incremental), content=@term.print_term_node(full))
+  inspect(
+    @term.print_term_node(incremental),
+    content=@term.print_term_node(full),
+  )
 }
 
 ///|
@@ -485,7 +548,10 @@ test "Differential: complex nested expression" {
   let edit = @edit.Edit::replace(9, 10, 10)
   let incremental = parser.edit(edit, "λf.λx.f (g x)")
   let full = @parse.parse_tree("λf.λx.f (g x)")
-  inspect(@term.print_term_node(incremental), content=@term.print_term_node(full))
+  inspect(
+    @term.print_term_node(incremental),
+    content=@term.print_term_node(full),
+  )
 }
 
 ///|
@@ -497,7 +563,10 @@ test "Differential: if-then-else modification" {
   let edit = @edit.Edit::replace(3, 4, 4)
   let incremental = parser.edit(edit, "if y then 1 else 2")
   let full = @parse.parse_tree("if y then 1 else 2")
-  inspect(@term.print_term_node(incremental), content=@term.print_term_node(full))
+  inspect(
+    @term.print_term_node(incremental),
+    content=@term.print_term_node(full),
+  )
 }
 
 ///|
@@ -591,7 +660,10 @@ test "Reuse: adjacent insert should not incorrectly reuse" {
   let full_tree = @parse.parse_tree("x y")
 
   // Most importantly: result should match full reparse
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -606,7 +678,10 @@ test "Reuse: whitespace-containing expressions parse correctly" {
   let full_tree = @parse.parse_tree("λx. x + 2")
 
   // Result must match full reparse - validates whitespace handling
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -618,7 +693,10 @@ test "Reuse: multiple spaces between tokens" {
   let edit = @edit.Edit::replace(8, 9, 9)
   let incr_tree = parser.edit(edit, "a   +   c")
   let full_tree = @parse.parse_tree("a   +   c")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -630,7 +708,10 @@ test "Reuse: leading whitespace in source" {
   let edit = @edit.Edit::replace(6, 7, 7)
   let incr_tree = parser.edit(edit, "  x + z")
   let full_tree = @parse.parse_tree("  x + z")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -642,7 +723,10 @@ test "Reuse: trailing whitespace in source" {
   let edit = @edit.Edit::replace(4, 5, 5)
   let incr_tree = parser.edit(edit, "x + z  ")
   let full_tree = @parse.parse_tree("x + z  ")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -659,5 +743,8 @@ test "Reuse: tokenization error clears stale green tree state" {
   let edit2 = @edit.Edit::delete(5, 6)
   let incr_tree = parser.edit(edit2, "1+2+1")
   let full_tree = @parse.parse_tree("1+2+1")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }

@@ -124,7 +124,9 @@ fn tokenize_helper(
 
 ///|
 /// Tokenize the input string into an array of tokens with position information
-pub fn tokenize(input : String) -> Array[@token.TokenInfo] raise TokenizationError {
+pub fn tokenize(
+  input : String,
+) -> Array[@token.TokenInfo] raise TokenizationError {
   tokenize_helper(input, 0, [])
 }
 

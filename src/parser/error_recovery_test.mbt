@@ -115,7 +115,10 @@ test "error recovery: valid input identical to parse_tree" {
   for input in inputs {
     let direct = parse_tree(input)
     let (recovered, _) = parse_with_error_recovery(input)
-    inspect(@term.print_term_node(recovered), content=@term.print_term_node(direct))
+    inspect(
+      @term.print_term_node(recovered),
+      content=@term.print_term_node(direct),
+    )
   }
 }
 

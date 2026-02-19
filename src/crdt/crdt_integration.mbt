@@ -34,7 +34,9 @@ fn term_kind_to_text(kind : @term.TermKind) -> String {
 
 ///|
 /// Get attributes from TermNode
-fn term_to_attributes(node : @term.TermNode) -> @hashmap.HashMap[String, String] {
+fn term_to_attributes(
+  node : @term.TermNode,
+) -> @hashmap.HashMap[String, String] {
   let attrs = @hashmap.HashMap::new()
 
   // Store source positions

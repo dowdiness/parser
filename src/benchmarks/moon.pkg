@@ -1,0 +1,8 @@
+import {
+  "dowdiness/parser/edit",
+  "dowdiness/parser/lexer",
+  "dowdiness/parser/parser" @parse,
+  "dowdiness/parser/incremental",
+  "dowdiness/parser/crdt",
+  "moonbitlang/core/bench",
+}

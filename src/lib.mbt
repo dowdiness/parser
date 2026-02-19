@@ -31,7 +31,7 @@ pub fn parse_tree(source : String) -> @term.TermNode raise {
 ///|
 /// Parse a source string with error recovery, returning a tree and diagnostics.
 pub fn parse_with_error_recovery(
-  source : String
+  source : String,
 ) -> (@term.TermNode, Array[String]) {
   @parse.parse_with_error_recovery(source)
 }
@@ -40,9 +40,7 @@ pub fn parse_with_error_recovery(
 
 ///|
 /// Tokenize a source string into an array of token info.
-pub fn tokenize(
-  source : String
-) -> Array[@token.TokenInfo] raise {
+pub fn tokenize(source : String) -> Array[@token.TokenInfo] raise {
   @lexer.tokenize(source)
 }
 

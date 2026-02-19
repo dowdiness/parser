@@ -10,7 +10,6 @@ test "property: parser handles any string" {
     // Parser should handle any input gracefully (may raise, but shouldn't panic)
     try {
       let _ast = parse_tree(input)
-
     } catch {
       _ => () // Error is ok, panic is not
     }
@@ -99,7 +98,6 @@ test "property: single char is safe" {
     let input = c.to_string()
     try {
       let _ast = parse_tree(input)
-
     } catch {
       _ => () // Parser should handle any single character
     }
@@ -155,7 +153,6 @@ test "property: whitespace doesn't break parser" {
     for input in inputs {
       try {
         let _ast = parse_tree(input)
-
       } catch {
         _ => () // Parser should handle whitespace gracefully
       }
@@ -180,7 +177,6 @@ test "property: parentheses are safe" {
     }
     try {
       let _ast = parse_tree(input)
-
     } catch {
       _ => () // Should handle nested parens without panic
     }
@@ -224,7 +220,6 @@ test "property: mixed syntax is safe" {
     }
     try {
       let _ast = parse_tree(input)
-
     } catch {
       _ => () // Parser should handle random combinations gracefully
     }

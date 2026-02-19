@@ -72,7 +72,8 @@ fn prop_token_buffer_insert(input : (Int, Int, Int, Int)) -> Bool {
           )
           match (updated_res, full_res) {
             (Ok(updated), Ok(full)) =>
-              @token.print_token_infos(updated) == @token.print_token_infos(full)
+              @token.print_token_infos(updated) ==
+              @token.print_token_infos(full)
             _ => true
           }
         }
@@ -111,7 +112,8 @@ fn prop_token_buffer_delete(input : (Int, Int, Int)) -> Bool {
           )
           match (updated_res, full_res) {
             (Ok(updated), Ok(full)) =>
-              @token.print_token_infos(updated) == @token.print_token_infos(full)
+              @token.print_token_infos(updated) ==
+              @token.print_token_infos(full)
             _ => true
           }
         }
@@ -151,7 +153,8 @@ fn prop_token_buffer_replace(input : (Int, Int, Int, Int)) -> Bool {
           )
           match (updated_res, full_res) {
             (Ok(updated), Ok(full)) =>
-              @token.print_token_infos(updated) == @token.print_token_infos(full)
+              @token.print_token_infos(updated) ==
+              @token.print_token_infos(full)
             _ => true
           }
         }

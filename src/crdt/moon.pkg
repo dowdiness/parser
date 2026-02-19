@@ -1,0 +1,10 @@
+import {
+  "dowdiness/parser/term",
+  "dowdiness/parser/edit",
+  "dowdiness/parser/incremental",
+  "moonbitlang/core/hashmap",
+}
+
+import {
+  "dowdiness/parser/parser" @parse,
+} for "test"

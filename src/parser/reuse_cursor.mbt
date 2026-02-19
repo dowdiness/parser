@@ -61,7 +61,10 @@ fn count_tokens_in_node(node : @syntax.GreenNode) -> Int {
   let mut count = 0
   for child in node.children {
     match child {
-      @syntax.GreenElement::Token(t) => if t.kind != @syntax.WhitespaceToken { count = count + 1 }
+      @syntax.GreenElement::Token(t) =>
+        if t.kind != @syntax.WhitespaceToken {
+          count = count + 1
+        }
       @syntax.GreenElement::Node(n) => count = count + count_tokens_in_node(n)
     }
   }
@@ -73,7 +76,10 @@ fn count_tokens_in_node(node : @syntax.GreenNode) -> Int {
 fn first_token_text(node : @syntax.GreenNode) -> String? {
   for child in node.children {
     match child {
-      @syntax.GreenElement::Token(t) => if t.kind != @syntax.WhitespaceToken { return Some(t.text) }
+      @syntax.GreenElement::Token(t) =>
+        if t.kind != @syntax.WhitespaceToken {
+          return Some(t.text)
+        }
       @syntax.GreenElement::Node(n) => {
         let result = first_token_text(n)
         if result is Some(_) {
@@ -90,7 +96,10 @@ fn first_token_text(node : @syntax.GreenNode) -> String? {
 fn first_token_kind(node : @syntax.GreenNode) -> @syntax.SyntaxKind? {
   for child in node.children {
     match child {
-      @syntax.GreenElement::Token(t) => if t.kind != @syntax.WhitespaceToken { return Some(t.kind) }
+      @syntax.GreenElement::Token(t) =>
+        if t.kind != @syntax.WhitespaceToken {
+          return Some(t.kind)
+        }
       @syntax.GreenElement::Node(n) => {
         let result = first_token_kind(n)
         if result is Some(_) {
@@ -185,7 +194,10 @@ fn last_token_kind(node : @syntax.GreenNode) -> @syntax.SyntaxKind? {
   let children = node.children
   for i = children.length() - 1; i >= 0; i = i - 1 {
     match children[i] {
-      @syntax.GreenElement::Token(t) => if t.kind != @syntax.WhitespaceToken { return Some(t.kind) }
+      @syntax.GreenElement::Token(t) =>
+        if t.kind != @syntax.WhitespaceToken {
+          return Some(t.kind)
+        }
       @syntax.GreenElement::Node(n) => {
         let result = last_token_kind(n)
         if result is Some(_) {
@@ -221,7 +233,7 @@ fn trailing_context_matches(
   // have shifted (e.g. identifier merging) so reuse is unsafe.
   let after_token = tokens[after_pos]
   match last_token_kind(node) {
-    Some(last_kind) => {
+    Some(last_kind) =>
       // If the last token in the node is an identifier or integer, verify
       // the follow token is not the same kind (which could indicate merging)
       match last_kind {
@@ -237,7 +249,6 @@ fn trailing_context_matches(
           }
         _ => true
       }
-    }
     None => true
   }
 }
@@ -321,9 +332,11 @@ fn ReuseCursor::seek_node_at(
               return Some((child_node, child_offset))
             }
             // Descend into this child
-            self.stack.push(
-              { node: child_node, child_index: 0, start_offset: child_offset },
-            )
+            self.stack.push({
+              node: child_node,
+              child_index: 0,
+              start_offset: child_offset,
+            })
             found_child = true
             break
           }
@@ -369,8 +382,10 @@ pub fn ReuseCursor::try_reuse(
 ) -> @syntax.GreenNode? {
   // Fast path: skip if reuse is globally disabled or byte_offset is in damaged range
   if self.reuse_globally_disabled ||
-    (byte_offset >= self.damaged_range.start &&
-    byte_offset < self.damaged_range.end) {
+    (
+      byte_offset >= self.damaged_range.start &&
+      byte_offset < self.damaged_range.end
+    ) {
     return None
   }
 
@@ -391,7 +406,10 @@ pub fn ReuseCursor::try_reuse(
         let node_token_count = count_tokens_in_node(node)
         if not(
             trailing_context_matches(
-              node, self.tokens, token_pos, node_token_count,
+              node,
+              self.tokens,
+              token_pos,
+              node_token_count,
             ),
           ) {
           None
@@ -406,6 +424,9 @@ pub fn ReuseCursor::try_reuse(
 
 ///|
 /// Advance cursor past a reused node (updates traversal state)
-pub fn ReuseCursor::advance_past(self : ReuseCursor, node : @syntax.GreenNode) -> Unit {
+pub fn ReuseCursor::advance_past(
+  self : ReuseCursor,
+  node : @syntax.GreenNode,
+) -> Unit {
   self.current_offset = self.current_offset + node.text_len
 }

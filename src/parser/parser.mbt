@@ -87,9 +87,13 @@ pub fn parse_tree(input : String) -> @term.TermNode raise {
 
 ///|
 /// Parse a pre-tokenized input into a TermNode with position tracking
-pub fn parse_tree_from_tokens(tokens : Array[@token.TokenInfo]) -> @term.TermNode raise {
+pub fn parse_tree_from_tokens(
+  tokens : Array[@token.TokenInfo],
+) -> @term.TermNode raise {
   let parser = make_parser(tokens)
-  letrec parse_expression = fn(parser : Parser) -> (Parser, @term.TermNode) raise {
+  letrec parse_expression = fn(
+    parser : Parser,
+  ) -> (Parser, @term.TermNode) raise {
     parse_binary_op(parser)
   }
   and parse_binary_op = fn(parser : Parser) -> (Parser, @term.TermNode) raise {
@@ -131,19 +135,28 @@ pub fn parse_tree_from_tokens(tokens : Array[@token.TokenInfo]) -> @term.TermNod
         }
     }
   }
-  and parse_application = fn(parser : Parser) -> (Parser, @term.TermNode) raise {
+  and parse_application = fn(
+    parser : Parser,
+  ) -> (Parser, @term.TermNode) raise {
     let (parser, first) = parse_atom(parser)
     loop (parser, first) {
       (parser, acc) =>
         match peek(parser) {
-          @token.LeftParen | @token.Identifier(_) | @token.Integer(_) | @token.Lambda => {
+          @token.LeftParen
+          | @token.Identifier(_)
+          | @token.Integer(_)
+          | @token.Lambda => {
             let (parser, next) = parse_atom(parser)
             let start = acc.start
             let end = next.end
             let node_id = next_node_id(parser)
-            let node = @term.TermNode::new(@term.TermKind::App, start, end, node_id, [
-              acc, next,
-            ])
+            let node = @term.TermNode::new(
+              @term.TermKind::App,
+              start,
+              end,
+              node_id,
+              [acc, next],
+            )
             continue (parser, node)
           }
           _ => break (parser, acc)

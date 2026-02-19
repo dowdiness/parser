@@ -39,7 +39,10 @@ test "phase4: correctness on 50+ token input - localized edit" {
   let full_tree = @parse.parse_tree(new_source)
 
   // Core invariant: incremental must match full reparse
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -55,7 +58,10 @@ test "phase4: reuse on application chain" {
   let full_tree = @parse.parse_tree("f a b c d x")
 
   // Must match full reparse
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -72,7 +78,10 @@ test "phase4: reuse on nested lambdas" {
   let full_tree = @parse.parse_tree("λa.λb.λc.λd.y")
 
   // Must match full reparse
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -89,7 +98,10 @@ test "phase4: reuse preserves correctness on complex expression" {
   let full_tree = @parse.parse_tree(new_source)
 
   // Must match full reparse
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 // ============================================================================
@@ -106,7 +118,10 @@ test "phase4: edit at binary operator boundary" {
   let edit = @edit.Edit::replace(6, 7, 7)
   let incr_tree = parser.edit(edit, "a + b + c")
   let full_tree = @parse.parse_tree("a + b + c")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -123,7 +138,10 @@ test "phase4: edit changes structure - app to binary" {
   let full_tree = @parse.parse_tree("x + y - z")
 
   // Must match full reparse - trailing context check should prevent false reuse
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -136,7 +154,10 @@ test "phase4: edit changes app to standalone var" {
   let edit = @edit.Edit::delete(1, 3)
   let incr_tree = parser.edit(edit, "f")
   let full_tree = @parse.parse_tree("f")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -149,7 +170,10 @@ test "phase4: edit extends expression" {
   let edit = @edit.Edit::insert(1, 2)
   let incr_tree = parser.edit(edit, "x y")
   let full_tree = @parse.parse_tree("x y")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 // ============================================================================
@@ -214,7 +238,10 @@ test "phase4: empty to non-empty" {
   let edit = @edit.Edit::replace(0, 1, 13)
   let incr_tree = parser.edit(edit, "λf.λx.f (f x)")
   let full_tree = @parse.parse_tree("λf.λx.f (f x)")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -227,7 +254,10 @@ test "phase4: whitespace-only changes" {
   let edit = @edit.Edit::replace(0, 3, 5)
   let incr_tree = parser.edit(edit, "x + y")
   let full_tree = @parse.parse_tree("x + y")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -240,7 +270,10 @@ test "phase4: parentheses changes" {
   let edit = @edit.Edit::replace(0, 5, 7)
   let incr_tree = parser.edit(edit, "(x + y)")
   let full_tree = @parse.parse_tree("(x + y)")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -253,7 +286,10 @@ test "phase4: if-then-else edit in condition" {
   let edit = @edit.Edit::replace(3, 4, 4)
   let incr_tree = parser.edit(edit, "if y then 1 else 2")
   let full_tree = @parse.parse_tree("if y then 1 else 2")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }
 
 ///|
@@ -266,5 +302,8 @@ test "phase4: if-then-else edit in else branch" {
   let edit = @edit.Edit::replace(17, 18, 18)
   let incr_tree = parser.edit(edit, "if x then 1 else 3")
   let full_tree = @parse.parse_tree("if x then 1 else 3")
-  inspect(@term.print_term_node(incr_tree), content=@term.print_term_node(full_tree))
+  inspect(
+    @term.print_term_node(incr_tree),
+    content=@term.print_term_node(full_tree),
+  )
 }

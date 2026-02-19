@@ -1,0 +1,8 @@
+import {
+  "dowdiness/parser/token",
+  "dowdiness/parser/edit",
+}
+
+import {
+  "moonbitlang/quickcheck" @qc,
+} for "test"

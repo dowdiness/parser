@@ -1,0 +1,12 @@
+import {
+  "dowdiness/parser/token",
+  "dowdiness/parser/range",
+  "dowdiness/parser/term",
+  "dowdiness/parser/edit",
+  "dowdiness/parser/lexer",
+  "dowdiness/parser/syntax",
+  "dowdiness/parser/parser" @parse,
+}
+
+import {
+} for "test"

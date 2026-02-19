@@ -113,7 +113,10 @@ test "token_buffer update insertion matches full tokenize" {
   let buffer = TokenBuffer::new(source)
   let updated = buffer.update(edit, new_source)
   let full = tokenize(new_source)
-  inspect(@token.print_token_infos(updated), content=@token.print_token_infos(full))
+  inspect(
+    @token.print_token_infos(updated),
+    content=@token.print_token_infos(full),
+  )
 }
 
 ///|
@@ -124,7 +127,10 @@ test "token_buffer update deletion merges identifiers" {
   let buffer = TokenBuffer::new(source)
   let updated = buffer.update(edit, new_source)
   let full = tokenize(new_source)
-  inspect(@token.print_token_infos(updated), content=@token.print_token_infos(full))
+  inspect(
+    @token.print_token_infos(updated),
+    content=@token.print_token_infos(full),
+  )
 }
 
 ///|
@@ -135,7 +141,10 @@ test "token_buffer update replacement matches full tokenize" {
   let buffer = TokenBuffer::new(source)
   let updated = buffer.update(edit, new_source)
   let full = tokenize(new_source)
-  inspect(@token.print_token_infos(updated), content=@token.print_token_infos(full))
+  inspect(
+    @token.print_token_infos(updated),
+    content=@token.print_token_infos(full),
+  )
 }
 
 ///|
@@ -146,5 +155,8 @@ test "token_buffer update insertion creates keyword" {
   let buffer = TokenBuffer::new(source)
   let updated = buffer.update(edit, new_source)
   let full = tokenize(new_source)
-  inspect(@token.print_token_infos(updated), content=@token.print_token_infos(full))
+  inspect(
+    @token.print_token_infos(updated),
+    content=@token.print_token_infos(full),
+  )
 }

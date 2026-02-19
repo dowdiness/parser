@@ -23,7 +23,10 @@ pub fn DamageTracker::empty() -> DamageTracker {
 
 ///|
 /// Add a range to the damaged regions
-pub fn DamageTracker::add_range(self : DamageTracker, range : @range.Range) -> Unit {
+pub fn DamageTracker::add_range(
+  self : DamageTracker,
+  range : @range.Range,
+) -> Unit {
   if range.length() == 0 {
     return
   }
@@ -52,7 +55,10 @@ pub fn DamageTracker::add_range(self : DamageTracker, range : @range.Range) -> U
 
 ///|
 /// Check if a range is damaged
-pub fn DamageTracker::is_damaged(self : DamageTracker, range : @range.Range) -> Bool {
+pub fn DamageTracker::is_damaged(
+  self : DamageTracker,
+  range : @range.Range,
+) -> Bool {
   for damaged in self.damaged_ranges {
     if damaged.overlaps(range) {
       return true
