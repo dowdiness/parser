@@ -7,7 +7,7 @@ test "ReuseCursor::new creates cursor" {
   let tokens = @lexer.tokenize(source)
   let damaged_range = @range.Range::new(0, 0) // No damage
   let cursor = make_reuse_cursor(green, damaged_range, tokens)
-  inspect(cursor.old_tree().kind, content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(cursor.old_tree().kind), content="SourceFile")
 }
 
 ///|
@@ -26,7 +26,7 @@ test "ReuseCursor::try_reuse finds node at offset" {
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
   let result = cursor.try_reuse(
-    @syntax.SyntaxKind::from_raw(var_ref_kind),
+    var_ref_kind,
     0,
     0,
   )
@@ -48,7 +48,7 @@ test "ReuseCursor::try_reuse returns None for wrong kind" {
     @green_tree.GreenElement::Node(n) => n.kind
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
-  let result = cursor.try_reuse(@syntax.SyntaxKind::from_raw(int_kind), 0, 0)
+  let result = cursor.try_reuse(int_kind, 0, 0)
   inspect(result is None, content="true")
 }
 
@@ -68,7 +68,7 @@ test "ReuseCursor::try_reuse returns None for damaged node" {
   }
   // Node is within damaged range, should not reuse
   let result = cursor.try_reuse(
-    @syntax.SyntaxKind::from_raw(var_ref_kind),
+    var_ref_kind,
     0,
     0,
   )
@@ -90,7 +90,7 @@ test "ReuseCursor::try_reuse returns None for adjacent damage" {
   // Node ends at damaged_range.start, should not reuse
   // (trailing context may have changed)
   let result = cursor.try_reuse(
-    @syntax.SyntaxKind::from_raw(var_ref_kind),
+    var_ref_kind,
     0,
     0,
   )
@@ -108,7 +108,7 @@ test "ReuseCursor::try_reuse works for IntLiteral" {
     @green_tree.GreenElement::Node(n) => n.kind
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
-  let result = cursor.try_reuse(@syntax.SyntaxKind::from_raw(int_kind), 0, 0)
+  let result = cursor.try_reuse(int_kind, 0, 0)
   inspect(result is Some(_), content="true")
 }
 
@@ -123,7 +123,7 @@ test "ReuseCursor::try_reuse works for LambdaExpr" {
     @green_tree.GreenElement::Node(n) => n.kind
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
-  let result = cursor.try_reuse(@syntax.SyntaxKind::from_raw(lambda_kind), 0, 0)
+  let result = cursor.try_reuse(lambda_kind, 0, 0)
   inspect(result is Some(_), content="true")
 }
 
@@ -138,7 +138,7 @@ test "ReuseCursor::try_reuse works for ParenExpr" {
     @green_tree.GreenElement::Node(n) => n.kind
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
-  let result = cursor.try_reuse(@syntax.SyntaxKind::from_raw(paren_kind), 0, 0)
+  let result = cursor.try_reuse(paren_kind, 0, 0)
   inspect(result is Some(_), content="true")
 }
 
@@ -158,7 +158,7 @@ test "ReuseCursor::try_reuse works for nested VarRef" {
   }
   // VarRef "y" is at byte offset 3
   let result = cursor.try_reuse(
-    @syntax.SyntaxKind::from_raw(var_ref_kind),
+    var_ref_kind,
     3,
     3,
   )
@@ -179,7 +179,7 @@ test "ReuseCursor::try_reuse checks leading token mismatch" {
   }
   // Leading token "y" doesn't match node's first token "x"
   let result = cursor.try_reuse(
-    @syntax.SyntaxKind::from_raw(var_ref_kind),
+    var_ref_kind,
     0,
     0,
   )
@@ -205,7 +205,7 @@ test "ReuseCursor reuse for separated regions" {
   }
   // "a" at position 0 should be reusable
   let result = cursor.try_reuse(
-    @syntax.SyntaxKind::from_raw(var_ref_kind),
+    var_ref_kind,
     0,
     0,
   )
@@ -226,7 +226,7 @@ test "ReuseCursor no reuse when node overlaps damage" {
   }
   // The VarRef spans 0-3, overlaps with damage 1-2
   let result = cursor.try_reuse(
-    @syntax.SyntaxKind::from_raw(var_ref_kind),
+    var_ref_kind,
     0,
     0,
   )

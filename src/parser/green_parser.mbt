@@ -8,56 +8,13 @@ fn raw(kind : @syntax.SyntaxKind) -> @green_tree.RawKind {
 }
 
 ///|
-/// Bridge: convert @syntax.GreenNode to @green_tree.GreenNode.
-/// Used only in GreenParser::try_reuse to bridge the Task-7 shim.
-fn syntax_node_to_gt(node : @syntax.GreenNode) -> @green_tree.GreenNode {
-  let children = node.children.map(syntax_elem_to_gt)
-  @green_tree.GreenNode::new(raw(node.kind), children)
-}
-
-///|
-fn syntax_elem_to_gt(elem : @syntax.GreenElement) -> @green_tree.GreenElement {
-  match elem {
-    @syntax.GreenElement::Token(t) =>
-      @green_tree.GreenElement::Token(
-        @green_tree.GreenToken::new(raw(t.kind), t.text),
-      )
-    @syntax.GreenElement::Node(n) =>
-      @green_tree.GreenElement::Node(syntax_node_to_gt(n))
-  }
-}
-
-///|
-/// Bridge: convert @green_tree.GreenNode to @syntax.GreenNode.
-/// Temporary shim until Task 7 migrates reuse_cursor.mbt to RawKind.
-fn gt_node_to_syntax(node : @green_tree.GreenNode) -> @syntax.GreenNode {
-  let kind = @syntax.SyntaxKind::from_raw(node.kind)
-  let children = node.children.map(gt_elem_to_syntax)
-  @syntax.GreenNode::new(kind, children)
-}
-
-///|
-fn gt_elem_to_syntax(elem : @green_tree.GreenElement) -> @syntax.GreenElement {
-  match elem {
-    @green_tree.GreenElement::Token(t) =>
-      @syntax.GreenElement::Token(
-        @syntax.GreenToken::new(@syntax.SyntaxKind::from_raw(t.kind), t.text),
-      )
-    @green_tree.GreenElement::Node(n) =>
-      @syntax.GreenElement::Node(gt_node_to_syntax(n))
-  }
-}
-
-///|
 /// Create a ReuseCursor from a @green_tree.GreenNode.
-/// Temporary bridge until Task 7 migrates reuse_cursor.mbt to RawKind.
 pub fn make_reuse_cursor(
   old_tree : @green_tree.GreenNode,
   damaged_range : @range.Range,
   tokens : Array[@token.TokenInfo],
 ) -> ReuseCursor {
-  let syntax_tree = gt_node_to_syntax(old_tree)
-  ReuseCursor::new(syntax_tree, damaged_range, tokens)
+  ReuseCursor::new(old_tree, damaged_range, tokens)
 }
 
 ///|
@@ -306,26 +263,24 @@ fn GreenParser::try_reuse(
       let byte_offset = info.start
       match
         cursor.try_reuse(
-          @syntax.SyntaxKind::from_raw(expected_kind),
+          expected_kind,
           byte_offset,
           self.position,
         ) {
         None => false
         Some(node) => {
-          // Convert the @syntax.GreenNode shim result to @green_tree.GreenNode
-          let gt_node = syntax_node_to_gt(node)
           // Emit whitespace before the reused node (gap between last_end and token start)
           self.emit_whitespace_before(info)
           // Set last_end to node start before emitting reused events,
           // so internal whitespace in the reused node is not double-counted
           self.last_end = info.start
           // Emit the reused node events
-          self.emit_reused_node_events(gt_node)
+          self.emit_reused_node_events(node)
           // Update position by non-whitespace token count
-          let token_count = count_tokens_in_green(gt_node)
+          let token_count = count_tokens_in_green(node)
           self.position = self.position + token_count
           // Update last_end past the reused node
-          self.last_end = info.start + gt_node.text_len
+          self.last_end = info.start + node.text_len
           self.reuse_count = self.reuse_count + 1
           // Advance cursor past the reused node
           cursor.advance_past(node)
