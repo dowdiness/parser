@@ -1,7 +1,7 @@
 ///|
 /// FNV-1a hash combination. Used to compute structural hashes for GreenNode/GreenToken.
 pub fn combine_hash(h : Int, value : Int) -> Int {
-  let mixed = h.lxor(value)
+  let mixed = h ^ value
   mixed * 16777619 // FNV prime
 }
 

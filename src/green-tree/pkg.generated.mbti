@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser/green-tree"
+
+// Values
+pub fn combine_hash(Int, Int) -> Int
+
+pub fn string_hash(String) -> Int
+
+// Errors
+
+// Types and methods
+pub(all) enum GreenElement {
+  Token(GreenToken)
+  Node(GreenNode)
+}
+pub fn GreenElement::kind(Self) -> RawKind
+pub fn GreenElement::text_len(Self) -> Int
+pub impl Eq for GreenElement
+pub impl Show for GreenElement
+
+pub(all) struct GreenNode {
+  kind : RawKind
+  children : Array[GreenElement]
+  text_len : Int
+  hash : Int
+}
+pub fn GreenNode::has_errors(Self, RawKind, RawKind) -> Bool
+pub fn GreenNode::kind(Self) -> RawKind
+pub fn GreenNode::new(RawKind, Array[GreenElement]) -> Self
+pub impl Eq for GreenNode
+pub impl Show for GreenNode
+
+pub(all) struct GreenToken {
+  kind : RawKind
+  text : String
+  hash : Int
+}
+pub fn GreenToken::new(RawKind, String) -> Self
+pub fn GreenToken::text_len(Self) -> Int
+pub impl Eq for GreenToken
+pub impl Show for GreenToken
+
+pub(all) struct RawKind(Int)
+#deprecated
+pub fn RawKind::inner(Self) -> Int
+pub impl Eq for RawKind
+pub impl Hash for RawKind
+pub impl Show for RawKind
+
+// Type aliases
+
+// Traits
+
