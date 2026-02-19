@@ -6,12 +6,11 @@ import {
   "dowdiness/parser/green-tree",
   "dowdiness/parser/lexer",
   "dowdiness/parser/range",
-  "dowdiness/parser/syntax",
   "dowdiness/parser/term",
 }
 
 // Values
-pub fn count_tokens_in_node_instrumented(@syntax.GreenNode) -> Int
+pub fn count_tokens_in_node_instrumented(@green-tree.GreenNode) -> Int
 
 pub fn perf_enable(Bool) -> Unit
 

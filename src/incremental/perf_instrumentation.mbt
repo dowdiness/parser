@@ -92,18 +92,18 @@ pub fn perf_report() -> String {
 
 ///|
 /// Instrumented version of count_tokens_in_node for profiling
-pub fn count_tokens_in_node_instrumented(node : @syntax.GreenNode) -> Int {
+pub fn count_tokens_in_node_instrumented(node : @green_tree.GreenNode) -> Int {
   if perf_stats.enabled.val {
     perf_stats.count_tokens_calls.val = perf_stats.count_tokens_calls.val + 1
   }
   let mut count = 0
   for child in node.children {
     match child {
-      @syntax.GreenElement::Token(t) =>
-        if t.kind != @syntax.WhitespaceToken {
+      @green_tree.GreenElement::Token(t) =>
+        if t.kind != @syntax.WhitespaceToken.to_raw() {
           count = count + 1
         }
-      @syntax.GreenElement::Node(n) =>
+      @green_tree.GreenElement::Node(n) =>
         count = count + count_tokens_in_node_instrumented(n)
     }
   }
