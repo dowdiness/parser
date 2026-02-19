@@ -261,12 +261,7 @@ fn GreenParser::try_reuse(
       // Get the current byte offset from the current token
       let info = self.peek_info()
       let byte_offset = info.start
-      match
-        cursor.try_reuse(
-          expected_kind,
-          byte_offset,
-          self.position,
-        ) {
+      match cursor.try_reuse(expected_kind, byte_offset, self.position) {
         None => false
         Some(node) => {
           // Emit whitespace before the reused node (gap between last_end and token start)

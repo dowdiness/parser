@@ -7,7 +7,10 @@ test "ReuseCursor::new creates cursor" {
   let tokens = @lexer.tokenize(source)
   let damaged_range = @range.Range::new(0, 0) // No damage
   let cursor = make_reuse_cursor(green, damaged_range, tokens)
-  inspect(@syntax.SyntaxKind::from_raw(cursor.old_tree().kind), content="SourceFile")
+  inspect(
+    @syntax.SyntaxKind::from_raw(cursor.old_tree().kind),
+    content="SourceFile",
+  )
 }
 
 ///|
@@ -25,11 +28,7 @@ test "ReuseCursor::try_reuse finds node at offset" {
     @green_tree.GreenElement::Node(n) => n.kind
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
-  let result = cursor.try_reuse(
-    var_ref_kind,
-    0,
-    0,
-  )
+  let result = cursor.try_reuse(var_ref_kind, 0, 0)
   inspect(result is Some(_), content="true")
 }
 
@@ -67,11 +66,7 @@ test "ReuseCursor::try_reuse returns None for damaged node" {
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
   // Node is within damaged range, should not reuse
-  let result = cursor.try_reuse(
-    var_ref_kind,
-    0,
-    0,
-  )
+  let result = cursor.try_reuse(var_ref_kind, 0, 0)
   inspect(result is None, content="true")
 }
 
@@ -89,11 +84,7 @@ test "ReuseCursor::try_reuse returns None for adjacent damage" {
   }
   // Node ends at damaged_range.start, should not reuse
   // (trailing context may have changed)
-  let result = cursor.try_reuse(
-    var_ref_kind,
-    0,
-    0,
-  )
+  let result = cursor.try_reuse(var_ref_kind, 0, 0)
   inspect(result is None, content="true")
 }
 
@@ -157,11 +148,7 @@ test "ReuseCursor::try_reuse works for nested VarRef" {
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
   // VarRef "y" is at byte offset 3
-  let result = cursor.try_reuse(
-    var_ref_kind,
-    3,
-    3,
-  )
+  let result = cursor.try_reuse(var_ref_kind, 3, 3)
   inspect(result is Some(_), content="true")
 }
 
@@ -178,11 +165,7 @@ test "ReuseCursor::try_reuse checks leading token mismatch" {
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
   // Leading token "y" doesn't match node's first token "x"
-  let result = cursor.try_reuse(
-    var_ref_kind,
-    0,
-    0,
-  )
+  let result = cursor.try_reuse(var_ref_kind, 0, 0)
   inspect(result is None, content="true")
 }
 
@@ -204,11 +187,7 @@ test "ReuseCursor reuse for separated regions" {
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
   // "a" at position 0 should be reusable
-  let result = cursor.try_reuse(
-    var_ref_kind,
-    0,
-    0,
-  )
+  let result = cursor.try_reuse(var_ref_kind, 0, 0)
   inspect(result is Some(_), content="true")
 }
 
@@ -225,11 +204,7 @@ test "ReuseCursor no reuse when node overlaps damage" {
     @green_tree.GreenElement::Token(_) => abort("Expected node")
   }
   // The VarRef spans 0-3, overlaps with damage 1-2
-  let result = cursor.try_reuse(
-    var_ref_kind,
-    0,
-    0,
-  )
+  let result = cursor.try_reuse(var_ref_kind, 0, 0)
   inspect(result is None, content="true")
 }
 

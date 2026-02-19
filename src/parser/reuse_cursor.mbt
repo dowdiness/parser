@@ -65,7 +65,8 @@ fn count_tokens_in_node(node : @green_tree.GreenNode) -> Int {
         if t.kind != @syntax.WhitespaceToken.to_raw() {
           count = count + 1
         }
-      @green_tree.GreenElement::Node(n) => count = count + count_tokens_in_node(n)
+      @green_tree.GreenElement::Node(n) =>
+        count = count + count_tokens_in_node(n)
     }
   }
   count
