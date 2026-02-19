@@ -1,0 +1,3 @@
+import {
+  "dowdiness/parser/green-tree" @green_tree,
+}
