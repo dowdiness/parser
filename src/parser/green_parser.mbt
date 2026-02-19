@@ -325,7 +325,7 @@ fn GreenParser::try_reuse(
           let token_count = count_tokens_in_green(gt_node)
           self.position = self.position + token_count
           // Update last_end past the reused node
-          self.last_end = info.start + node.text_len
+          self.last_end = info.start + gt_node.text_len
           self.reuse_count = self.reuse_count + 1
           // Advance cursor past the reused node
           cursor.advance_past(node)
