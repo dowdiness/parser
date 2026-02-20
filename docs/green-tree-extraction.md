@@ -14,6 +14,9 @@ The extraction enables:
 - Reuse of the green-red tree in other parsers/projects
 - Integration with incr (incremental computation library) where `GreenNode` serves as a `Memo[GreenNode]` value — **hash-based O(1) `Eq` is critical for incr's backdating optimization** (if recomputation yields the same GreenNode hash, all downstream Memos skip recomputation)
 - Clean separation of concerns following rust-analyzer's architecture (rowan = generic green-red tree, separate from language-specific syntax definitions)
+- Hashing strategy split by concern:
+  - cached structural hash (construction-time) for fast `Eq`
+  - `Hash` trait impls for `HashMap`/`HashSet` interoperability
 
 ## Current File Structure
 
@@ -42,7 +45,7 @@ src/
     green_node.mbt      # RawKind + GreenToken + GreenElement + GreenNode (with hash)
     red_node.mbt         # RedNode (with node_at)
     event.mbt            # ParseEvent + EventBuffer + build_tree (parameterized root_kind)
-    hash.mbt             # Hash utility functions
+    hash.mbt             # FNV utility functions for cached structural hash
     moon.pkg.json        # {} (no dependencies)
   syntax/               # MODIFIED: language-specific, depends on green-tree
     syntax_kind.mbt      # SyntaxKind enum + to_raw() / from_raw() conversion
@@ -59,6 +62,9 @@ src/
 Key design decisions:
 - **`RawKind` = newtype over `Int`** (following rowan's `RawSyntaxKind`). Languages provide their own enum and convert to/from `RawKind`.
 - **Hash field on every node/token** for O(1) equality comparison. This is essential for incr integration where `Memo::force_recompute` compares old and new `GreenNode` values — if hashes match, backdating kicks in and all downstream computation is skipped.
+- **Hybrid hash model**:
+  - constructors compute cached structural hash using `hash.mbt` (FNV)
+  - `Hash` trait impls reuse cached hash for MoonBit collections (`hasher.combine_int(self.hash)`)
 - **`Eq` implementation**: compare hash first (fast path), then fall back to structural comparison only on hash collision.
 
 ```moonbit
@@ -100,7 +106,7 @@ pub(all) enum GreenElement {
 - `GreenNode::width() -> Int` (alias for text_len)
 - `GreenNode::has_errors(error_node_kind: RawKind, error_token_kind: RawKind) -> Bool`
 
-### 2. `green-tree/hash.mbt`
+### 2. `green-tree/hash.mbt` + `Hash` trait interop
 
 ```moonbit
 pub fn combine_hash(h : Int, value : Int) -> Int {
@@ -116,6 +122,10 @@ pub fn string_hash(s : String) -> Int {
   h
 }
 ```
+
+These FNV utilities are used for constructor-time cached structural hashing.
+Collection interop (`HashMap`, `HashSet`) is provided by `Hash` trait impls on
+`GreenToken`, `GreenElement`, and `GreenNode` that reuse those cached values.
 
 ### 3. `green-tree/red_node.mbt`
 

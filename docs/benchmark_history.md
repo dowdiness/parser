@@ -1,6 +1,37 @@
 # Benchmark History
 
-Historical snapshots from `moon bench --package parser --release`.
+Historical snapshots from project benchmark runs (full suite and focused runs).
+
+## 2026-02-21 (JST) / 2026-02-20 (US)
+
+- Command: `moon bench --package dowdiness/parser/benchmarks --release`
+- Hash strategy: hybrid (`GreenToken`/`GreenNode` cached structural hash via FNV; `Hash` trait impls for collection interop)
+- Environment: local developer machine
+- Result: `44/44` benchmarks passed
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| parse scaling - large (30+ tokens) | 6.50 µs | Full parse baseline (large) |
+| incremental vs full - edit at start | 8.73 µs | Boundary edit, root invalidation path |
+| incremental vs full - edit in middle | 8.74 µs | Boundary edit, root invalidation path |
+| incremental vs full - edit at end | 8.57 µs | Boundary edit, root invalidation path |
+| best case - cosmetic change | 2.14 µs | Localized edit path |
+| worst case - full invalidation | 8.53 µs | Full rebuild + incremental overhead |
+| memory pressure - large document | 14.24 µs | Larger input incremental edit scenario |
+| phase1: full tokenize - 110 tokens | 1.16 µs | Tokenization baseline |
+| phase1: incremental tokenize - edit at start | 2.04 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit in middle | 1.96 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit at end | 1.89 µs | Includes `TokenBuffer::new()` setup |
+| phase1: full re-tokenize after edit | 1.13 µs | Comparison baseline |
+
+### Green-Tree Focused Metrics (from same full run)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| green-tree - token constructor | 0.02 µs | `GreenToken::new` hash compute path |
+| green-tree - node constructor from 32 children | 0.06 µs | `GreenNode::new` fold/hash path |
+| green-tree - equality identical 32 children | 0.17 µs | Hash check + deep equality walk |
+| green-tree - equality mismatch hash fast path | 0.01 µs | Expected early hash mismatch exit |
 
 ## 2026-02-19
 

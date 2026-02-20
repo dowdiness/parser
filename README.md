@@ -28,13 +28,18 @@ This module provides a complete parsing pipeline for a Lambda Calculus-based lan
 Performance benchmarks measure incremental parsing efficiency:
 
 ```bash
-moon bench --release
+# Full benchmark suite
+moon bench --package dowdiness/parser/benchmarks --release
+
+# Focused green-tree microbenchmarks
+moon bench --package dowdiness/parser/benchmarks --file green_tree_benchmark.mbt --release
 ```
 
 Key benchmarks:
 - `incremental vs full - edit at start/end/middle` — Measures edit performance
 - `worst case - full invalidation` — Edit that invalidates entire tree
 - `best case - cosmetic change` — Localized edit with potential reuse
+- `green-tree - token/node/equality` — Focused construction/hash/equality microbenchmarks
 
 ### Cursor Optimization
 
@@ -180,6 +185,10 @@ Converts a `RedNode` (position-aware CST facade) directly to a `TermNode`.
 - `GreenNode` -- Immutable CST node storing kind, children, and text width. Position-independent.
 - `GreenToken` -- Leaf token in the green tree with kind and text.
 - `RedNode` -- Ephemeral wrapper around `GreenNode` that computes absolute byte positions on demand via parent pointers.
+
+Hashing notes:
+- `GreenToken`/`GreenNode` store a cached structural hash computed during construction (FNV utility).
+- `Hash` trait impls reuse cached hashes for `HashMap`/`HashSet` interoperability.
 
 **Example:**
 ```moonbit
