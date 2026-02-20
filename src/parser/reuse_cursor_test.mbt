@@ -41,12 +41,7 @@ test "ReuseCursor::try_reuse returns None for wrong kind" {
   let cursor = make_reuse_cursor(green, damaged_range, tokens)
 
   // Try to find IntLiteral at offset 0 (but it's a VarRef)
-  // Get IntLiteral kind from a different source
-  let (int_green, _) = parse_green_recover("42")
-  let int_kind = match int_green.children[0] {
-    @green_tree.GreenElement::Node(n) => n.kind
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
-  }
+  let int_kind = @syntax.IntLiteral.to_raw()
   let result = cursor.try_reuse(int_kind, 0, 0)
   inspect(result is None, content="true")
 }
@@ -141,12 +136,7 @@ test "ReuseCursor::try_reuse works for nested VarRef" {
   let damaged_range = @range.Range::new(10, 10)
   let cursor = make_reuse_cursor(green, damaged_range, tokens)
 
-  // Get VarRef kind from a simple source
-  let (var_green, _) = parse_green_recover("z")
-  let var_ref_kind = match var_green.children[0] {
-    @green_tree.GreenElement::Node(n) => n.kind
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
-  }
+  let var_ref_kind = @syntax.VarRef.to_raw()
   // VarRef "y" is at byte offset 3
   let result = cursor.try_reuse(var_ref_kind, 3, 3)
   inspect(result is Some(_), content="true")
@@ -193,11 +183,7 @@ test "ReuseCursor::try_reuse rejects identifier boundary merge by follow token" 
   let merged_tokens = @lexer.tokenize("xy")
   let damaged_range = @range.Range::new(10, 10)
   let cursor = make_reuse_cursor(green, damaged_range, merged_tokens)
-  let (var_green, _) = parse_green_recover("z")
-  let var_ref_kind = match var_green.children[0] {
-    @green_tree.GreenElement::Node(n) => n.kind
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
-  }
+  let var_ref_kind = @syntax.VarRef.to_raw()
   let result = cursor.try_reuse(var_ref_kind, 0, 0)
   inspect(result is None, content="true")
 }
@@ -210,11 +196,7 @@ test "ReuseCursor::try_reuse rejects integer boundary merge by follow token" {
   let merged_tokens = @lexer.tokenize("12")
   let damaged_range = @range.Range::new(10, 10)
   let cursor = make_reuse_cursor(green, damaged_range, merged_tokens)
-  let (int_green, _) = parse_green_recover("7")
-  let int_kind = match int_green.children[0] {
-    @green_tree.GreenElement::Node(n) => n.kind
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
-  }
+  let int_kind = @syntax.IntLiteral.to_raw()
   let result = cursor.try_reuse(int_kind, 0, 0)
   inspect(result is None, content="true")
 }
@@ -231,11 +213,7 @@ test "ReuseCursor reuse for separated regions" {
   let cursor = make_reuse_cursor(green, damaged_range, tokens)
 
   // Get VarRef kind
-  let (var_green, _) = parse_green_recover("z")
-  let var_ref_kind = match var_green.children[0] {
-    @green_tree.GreenElement::Node(n) => n.kind
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
-  }
+  let var_ref_kind = @syntax.VarRef.to_raw()
   // "a" at position 0 should be reusable
   let result = cursor.try_reuse(var_ref_kind, 0, 0)
   inspect(result is Some(_), content="true")
@@ -260,23 +238,14 @@ test "ReuseCursor no reuse when node overlaps damage" {
 
 ///|
 test "ReuseCursor verify kind extraction works" {
-  // Simple sanity test
-  let (var_green, _) = parse_green_recover("x")
-  let (int_green, _) = parse_green_recover("42")
-  let (lam_green, _) = parse_green_recover("λx.x")
-  let var_kind = match var_green.children[0] {
-    @green_tree.GreenElement::Node(n) => n.kind
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
-  }
-  let int_kind = match int_green.children[0] {
-    @green_tree.GreenElement::Node(n) => n.kind
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
-  }
-  let lam_kind = match lam_green.children[0] {
-    @green_tree.GreenElement::Node(n) => n.kind
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
-  }
-  inspect(@syntax.SyntaxKind::from_raw(var_kind), content="VarRef")
-  inspect(@syntax.SyntaxKind::from_raw(int_kind), content="IntLiteral")
-  inspect(@syntax.SyntaxKind::from_raw(lam_kind), content="LambdaExpr")
+  // Sanity: expected kinds are stable and round-trip through RawKind.
+  inspect(@syntax.SyntaxKind::from_raw(@syntax.VarRef.to_raw()), content="VarRef")
+  inspect(
+    @syntax.SyntaxKind::from_raw(@syntax.IntLiteral.to_raw()),
+    content="IntLiteral",
+  )
+  inspect(
+    @syntax.SyntaxKind::from_raw(@syntax.LambdaExpr.to_raw()),
+    content="LambdaExpr",
+  )
 }

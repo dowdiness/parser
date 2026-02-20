@@ -578,6 +578,7 @@ test "Differential: identifier boundary merge" {
   let edit = @edit.Edit::delete(1, 2)
   let incremental = parser.edit(edit, "xy")
   let full = @parse.parse_tree("xy")
+  inspect(@term.print_term_node(full), content="xy")
   inspect(
     @term.print_term_node(incremental),
     content=@term.print_term_node(full),
@@ -593,6 +594,7 @@ test "Differential: identifier boundary split" {
   let edit = @edit.Edit::insert(1, 1)
   let incremental = parser.edit(edit, "x y")
   let full = @parse.parse_tree("x y")
+  inspect(@term.print_term_node(full), content="(x y)")
   inspect(
     @term.print_term_node(incremental),
     content=@term.print_term_node(full),
@@ -608,6 +610,7 @@ test "Differential: integer boundary merge" {
   let edit = @edit.Edit::delete(1, 2)
   let incremental = parser.edit(edit, "12")
   let full = @parse.parse_tree("12")
+  inspect(@term.print_term_node(full), content="12")
   inspect(
     @term.print_term_node(incremental),
     content=@term.print_term_node(full),
@@ -623,6 +626,7 @@ test "Differential: integer boundary split" {
   let edit = @edit.Edit::insert(1, 1)
   let incremental = parser.edit(edit, "1 2")
   let full = @parse.parse_tree("1 2")
+  inspect(@term.print_term_node(full), content="(1 2)")
   inspect(
     @term.print_term_node(incremental),
     content=@term.print_term_node(full),
