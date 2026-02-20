@@ -63,3 +63,23 @@ test "panic build_tree: missing FinishNode aborts" {
     ),
   )
 }
+
+///|
+test "panic build_tree: leading FinishNode aborts" {
+  ignore(build_tree([ParseEvent::FinishNode], RawKind(22)))
+}
+
+///|
+test "panic build_tree: extra FinishNode aborts" {
+  ignore(
+    build_tree(
+      [
+        ParseEvent::StartNode(RawKind(19)),
+        ParseEvent::Token(RawKind(10), "5"),
+        ParseEvent::FinishNode,
+        ParseEvent::FinishNode,
+      ],
+      RawKind(22),
+    ),
+  )
+}

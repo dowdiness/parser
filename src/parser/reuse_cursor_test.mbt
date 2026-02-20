@@ -170,6 +170,56 @@ test "ReuseCursor::try_reuse checks leading token mismatch" {
 }
 
 ///|
+test "ReuseCursor::try_reuse rejects integer value mismatch" {
+  let source = "12"
+  let (green, _) = parse_green_recover(source)
+  // Different integer token at same location should not match.
+  let new_tokens = @lexer.tokenize("34")
+  let damaged_range = @range.Range::new(10, 10)
+  let cursor = make_reuse_cursor(green, damaged_range, new_tokens)
+  let int_kind = match green.children[0] {
+    @green_tree.GreenElement::Node(n) => n.kind
+    @green_tree.GreenElement::Token(_) => abort("Expected node")
+  }
+  let result = cursor.try_reuse(int_kind, 0, 0)
+  inspect(result is None, content="true")
+}
+
+///|
+test "ReuseCursor::try_reuse rejects identifier boundary merge by follow token" {
+  let source = "x y"
+  let (green, _) = parse_green_recover(source)
+  // Follow token after first VarRef changed from Identifier("y") to EOF.
+  let merged_tokens = @lexer.tokenize("xy")
+  let damaged_range = @range.Range::new(10, 10)
+  let cursor = make_reuse_cursor(green, damaged_range, merged_tokens)
+  let (var_green, _) = parse_green_recover("z")
+  let var_ref_kind = match var_green.children[0] {
+    @green_tree.GreenElement::Node(n) => n.kind
+    @green_tree.GreenElement::Token(_) => abort("Expected node")
+  }
+  let result = cursor.try_reuse(var_ref_kind, 0, 0)
+  inspect(result is None, content="true")
+}
+
+///|
+test "ReuseCursor::try_reuse rejects integer boundary merge by follow token" {
+  let source = "1 2"
+  let (green, _) = parse_green_recover(source)
+  // Follow token after first IntLiteral changed from Integer(2) to EOF.
+  let merged_tokens = @lexer.tokenize("12")
+  let damaged_range = @range.Range::new(10, 10)
+  let cursor = make_reuse_cursor(green, damaged_range, merged_tokens)
+  let (int_green, _) = parse_green_recover("7")
+  let int_kind = match int_green.children[0] {
+    @green_tree.GreenElement::Node(n) => n.kind
+    @green_tree.GreenElement::Token(_) => abort("Expected node")
+  }
+  let result = cursor.try_reuse(int_kind, 0, 0)
+  inspect(result is None, content="true")
+}
+
+///|
 test "ReuseCursor reuse for separated regions" {
   // Test that nodes in one part of the tree can be reused when
   // damage is in another part

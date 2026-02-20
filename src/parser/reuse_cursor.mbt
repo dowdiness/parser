@@ -13,6 +13,14 @@ struct CursorFrame {
 }
 
 ///|
+/// Flattened non-whitespace token from the old green tree.
+struct OldToken {
+  kind : @green_tree.RawKind
+  text : String
+  start : Int
+}
+
+///|
 /// Cursor for walking an old green tree to find reusable subtrees.
 /// Maintains traversal state for O(depth) lookups.
 pub struct ReuseCursor {
@@ -24,8 +32,33 @@ pub struct ReuseCursor {
   damaged_range : @range.Range
   // Token buffer for context checks (new tokens)
   tokens : Array[@token.TokenInfo]
+  // Flattened non-whitespace tokens from old tree for follow-token checks
+  old_tokens : Array[OldToken]
   // Fast path: true if damage covers root (no reuse possible)
   reuse_globally_disabled : Bool
+}
+
+///|
+fn collect_old_tokens(
+  node : @green_tree.GreenNode,
+  node_start : Int,
+  out : Array[OldToken],
+) -> Unit {
+  let mut offset = node_start
+  for child in node.children {
+    match child {
+      @green_tree.GreenElement::Token(t) => {
+        if t.kind != @syntax.WhitespaceToken.to_raw() {
+          out.push({ kind: t.kind, text: t.text, start: offset })
+        }
+        offset = offset + t.text_len()
+      }
+      @green_tree.GreenElement::Node(n) => {
+        collect_old_tokens(n, offset, out)
+        offset = offset + n.text_len
+      }
+    }
+  }
 }
 
 ///|
@@ -39,8 +72,19 @@ pub fn ReuseCursor::new(
   // When damage spans [0, tree_len), no subtree can be outside damage.
   let reuse_globally_disabled = damaged_range.start <= 0 &&
     damaged_range.end >= old_tree.text_len
+  let old_tokens : Array[OldToken] = []
+  if not(reuse_globally_disabled) {
+    collect_old_tokens(old_tree, 0, old_tokens)
+  }
   let stack = [{ node: old_tree, child_index: 0, start_offset: 0 }]
-  { stack, current_offset: 0, damaged_range, tokens, reuse_globally_disabled }
+  {
+    stack,
+    current_offset: 0,
+    damaged_range,
+    tokens,
+    old_tokens,
+    reuse_globally_disabled,
+  }
 }
 
 ///|
@@ -144,7 +188,12 @@ fn token_matches_syntax_kind(
       }
     @syntax.IntToken =>
       match token {
-        @token.Integer(_) => true // Kind match is sufficient; damage tracking ensures text correctness
+        // Require numeric value and canonical text to match.
+        // This prevents false positives where any integer kind would pass.
+        @token.Integer(value) => {
+          let parsed = @strconv.parse_int(text) catch { _ => return false }
+          parsed == value && value.to_string() == text
+        }
         _ => false
       }
     _ =>
@@ -190,67 +239,50 @@ fn leading_token_matches(
 }
 
 ///|
-/// Get the last non-whitespace token kind from a green node
-fn last_token_kind(node : @green_tree.GreenNode) -> @green_tree.RawKind? {
-  let children = node.children
-  for i = children.length() - 1; i >= 0; i = i - 1 {
-    match children[i] {
-      @green_tree.GreenElement::Token(t) =>
-        if t.kind != @syntax.WhitespaceToken.to_raw() {
-          return Some(t.kind)
-        }
-      @green_tree.GreenElement::Node(n) => {
-        let result = last_token_kind(n)
-        if result is Some(_) {
-          return result
-        }
-      }
+/// Find the first old non-whitespace token with start >= offset.
+fn old_follow_token(old_tokens : Array[OldToken], offset : Int) -> OldToken? {
+  let mut lo = 0
+  let mut hi = old_tokens.length()
+  while lo < hi {
+    let mid = (lo + hi) / 2
+    if old_tokens[mid].start < offset {
+      lo = mid + 1
+    } else {
+      hi = mid
     }
   }
-  None
+  if lo < old_tokens.length() { Some(old_tokens[lo]) } else { None }
 }
 
 ///|
-/// Check if the trailing context matches
-///
-/// TODO(Option B): Implement proper follow-token comparison for stronger
-/// trailing context validation. Currently this check is permissive and relies
-/// on damage tracking + leading token checks for correctness. See CORRECTNESS.md
-/// for details on the conservative reuse protocol.
+/// Compare follow token from old tree and new token stream.
+/// Option B: follow-token equality must hold for reuse.
 fn trailing_context_matches(
-  node : @green_tree.GreenNode,
+  old_tokens : Array[OldToken],
   tokens : Array[@token.TokenInfo],
+  node_end : Int,
   token_pos : Int,
   node_token_count : Int,
 ) -> Bool {
-  // Get the token that would follow this node
+  // Note: node_end is in old-source coordinates. For a node outside the
+  // damaged range, its boundary byte offset is unchanged in the new source,
+  // so the old follow token and the new token at after_pos represent the
+  // same source boundary.
   let after_pos = token_pos + node_token_count
-  if after_pos >= tokens.length() {
-    // At EOF, no trailing context to check
-    return true
+  let old_follow = old_follow_token(old_tokens, node_end)
+  let new_follow = if after_pos < tokens.length() {
+    match tokens[after_pos].token {
+      @token.EOF => None
+      _ => Some(tokens[after_pos])
+    }
+  } else {
+    None
   }
-  // Compare the last token of the old node against the token following it
-  // in the new stream. If the follow token changed, the node boundary may
-  // have shifted (e.g. identifier merging) so reuse is unsafe.
-  let after_token = tokens[after_pos]
-  match last_token_kind(node) {
-    Some(last_kind) =>
-      // If the last token in the node is an identifier or integer, verify
-      // the follow token is not the same kind (which could indicate merging)
-      match @syntax.SyntaxKind::from_raw(last_kind) {
-        @syntax.IdentToken =>
-          match after_token.token {
-            @token.Identifier(_) => false
-            _ => true
-          }
-        @syntax.IntToken =>
-          match after_token.token {
-            @token.Integer(_) => false
-            _ => true
-          }
-        _ => true
-      }
-    None => true
+  match (old_follow, new_follow) {
+    (None, None) => true
+    (Some(old), Some(new_info)) =>
+      token_matches_syntax_kind(new_info.token, old.text, old.kind)
+    _ => false
   }
 }
 
@@ -407,8 +439,9 @@ pub fn ReuseCursor::try_reuse(
         let node_token_count = count_tokens_in_node(node)
         if not(
             trailing_context_matches(
-              node,
+              self.old_tokens,
               self.tokens,
+              node_end,
               token_pos,
               node_token_count,
             ),

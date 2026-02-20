@@ -34,7 +34,7 @@ Subtree reuse is permitted only when multiple checks succeed:
 - Node kind matches the expected kind at the parser checkpoint.
 - Node is outside the damaged range (strict inequality at boundaries).
 - Leading token kind/text matches the current token stream.
-- Trailing context is intended to be validated (Option B: follow-token match).
+- Trailing context must match (Option B: follow-token equality).
 
 If any check is uncertain, reuse is skipped and a fresh parse is performed.
 Correctness is never traded for reuse.
@@ -113,10 +113,6 @@ Any bug found becomes a permanent regression test. The test captures:
 
 These are documented to keep the correctness story honest:
 
-- Trailing-context checks are currently permissive; follow-token comparison is
-  the next hardening step (Option B).
-- Leading token match for integers currently ignores literal text. This is safe
-  under correct damage ranges but weakens the token-level invariant.
 - Reuse is conservative around leading whitespace, reducing reuse on
   whitespace-only edits but preserving correctness.
 - Adjacent damage is treated as unsafe, which avoids false reuse at
@@ -187,5 +183,4 @@ and full parsing. It does not guarantee:
 
 ## Future Work
 
-- Option B: Follow-token comparison for trailing context checks
 - Semantics-aware follow-set checks for projectional/live editors

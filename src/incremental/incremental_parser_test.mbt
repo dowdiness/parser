@@ -570,6 +570,66 @@ test "Differential: if-then-else modification" {
 }
 
 ///|
+test "Differential: identifier boundary merge" {
+  let parser = IncrementalParser::new("x y")
+  let _ = parser.parse()
+
+  // Delete boundary whitespace: "x y" -> "xy"
+  let edit = @edit.Edit::delete(1, 2)
+  let incremental = parser.edit(edit, "xy")
+  let full = @parse.parse_tree("xy")
+  inspect(
+    @term.print_term_node(incremental),
+    content=@term.print_term_node(full),
+  )
+}
+
+///|
+test "Differential: identifier boundary split" {
+  let parser = IncrementalParser::new("xy")
+  let _ = parser.parse()
+
+  // Insert boundary whitespace: "xy" -> "x y"
+  let edit = @edit.Edit::insert(1, 1)
+  let incremental = parser.edit(edit, "x y")
+  let full = @parse.parse_tree("x y")
+  inspect(
+    @term.print_term_node(incremental),
+    content=@term.print_term_node(full),
+  )
+}
+
+///|
+test "Differential: integer boundary merge" {
+  let parser = IncrementalParser::new("1 2")
+  let _ = parser.parse()
+
+  // Delete boundary whitespace: "1 2" -> "12"
+  let edit = @edit.Edit::delete(1, 2)
+  let incremental = parser.edit(edit, "12")
+  let full = @parse.parse_tree("12")
+  inspect(
+    @term.print_term_node(incremental),
+    content=@term.print_term_node(full),
+  )
+}
+
+///|
+test "Differential: integer boundary split" {
+  let parser = IncrementalParser::new("12")
+  let _ = parser.parse()
+
+  // Insert boundary whitespace: "12" -> "1 2"
+  let edit = @edit.Edit::insert(1, 1)
+  let incremental = parser.edit(edit, "1 2")
+  let full = @parse.parse_tree("1 2")
+  inspect(
+    @term.print_term_node(incremental),
+    content=@term.print_term_node(full),
+  )
+}
+
+///|
 test "Differential: multiple consecutive edits" {
   let parser = IncrementalParser::new("a")
   let _ = parser.parse()
