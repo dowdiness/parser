@@ -1,5 +1,11 @@
 # Design: Extract `green-tree` Package from `syntax`
 
+> Historical design artifact (2026-02-19). This document reflects pre-implementation
+> architecture intent and may not match current code exactly.
+>
+> For current behavior, use the active documentation set in `docs/` and this
+> directory's documentation index. Do not treat this design note as the source of truth.
+
 **Date:** 2026-02-19
 **Status:** Approved
 

@@ -30,6 +30,13 @@ authoritative for current architecture.
 - [archive/COMPLETION_SUMMARY.md](archive/COMPLETION_SUMMARY.md)
 - [archive/lezer.md](archive/lezer.md)
 
+## Planning Artifacts
+
+Plans in `docs/plans/` are implementation-time sequencing artifacts. They are
+useful for historical context, but are not authoritative for current behavior.
+Prefer active, non-plan documentation in `docs/` for source-of-truth status.
+
+
 ## Archive
 
 - [archive/TODO_ARCHIVE.md](archive/TODO_ARCHIVE.md)

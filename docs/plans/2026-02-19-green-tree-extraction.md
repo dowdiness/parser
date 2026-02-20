@@ -1,5 +1,11 @@
 # Green-Tree Extraction Implementation Plan
 
+> Historical planning artifact (2026-02-19). This file captures implementation-time
+> sequencing and assumptions and may diverge from the final code.
+>
+> For current behavior, use the active documentation set in `docs/` and this
+> directory's documentation index. Do not treat this plan as the source of truth.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Extract language-independent green-red tree infrastructure from `src/syntax/` into a new zero-dependency `src/green-tree/` package, with hash-based `Eq` for O(1) node comparison.
