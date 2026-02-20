@@ -1054,11 +1054,9 @@ Known risks:
 
 Mitigated by: The differential testing oracle (see Cross-Cutting Concern section) catches all correctness bugs. Property-based fuzzing with random edits runs on every commit. Reuse can be conservatively disabled (fall back to full reparse) if any check is uncertain — correctness is never sacrificed for performance.
 
-**Note (provisional):** Strengthen trailing-context checks by comparing the old-stream and new-stream follow token (Option B). Semantics-aware follow-set checks are a future enhancement for projectional/live editors.
-
 **Findings (correctness/edge cases):**
-- Trailing-context check is currently permissive; it does not yet enforce a follow-token comparison, so boundary shifts rely on damage range + leading token checks.
-- Leading token match for integers ignores literal text (only kind), which is safe under correct damage ranges but weakens the token-level invariant.
+- Trailing-context check enforces follow-token equality (Option B): the first non-whitespace token after the node's end offset must be identical in both old and new token streams. Prevents identifier/integer boundary merges.
+- Leading token match for integers requires both numeric value equality and canonical text equality (e.g., `007` does not match `7`).
 - Reuse is conservative around leading whitespace because reuse is anchored to the first non-whitespace token offset, reducing reuse on whitespace-only edits.
 - Adjacent damage is treated as unsafe (strict inequality), which prevents false reuse for grammar-sensitive boundaries like application.
 
