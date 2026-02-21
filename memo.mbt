@@ -61,7 +61,7 @@ pub fn[T : Eq] Memo::new(rt : Runtime, compute : () -> T) -> Memo[T] {
   let recompute_and_check : () -> Result[Bool, CycleError] = fn() {
     memo.recompute_inner()
   }
-  let meta = CellMeta::new_derived(cell_id, recompute_and_check)
+  let meta = CellMeta::new_derived(cell_id, recompute_and_check, None)
   rt.register_cell(meta)
   memo
 }

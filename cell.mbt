@@ -66,6 +66,8 @@ priv struct CellMeta {
   mut on_change : (() -> Unit)?
   /// Cycle detection flag.
   mut in_progress : Bool
+  /// Optional human-readable label for debugging and introspection.
+  mut label : String?
 }
 
 ///|
@@ -79,7 +81,7 @@ priv struct CellMeta {
 /// # Returns
 ///
 /// Initialized cell metadata with `kind = Input`
-fn CellMeta::new_input(id : CellId, durability : Durability) -> CellMeta {
+fn CellMeta::new_input(id : CellId, durability : Durability, label : String?) -> CellMeta {
   {
     id,
     kind: Input,
@@ -91,6 +93,7 @@ fn CellMeta::new_input(id : CellId, durability : Durability) -> CellMeta {
     commit_pending: None,
     on_change: None,
     in_progress: false,
+    label,
   }
 }
 
@@ -111,6 +114,7 @@ fn CellMeta::new_input(id : CellId, durability : Durability) -> CellMeta {
 fn CellMeta::new_derived(
   id : CellId,
   recompute_and_check : () -> Result[Bool, CycleError],
+  label : String?,
 ) -> CellMeta {
   {
     id,
@@ -123,5 +127,6 @@ fn CellMeta::new_derived(
     commit_pending: None,
     on_change: None,
     in_progress: false,
+    label,
   }
 }

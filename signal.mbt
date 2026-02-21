@@ -65,7 +65,7 @@ pub fn[T] Signal::new_with_durability(
   durability : Durability,
 ) -> Signal[T] {
   let cell_id = rt.alloc_cell_id()
-  let meta = CellMeta::new_input(cell_id, durability)
+  let meta = CellMeta::new_input(cell_id, durability, None)
   rt.register_cell(meta)
   { rt, cell_id, value: initial, pending_value: None, durability }
 }
