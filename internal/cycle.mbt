@@ -1,25 +1,3 @@
-// TEMPORARY STUBS — delete this entire block (CellInfo + Runtime + cell_info method)
-// before or when creating internal/runtime.mbt in Task 6.
-// The production Runtime is pub(all) with many more fields.
-// The production CellInfo is also pub(all).
-priv struct CellInfo {
-  label : String?
-  id : @incr_types.CellId
-  changed_at : @incr_types.Revision
-  verified_at : @incr_types.Revision
-  durability : @incr_types.Durability
-  dependencies : Array[@incr_types.CellId]
-}
-
-pub(all) struct Runtime {
-  runtime_id : Int
-}
-
-fn Runtime::cell_info(self : Runtime, _id : @incr_types.CellId) -> CellInfo? {
-  ignore(self)
-  None
-}
-
 ///|
 /// Error type for cycle detection during memo computation.
 ///

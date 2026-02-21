@@ -23,8 +23,8 @@ priv struct CellMeta {
   kind : CellKind
   mut changed_at : @incr_types.Revision
   mut verified_at : @incr_types.Revision
-  mut dependencies : Array[@incr_types.CellId]
-  mut durability : @incr_types.Durability
+  dependencies : Array[@incr_types.CellId]
+  durability : @incr_types.Durability
   /// For derived cells: recomputes and returns true if value changed.
   /// Returns Err(CycleError) if a cycle is detected during recomputation.
   /// None for input cells.
@@ -38,11 +38,11 @@ priv struct CellMeta {
   /// Called when the cell's value changes.
   /// Invoked after a signal is set or a memo recomputes to a new value.
   /// None if no callback is registered.
-  mut on_change : (() -> Unit)?
+  on_change : (() -> Unit)?
   /// Cycle detection flag.
   mut in_progress : Bool
   /// Optional human-readable label for debugging and introspection.
-  mut label : String?
+  label : String?
 }
 
 ///|

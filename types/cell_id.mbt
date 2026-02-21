@@ -13,12 +13,12 @@ pub(all) struct CellId {
 } derive(Eq, Show, Debug)
 
 ///|
-impl Hash for CellId with hash(self) {
+pub impl Hash for CellId with hash(self) {
   self.runtime_id.hash() * 31 + self.id.hash()
 }
 
 ///|
-impl Hash for CellId with hash_combine(self, hasher) {
+pub impl Hash for CellId with hash_combine(self, hasher) {
   self.runtime_id.hash_combine(hasher)
   self.id.hash_combine(hasher)
 }
