@@ -28,9 +28,10 @@ priv struct CellMeta {
   /// For derived cells: recomputes and returns true if value changed.
   /// Returns Err(CycleError) if a cycle is detected during recomputation.
   /// None for input cells.
-  // `mut` to allow whitebox test corruption (verify_wbtest.mbt); never reassigned
-  // in production after CellMeta::new_derived initializes it. Safe: CellMeta is priv.
-  mut recompute_and_check : (() -> Result[Bool, CycleError])?
+  // NOTE: `mut` intentionally omitted here; will be restored when memo.mbt is added
+  // (memo.mbt writes recompute_and_check; whitebox tests also write it).
+  // Omitted now to avoid unused_mut error before those files are present.
+  recompute_and_check : (() -> Result[Bool, CycleError])?
   /// For input cells during batch: commits pending value and returns true
   /// if the committed value differs from the current value.
   /// None for derived cells or inputs outside a batch.
@@ -38,7 +39,7 @@ priv struct CellMeta {
   /// Called when the cell's value changes.
   /// Invoked after a signal is set or a memo recomputes to a new value.
   /// None if no callback is registered.
-  on_change : (() -> Unit)?
+  mut on_change : (() -> Unit)?
   /// Cycle detection flag.
   mut in_progress : Bool
   /// Optional human-readable label for debugging and introspection.
