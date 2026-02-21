@@ -42,10 +42,28 @@ pub(all) struct Runtime {
 /// This is the entry point for using the incremental computation framework.
 /// Create one runtime, then create signals and memos associated with it.
 ///
+/// # Parameters
+///
+/// - `on_change`: Optional callback invoked whenever any signal changes
+///   (or at the end of a batch if values actually changed). Equivalent
+///   to calling `Runtime::set_on_change` immediately after construction.
+///
 /// # Returns
 ///
 /// A new runtime ready to manage signals and memos
-pub fn Runtime::new() -> Runtime {
+///
+/// # Example
+///
+/// ```moonbit nocheck
+/// let rt = Runtime::new()
+///
+/// let rt = Runtime::new(on_change=fn() { rerender() })
+///
+/// let x = Signal::new(rt, 10)
+///
+/// let doubled = Memo::new(rt, fn() { x.get() * 2 })
+/// ```
+pub fn Runtime::new(on_change? : (() -> Unit)) -> Runtime {
   let id = next_runtime_id.val
   next_runtime_id.val = next_runtime_id.val + 1
   {
@@ -61,7 +79,7 @@ pub fn Runtime::new() -> Runtime {
     batch_depth: 0,
     batch_pending_signals: [],
     batch_max_durability: Low,
-    on_change: None,
+    on_change,
   }
 }
 

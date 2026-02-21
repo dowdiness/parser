@@ -70,7 +70,7 @@ Concrete, actionable tasks for the `incr` library.
 
 ### Ergonomics (Phase 2C - Medium Priority)
 
-- [ ] Add `Runtime::with_on_change(self, f) -> Runtime` for method chaining
+- ~~Add `Runtime::with_on_change(self, f) -> Runtime` for method chaining~~ — skipped (replaced by `on_change?` optional param in `Runtime::new`)
 - [x] Unified `create_signal` with optional `durability?` replaces `create_signal_durable`
 - [ ] Explore RAII `BatchGuard` if MoonBit adds destructors
 

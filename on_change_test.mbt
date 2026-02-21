@@ -97,3 +97,21 @@ test "on_change with memo and backdating" {
   inspect(count, content="1")
   inspect(parity.get(), content="true")
 }
+
+///|
+test "on_change optional param fires on signal set" {
+  let mut count = 0
+  let rt = Runtime::new(on_change=fn() { count = count + 1 })
+  let s = Signal::new(rt, 0)
+  s.set(1)
+  inspect(count, content="1")
+}
+
+///|
+test "on_change optional param defaults to none" {
+  let count = 0
+  let rt = Runtime::new()
+  let s = Signal::new(rt, 0)
+  s.set(1)
+  inspect(count, content="0")
+}
