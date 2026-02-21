@@ -21,7 +21,7 @@ pub(all) struct Revision {
 /// # Returns
 ///
 /// The initial revision
-fn Revision::initial() -> Revision {
+pub fn Revision::initial() -> Revision {
   Revision::default()
 }
 
@@ -31,7 +31,7 @@ fn Revision::initial() -> Revision {
 /// # Returns
 ///
 /// A new revision with value incremented by 1
-fn Revision::next(self : Revision) -> Revision {
+pub fn Revision::next(self : Revision) -> Revision {
   { value: self.value + 1 }
 }
 
@@ -69,7 +69,7 @@ pub(all) enum Durability {
 /// - `Low` → 0
 /// - `Medium` → 1
 /// - `High` → 2
-fn Durability::index(self : Durability) -> Int {
+pub fn Durability::index(self : Durability) -> Int {
   match self {
     Low => 0
     Medium => 1
@@ -81,4 +81,4 @@ fn Durability::index(self : Durability) -> Int {
 /// The number of durability levels (3: Low, Medium, High).
 ///
 /// Used internally to size the `durability_last_changed` array in Runtime.
-const DURABILITY_COUNT : Int = 3
+pub const DURABILITY_COUNT : Int = 3
