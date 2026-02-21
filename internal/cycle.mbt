@@ -1,5 +1,7 @@
-///|
-// Temporary stubs — will be replaced when internal/runtime.mbt is created in Task 6.
+// TEMPORARY STUBS — delete this entire block (CellInfo + Runtime + cell_info method)
+// before or when creating internal/runtime.mbt in Task 6.
+// The production Runtime is pub(all) with many more fields.
+// The production CellInfo is also pub(all).
 priv struct CellInfo {
   label : String?
   id : @incr_types.CellId
@@ -9,13 +11,10 @@ priv struct CellInfo {
   dependencies : Array[@incr_types.CellId]
 }
 
-///|
-// Temporary stub for Runtime — will be replaced by internal/runtime.mbt.
 pub(all) struct Runtime {
   runtime_id : Int
 }
 
-///|
 fn Runtime::cell_info(self : Runtime, _id : @incr_types.CellId) -> CellInfo? {
   ignore(self)
   None
