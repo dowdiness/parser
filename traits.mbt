@@ -141,7 +141,18 @@ pub(open) trait Trackable {
 ///|
 /// Creates a new TrackedCell using the database's runtime.
 ///
-/// Follows the same pattern as create_signal and create_memo.
+/// Follows the same pattern as `create_signal` and `create_memo`.
+///
+/// # Parameters
+///
+/// - `db`: Any type implementing `IncrDb`
+/// - `value`: The initial value of the TrackedCell
+/// - `durability`: How often this cell is expected to change (default: `Low`)
+/// - `label`: An optional human-readable name for debugging and introspection
+///
+/// # Returns
+///
+/// A new TrackedCell associated with the database's runtime
 pub fn[Db : IncrDb, T] create_tracked_cell(
   db : Db,
   value : T,
@@ -160,6 +171,9 @@ pub fn[Db : IncrDb, T] create_tracked_cell(
 /// that user code includes the correct call sites, enabling a zero-change
 /// migration when GC lands.
 pub fn[T : Trackable] gc_tracked(rt : Runtime, tracked : T) -> Unit {
+  // Phase 4 implementation will mark these CellIds as reachable
+  // in the Runtime's GC root set.
   let _ids = tracked.cell_ids()
   ignore(rt)
+  // Future: rt.mark_gc_roots(ids)
 }
