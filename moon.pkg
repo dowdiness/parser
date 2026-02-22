@@ -5,3 +5,6 @@ import {
   // because trait impls in test files do not count as package usage in MoonBit.
   "dowdiness/incr/pipeline" @pipeline,
 }
+
+// Suppress unused_package warning for @pipeline (see comment above).
+options("warn-list": "-29")
