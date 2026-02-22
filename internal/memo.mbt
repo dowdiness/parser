@@ -29,10 +29,10 @@
 pub(all) struct Memo[T] {
   priv label : String?
   priv rt : Runtime
-  priv cell_id : @incr_types.CellId
+  priv cell_id : CellId
   priv compute : () -> T
   priv mut value : T?
-} derive(Debug(ignore=[Runtime, Fn, @incr_types.CellId]))
+} derive(Debug(ignore=[Runtime, Fn, CellId]))
 
 ///|
 /// Creates a new memo with the given compute function.
@@ -233,14 +233,11 @@ fn[T : Eq] Memo::recompute_inner(self : Memo[T]) -> Result[Bool, CycleError] {
 ///|
 /// Compute the durability of a derived cell from its dependencies.
 /// A derived cell's durability is the minimum of its dependencies' durabilities.
-fn compute_durability(
-  rt : Runtime,
-  deps : Array[@incr_types.CellId],
-) -> @incr_types.Durability {
+fn compute_durability(rt : Runtime, deps : Array[CellId]) -> Durability {
   if deps.length() == 0 {
-    return @incr_types.Low
+    return Low
   }
-  let mut min_dur = @incr_types.High
+  let mut min_dur = Durability::High
   for dep_id in deps {
     let dep_cell = rt.get_cell(dep_id)
     if dep_cell.durability < min_dur {
@@ -259,7 +256,7 @@ fn compute_durability(
 /// # Returns
 ///
 /// The cell identifier for this memo
-pub fn[T] Memo::id(self : Memo[T]) -> @incr_types.CellId {
+pub fn[T] Memo::id(self : Memo[T]) -> CellId {
   self.cell_id
 }
 
@@ -282,7 +279,7 @@ pub fn[T] Memo::id(self : Memo[T]) -> @incr_types.CellId {
 /// m.get() |> ignore
 /// inspect(m.dependencies().contains(x.id()), content="true")
 /// ```
-pub fn[T] Memo::dependencies(self : Memo[T]) -> Array[@incr_types.CellId] {
+pub fn[T] Memo::dependencies(self : Memo[T]) -> Array[CellId] {
   let meta = self.rt.cells[self.cell_id.id]
   match meta {
     Some(m) => m.dependencies.copy()
@@ -299,11 +296,11 @@ pub fn[T] Memo::dependencies(self : Memo[T]) -> Array[@incr_types.CellId] {
 /// # Returns
 ///
 /// The revision timestamp of the last actual value change
-pub fn[T] Memo::changed_at(self : Memo[T]) -> @incr_types.Revision {
+pub fn[T] Memo::changed_at(self : Memo[T]) -> Revision {
   let meta = self.rt.cells[self.cell_id.id]
   match meta {
     Some(m) => m.changed_at
-    None => @incr_types.Revision::initial()
+    None => Revision::initial()
   }
 }
 
@@ -316,11 +313,11 @@ pub fn[T] Memo::changed_at(self : Memo[T]) -> @incr_types.Revision {
 /// # Returns
 ///
 /// The revision timestamp of the last verification
-pub fn[T] Memo::verified_at(self : Memo[T]) -> @incr_types.Revision {
+pub fn[T] Memo::verified_at(self : Memo[T]) -> Revision {
   let meta = self.rt.cells[self.cell_id.id]
   match meta {
     Some(m) => m.verified_at
-    None => @incr_types.Revision::initial()
+    None => Revision::initial()
   }
 }
 

@@ -30,7 +30,7 @@
 /// }
 /// ```
 pub suberror CycleError {
-  CycleDetected(@incr_types.CellId, Array[@incr_types.CellId])
+  CycleDetected(CellId, Array[CellId])
 }
 
 ///|
@@ -38,7 +38,7 @@ pub suberror CycleError {
 ///
 /// This is the cell that was already being computed when
 /// a recursive access was attempted.
-pub fn CycleError::cell(self : CycleError) -> @incr_types.CellId {
+pub fn CycleError::cell(self : CycleError) -> CellId {
   match self {
     CycleDetected(cell_id, _) => cell_id
   }
@@ -56,7 +56,7 @@ pub fn CycleError::cell(self : CycleError) -> @incr_types.CellId {
 /// if cell A triggers computation of B→C→B, the path will be `[A, B, C, B]`
 /// rather than just `[B, C, B]`, preserving the full computation context.
 /// Use the repeated cell to identify the cycle boundary.
-pub fn CycleError::path(self : CycleError) -> Array[@incr_types.CellId] {
+pub fn CycleError::path(self : CycleError) -> Array[CellId] {
   match self {
     CycleDetected(_, path) => path
   }
@@ -107,7 +107,7 @@ pub fn CycleError::format_path(self : CycleError, rt : Runtime) -> String {
 ///
 /// Returns the cell's label if one was set, otherwise "Cell[N]" where N is
 /// the cell's ID number.
-fn format_cell(rt : Runtime, cell_id : @incr_types.CellId) -> String {
+fn format_cell(rt : Runtime, cell_id : CellId) -> String {
   match rt.cell_info(cell_id) {
     Some({ label: Some(l), .. }) => l
     _ => "Cell[" + cell_id.id.to_string() + "]"
@@ -121,8 +121,8 @@ fn format_cell(rt : Runtime, cell_id : @incr_types.CellId) -> String {
 /// This is path-source agnostic: callers provide whatever path they have collected
 /// (tracking stack IDs or verification path IDs) without exposing runtime internals.
 fn CycleError::from_path(
-  path : Array[@incr_types.CellId],
-  closing_id : @incr_types.CellId,
+  path : Array[CellId],
+  closing_id : CellId,
 ) -> CycleError {
   let full_path = path.copy()
   full_path.push(closing_id)

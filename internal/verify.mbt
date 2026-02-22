@@ -30,8 +30,8 @@
 /// `Err(CycleError)` if a cycle is detected
 fn maybe_changed_after(
   rt : Runtime,
-  cell_id : @incr_types.CellId,
-  after_revision : @incr_types.Revision,
+  cell_id : CellId,
+  after_revision : Revision,
 ) -> Result[Bool, CycleError] {
   let cell = rt.get_cell(cell_id)
   match cell.kind {
@@ -50,7 +50,7 @@ fn maybe_changed_after(
 /// CellMeta stored in `Runtime.cells`, not a detached copy.
 priv struct VerifyFrame {
   cell : CellMeta
-  after_revision : @incr_types.Revision
+  after_revision : Revision
   mut dep_index : Int
   mut any_dep_changed : Bool
 }
@@ -69,7 +69,7 @@ fn cleanup_stack(stack : Array[VerifyFrame]) -> Unit {
 /// Called after both finish_frame_changed and finish_frame_unchanged.
 fn pop_frame(
   stack : Array[VerifyFrame],
-  path : Array[@incr_types.CellId],
+  path : Array[CellId],
   result : Bool,
   final_result : Ref[Bool],
 ) -> Unit {
@@ -88,12 +88,12 @@ fn pop_frame(
 fn maybe_changed_after_derived(
   rt : Runtime,
   cell : CellMeta,
-  after_revision : @incr_types.Revision,
+  after_revision : Revision,
 ) -> Result[Bool, CycleError] {
   // Use an explicit stack to avoid call-stack overflow on deep graphs
   let stack : Array[VerifyFrame] = []
   // Track the dependency path for cycle error diagnostics
-  let path : Array[@incr_types.CellId] = []
+  let path : Array[CellId] = []
   // Track the final result — set when the root frame completes
   let final_result : Ref[Bool] = { val: false }
   // Try to start verification on the root cell; if fast paths apply, return early
@@ -176,8 +176,8 @@ fn maybe_changed_after_derived(
 fn try_start_verify(
   rt : Runtime,
   cell : CellMeta,
-  after_revision : @incr_types.Revision,
-  path : Array[@incr_types.CellId],
+  after_revision : Revision,
+  path : Array[CellId],
 ) -> Result[Bool?, CycleError] {
   // Fast path: already verified this revision
   if cell.verified_at == rt.current_revision {

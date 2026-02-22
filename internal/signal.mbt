@@ -16,11 +16,11 @@
 pub(all) struct Signal[T] {
   priv label : String?
   priv rt : Runtime
-  priv cell_id : @incr_types.CellId
+  priv cell_id : CellId
   priv mut value : T
   priv mut pending_value : T?
-  priv durability : @incr_types.Durability
-} derive(Debug(ignore=[Runtime, @incr_types.CellId]))
+  priv durability : Durability
+} derive(Debug(ignore=[Runtime, CellId]))
 
 ///|
 /// Creates a new signal with the given initial value.
@@ -48,7 +48,7 @@ pub(all) struct Signal[T] {
 pub fn[T] Signal::new(
   rt : Runtime,
   initial : T,
-  durability? : @incr_types.Durability = @incr_types.Low,
+  durability? : Durability = Low,
   label? : String,
 ) -> Signal[T] {
   let cell_id = rt.alloc_cell_id()
@@ -106,7 +106,7 @@ pub fn[T] Signal::get_result(self : Signal[T]) -> Result[T, CycleError] {
 ///   None => ()
 /// }
 /// ```
-pub fn[T] Signal::id(self : Signal[T]) -> @incr_types.CellId {
+pub fn[T] Signal::id(self : Signal[T]) -> CellId {
   self.cell_id
 }
 
@@ -121,7 +121,7 @@ pub fn[T] Signal::id(self : Signal[T]) -> @incr_types.CellId {
 /// # Returns
 ///
 /// The durability level set at construction time
-pub fn[T] Signal::durability(self : Signal[T]) -> @incr_types.Durability {
+pub fn[T] Signal::durability(self : Signal[T]) -> Durability {
   self.durability
 }
 

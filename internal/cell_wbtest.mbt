@@ -3,16 +3,16 @@
 // produce different hashes, preventing spurious collisions in HashSet[CellId]
 // when multiple runtimes share the same cell index space.
 test "CellId::hash is non-commutative" {
-  let a = @incr_types.CellId::{ runtime_id: 1, id: 2 }
-  let b = @incr_types.CellId::{ runtime_id: 2, id: 1 }
+  let a = CellId::{ runtime_id: 1, id: 2 }
+  let b = CellId::{ runtime_id: 2, id: 1 }
   inspect(a.hash() == b.hash(), content="false")
 }
 
 ///|
 // Sanity check: equal CellIds must produce equal hashes (Hash law).
 test "CellId::hash equal inputs produce equal hashes" {
-  let a = @incr_types.CellId::{ runtime_id: 3, id: 7 }
-  let b = @incr_types.CellId::{ runtime_id: 3, id: 7 }
+  let a = CellId::{ runtime_id: 3, id: 7 }
+  let b = CellId::{ runtime_id: 3, id: 7 }
   inspect(a.hash() == b.hash(), content="true")
 }
 
@@ -20,7 +20,7 @@ test "CellId::hash equal inputs produce equal hashes" {
 test "CellMeta new_input stores label" {
   let rt = Runtime::new()
   let id = rt.alloc_cell_id()
-  let meta = CellMeta::new_input(id, @incr_types.Low, Some("my_signal"))
+  let meta = CellMeta::new_input(id, Low, Some("my_signal"))
   inspect(meta.label, content="Some(\"my_signal\")")
 }
 
@@ -28,6 +28,6 @@ test "CellMeta new_input stores label" {
 test "CellMeta new_input stores None label" {
   let rt = Runtime::new()
   let id = rt.alloc_cell_id()
-  let meta = CellMeta::new_input(id, @incr_types.Low, None)
+  let meta = CellMeta::new_input(id, Low, None)
   inspect(meta.label, content="None")
 }

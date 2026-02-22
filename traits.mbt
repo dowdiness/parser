@@ -47,14 +47,14 @@ pub(open) trait Readable {
 /// Signals are always up-to-date since they are input cells
 /// with directly-set values.
 pub impl[T] Readable for Signal[T] with is_up_to_date(self) {
-  @internal.Signal::is_up_to_date(self)
+  Signal::is_up_to_date(self)
 }
 
 ///|
 /// A memo is up-to-date when its verified_at matches the
 /// runtime's current revision.
 pub impl[T] Readable for Memo[T] with is_up_to_date(self) {
-  @internal.Memo::is_up_to_date(self)
+  Memo::is_up_to_date(self)
 }
 
 ///|

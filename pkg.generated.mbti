@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub const DURABILITY_COUNT : Int = 3
+
 pub fn[Db : IncrDb] batch(Db, () -> Unit) -> Unit
 
 pub fn[Db : IncrDb, T : Eq] create_memo(Db, () -> T, label? : String) -> @internal.Memo[T]

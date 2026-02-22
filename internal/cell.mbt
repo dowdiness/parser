@@ -1,4 +1,7 @@
 ///|
+using @incr_types {type Revision, type Durability, type CellId}
+
+///|
 /// Distinguishes input cells (Signals) from derived cells (Memos).
 ///
 /// This affects how verification works:
@@ -19,12 +22,12 @@ priv enum CellKind {
 /// This separation allows the verification algorithm to operate on all cells
 /// uniformly without knowing their value types.
 priv struct CellMeta {
-  id : @incr_types.CellId
+  id : CellId
   kind : CellKind
-  mut changed_at : @incr_types.Revision
-  mut verified_at : @incr_types.Revision
-  mut dependencies : Array[@incr_types.CellId]
-  mut durability : @incr_types.Durability
+  mut changed_at : Revision
+  mut verified_at : Revision
+  mut dependencies : Array[CellId]
+  mut durability : Durability
   /// For derived cells: recomputes and returns true if value changed.
   /// Returns Err(CycleError) if a cycle is detected during recomputation.
   /// None for input cells.
@@ -60,15 +63,15 @@ priv struct CellMeta {
 ///
 /// Initialized cell metadata with `kind = Input`
 fn CellMeta::new_input(
-  id : @incr_types.CellId,
-  durability : @incr_types.Durability,
+  id : CellId,
+  durability : Durability,
   label : String?,
 ) -> CellMeta {
   {
     id,
     kind: Input,
-    changed_at: @incr_types.Revision::initial(),
-    verified_at: @incr_types.Revision::initial(),
+    changed_at: Revision::initial(),
+    verified_at: Revision::initial(),
     dependencies: [],
     durability,
     recompute_and_check: None,
@@ -95,17 +98,17 @@ fn CellMeta::new_input(
 /// Initialized cell metadata with `kind = Derived` and `durability = Low`
 /// (durability is updated after first computation based on dependencies)
 fn CellMeta::new_derived(
-  id : @incr_types.CellId,
+  id : CellId,
   recompute_and_check : () -> Result[Bool, CycleError],
   label : String?,
 ) -> CellMeta {
   {
     id,
     kind: Derived,
-    changed_at: @incr_types.Revision::initial(),
-    verified_at: @incr_types.Revision::initial(),
+    changed_at: Revision::initial(),
+    verified_at: Revision::initial(),
     dependencies: [],
-    durability: @incr_types.Low,
+    durability: Low,
     recompute_and_check: Some(recompute_and_check),
     commit_pending: None,
     on_change: None,

@@ -8,9 +8,9 @@
 ///
 /// Dependencies are deduplicated using a HashSet for O(1) membership checks.
 priv struct ActiveQuery {
-  cell_id : @incr_types.CellId
-  dependencies : Array[@incr_types.CellId]
-  seen : @hashset.HashSet[@incr_types.CellId]
+  cell_id : CellId
+  dependencies : Array[CellId]
+  seen : @hashset.HashSet[CellId]
 }
 
 ///|
@@ -23,7 +23,7 @@ priv struct ActiveQuery {
 /// # Returns
 ///
 /// A new active query with an empty dependency set
-fn ActiveQuery::new(cell_id : @incr_types.CellId) -> ActiveQuery {
+fn ActiveQuery::new(cell_id : CellId) -> ActiveQuery {
   { cell_id, dependencies: [], seen: @hashset.new() }
 }
 
@@ -37,7 +37,7 @@ fn ActiveQuery::new(cell_id : @incr_types.CellId) -> ActiveQuery {
 /// # Parameters
 ///
 /// - `dep`: The cell ID to record as a dependency
-fn ActiveQuery::record(self : ActiveQuery, dep : @incr_types.CellId) -> Unit {
+fn ActiveQuery::record(self : ActiveQuery, dep : CellId) -> Unit {
   if self.seen.contains(dep) {
     return
   }

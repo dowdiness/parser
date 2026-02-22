@@ -3,7 +3,7 @@
 // its durability must be preserved correctly across multiple recomputations.
 test "dep diff: stable deps preserve durability" {
   let rt = Runtime::new()
-  let a = Signal::new(rt, 1, durability=@incr_types.High)
+  let a = Signal::new(rt, 1, durability=High)
   let m = Memo::new(rt, fn() { a.get() + 1 })
   let _ = m.get()
   let meta = rt.get_cell(m.id())
@@ -20,9 +20,9 @@ test "dep diff: stable deps preserve durability" {
 // list and durability must both reflect the new set of dependencies.
 test "dep diff: dynamic deps update dep list and durability" {
   let rt = Runtime::new()
-  let flag = Signal::new(rt, true, durability=@incr_types.High)
-  let a = Signal::new(rt, 1, durability=@incr_types.High)
-  let b = Signal::new(rt, 2, durability=@incr_types.Low)
+  let flag = Signal::new(rt, true, durability=High)
+  let a = Signal::new(rt, 1, durability=High)
+  let b = Signal::new(rt, 2, durability=Low)
   let m = Memo::new(rt, fn() { if flag.get() { a.get() } else { b.get() } })
   // Initial: reads flag(High) and a(High) → min durability = High
   let _ = m.get()

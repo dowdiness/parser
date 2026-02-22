@@ -25,14 +25,14 @@ let next_runtime_id : Ref[Int] = { val: 0 }
 /// ```
 pub(all) struct Runtime {
   priv runtime_id : Int
-  priv mut current_revision : @incr_types.Revision
+  priv mut current_revision : Revision
   priv cells : Array[CellMeta?]
   priv mut next_cell_id : Int
   priv tracking_stack : Array[ActiveQuery]
-  priv durability_last_changed : FixedArray[@incr_types.Revision]
+  priv durability_last_changed : FixedArray[Revision]
   priv mut batch_depth : Int
-  priv batch_pending_signals : Array[@incr_types.CellId]
-  priv mut batch_max_durability : @incr_types.Durability
+  priv batch_pending_signals : Array[CellId]
+  priv mut batch_max_durability : Durability
   priv mut on_change : (() -> Unit)?
 }
 
@@ -68,17 +68,17 @@ pub fn Runtime::new(on_change? : () -> Unit) -> Runtime {
   next_runtime_id.val = next_runtime_id.val + 1
   {
     runtime_id: id,
-    current_revision: @incr_types.Revision::initial(),
+    current_revision: Revision::initial(),
     cells: [],
     next_cell_id: 0,
     tracking_stack: [],
     durability_last_changed: FixedArray::make(
       @incr_types.DURABILITY_COUNT,
-      @incr_types.Revision::initial(),
+      Revision::initial(),
     ),
     batch_depth: 0,
     batch_pending_signals: [],
-    batch_max_durability: @incr_types.Low,
+    batch_max_durability: Low,
     on_change,
   }
 }
@@ -99,11 +99,11 @@ pub fn Runtime::new(on_change? : () -> Unit) -> Runtime {
 /// - `dependencies`: Cell IDs this cell depends on (empty for signals)
 pub(all) struct CellInfo {
   label : String?
-  id : @incr_types.CellId
-  changed_at : @incr_types.Revision
-  verified_at : @incr_types.Revision
-  durability : @incr_types.Durability
-  dependencies : Array[@incr_types.CellId]
+  id : CellId
+  changed_at : Revision
+  verified_at : Revision
+  durability : Durability
+  dependencies : Array[CellId]
 }
 
 ///|
@@ -133,7 +133,7 @@ fn Runtime::register_cell(self : Runtime, meta : CellMeta) -> Unit {
 /// # Returns
 ///
 /// A new unique cell identifier
-fn Runtime::alloc_cell_id(self : Runtime) -> @incr_types.CellId {
+fn Runtime::alloc_cell_id(self : Runtime) -> CellId {
   let id = self.next_cell_id
   self.next_cell_id = id + 1
   { runtime_id: self.runtime_id, id }
@@ -155,7 +155,7 @@ fn Runtime::alloc_cell_id(self : Runtime) -> @incr_types.CellId {
 /// # Panics
 ///
 /// Aborts if no cell with the given ID exists
-fn Runtime::get_cell(self : Runtime, id : @incr_types.CellId) -> CellMeta {
+fn Runtime::get_cell(self : Runtime, id : CellId) -> CellMeta {
   if id.runtime_id != self.runtime_id {
     abort("Cell belongs to a different Runtime")
   }
@@ -247,7 +247,7 @@ fn Runtime::fire_on_change(self : Runtime) -> Unit {
 /// - For signals, the dependencies array is always empty
 /// - For memos, dependencies are populated after the first computation
 /// - The method performs bounds checking and returns None for invalid IDs
-pub fn Runtime::cell_info(self : Runtime, id : @incr_types.CellId) -> CellInfo? {
+pub fn Runtime::cell_info(self : Runtime, id : CellId) -> CellInfo? {
   // Validate runtime ownership - reject CellIds from other runtimes
   if id.runtime_id != self.runtime_id {
     return None
@@ -277,11 +277,8 @@ pub fn Runtime::cell_info(self : Runtime, id : @incr_types.CellId) -> CellInfo? 
 /// Advance the global revision counter and record which durability level changed.
 /// Updates current_revision and all durability_last_changed entries up to dur_idx.
 /// Callers must ensure this is only called outside of a batch (batch_depth == 0).
-fn Runtime::advance_revision(
-  self : Runtime,
-  durability : @incr_types.Durability,
-) -> Unit {
-  self.current_revision = @incr_types.Revision::next(self.current_revision)
+fn Runtime::advance_revision(self : Runtime, durability : Durability) -> Unit {
+  self.current_revision = Revision::next(self.current_revision)
   let dur_idx = durability.index()
   for i = 0; i <= dur_idx; i = i + 1 {
     self.durability_last_changed[i] = self.current_revision
@@ -292,10 +289,7 @@ fn Runtime::advance_revision(
 /// Mark an input cell as changed at the current revision.
 /// Sets both changed_at and verified_at to current_revision.
 /// Must be called after advance_revision so current_revision is already updated.
-fn Runtime::mark_input_changed(
-  self : Runtime,
-  id : @incr_types.CellId,
-) -> CellMeta {
+fn Runtime::mark_input_changed(self : Runtime, id : CellId) -> CellMeta {
   let meta = self.get_cell(id)
   meta.changed_at = self.current_revision
   meta.verified_at = self.current_revision
@@ -314,10 +308,7 @@ fn Runtime::mark_input_changed(
 /// # Parameters
 ///
 /// - `durability`: The durability level of the signal that changed
-fn Runtime::bump_revision(
-  self : Runtime,
-  durability : @incr_types.Durability,
-) -> Unit {
+fn Runtime::bump_revision(self : Runtime, durability : Durability) -> Unit {
   if self.batch_depth > 0 {
     // Track the maximum durability seen during this batch
     if durability > self.batch_max_durability {
@@ -384,11 +375,11 @@ pub fn Runtime::batch(self : Runtime, f : () -> Unit) -> Unit {
 fn Runtime::commit_batch(self : Runtime) -> Unit {
   if self.batch_pending_signals.length() == 0 {
     // Nothing changed during the batch, reset state
-    self.batch_max_durability = @incr_types.Low
+    self.batch_max_durability = Low
     return
   }
   // Phase 1: commit pending values and collect which actually changed
-  let changed_ids : Array[@incr_types.CellId] = []
+  let changed_ids : Array[CellId] = []
   for id in self.batch_pending_signals {
     let meta = self.get_cell(id)
     match meta.commit_pending {
@@ -418,7 +409,7 @@ fn Runtime::commit_batch(self : Runtime) -> Unit {
         None => ()
       }
     }
-    self.batch_max_durability = @incr_types.Low
+    self.batch_max_durability = Low
     // Raise batch_depth while invoking callbacks so that any signal.set()
     // inside a callback takes the batch path instead of set_unconditional,
     // preventing re-entrant fire_on_change() calls.
@@ -434,7 +425,7 @@ fn Runtime::commit_batch(self : Runtime) -> Unit {
     self.fire_on_change()
     return
   }
-  self.batch_max_durability = @incr_types.Low
+  self.batch_max_durability = Low
 }
 
 ///|
@@ -445,10 +436,7 @@ fn Runtime::commit_batch(self : Runtime) -> Unit {
 /// # Parameters
 ///
 /// - `cell_id`: The ID of the signal with a pending change
-fn Runtime::record_batch_signal(
-  self : Runtime,
-  cell_id : @incr_types.CellId,
-) -> Unit {
+fn Runtime::record_batch_signal(self : Runtime, cell_id : CellId) -> Unit {
   self.batch_pending_signals.push(cell_id)
 }
 
@@ -462,7 +450,7 @@ fn Runtime::record_batch_signal(
 /// # Parameters
 ///
 /// - `dep`: The cell ID that the current memo depends on
-fn Runtime::record_dependency(self : Runtime, dep : @incr_types.CellId) -> Unit {
+fn Runtime::record_dependency(self : Runtime, dep : CellId) -> Unit {
   let len = self.tracking_stack.length()
   if len > 0 {
     self.tracking_stack[len - 1].record(dep)
@@ -478,7 +466,7 @@ fn Runtime::record_dependency(self : Runtime, dep : @incr_types.CellId) -> Unit 
 /// # Parameters
 ///
 /// - `cell_id`: The ID of the memo being computed
-fn Runtime::push_tracking(self : Runtime, cell_id : @incr_types.CellId) -> Unit {
+fn Runtime::push_tracking(self : Runtime, cell_id : CellId) -> Unit {
   self.tracking_stack.push(ActiveQuery::new(cell_id))
 }
 
@@ -497,7 +485,7 @@ fn Runtime::push_tracking(self : Runtime, cell_id : @incr_types.CellId) -> Unit 
 /// Aborts if the tracking stack is empty (unbalanced push/pop)
 fn Runtime::pop_tracking(
   self : Runtime,
-) -> (Array[@incr_types.CellId], @hashset.HashSet[@incr_types.CellId]) {
+) -> (Array[CellId], @hashset.HashSet[CellId]) {
   match self.tracking_stack.pop() {
     Some(query) => (query.dependencies, query.seen)
     None => abort("Tracking stack underflow")
@@ -509,8 +497,8 @@ fn Runtime::pop_tracking(
 ///
 /// Returns the cell IDs of all active computation frames in order,
 /// for use in cycle error diagnostics. Does not modify the stack.
-fn Runtime::collect_tracking_path(self : Runtime) -> Array[@incr_types.CellId] {
-  let path : Array[@incr_types.CellId] = []
+fn Runtime::collect_tracking_path(self : Runtime) -> Array[CellId] {
+  let path : Array[CellId] = []
   for frame in self.tracking_stack {
     path.push(frame.cell_id)
   }
