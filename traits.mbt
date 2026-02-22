@@ -148,7 +148,7 @@ pub(open) trait Trackable {
 /// - `db`: Any type implementing `IncrDb`
 /// - `value`: The initial value of the TrackedCell
 /// - `durability`: How often this cell is expected to change (default: `Low`)
-/// - `label`: An optional human-readable name for debugging and introspection
+/// - `label`: An optional human-readable name for debugging
 ///
 /// # Returns
 ///
