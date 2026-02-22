@@ -28,12 +28,7 @@ priv struct CellMeta {
   /// For derived cells: recomputes and returns true if value changed.
   /// Returns Err(CycleError) if a cycle is detected during recomputation.
   /// None for input cells.
-  // NOTE: `mut` is intentionally absent here. verify_wbtest.mbt (root package)
-  // writes `meta.recompute_and_check = None` to simulate corruption for a panic
-  // test, but that file lives in the root package and cannot access internal/
-  // fields for writing. `mut` will be restored in Task 10 when verify_wbtest.mbt
-  // is moved into internal/ (where it can write this field directly).
-  recompute_and_check : (() -> Result[Bool, CycleError])?
+  mut recompute_and_check : (() -> Result[Bool, CycleError])?
   /// For input cells during batch: commits pending value and returns true
   /// if the committed value differs from the current value.
   /// None for derived cells or inputs outside a batch.
