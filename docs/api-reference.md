@@ -8,12 +8,13 @@ Complete reference for the public API in `incr`.
 
 Central coordinator for dependency tracking, revisions, and batching.
 
-### `Runtime::new() -> Runtime`
+### `Runtime::new(on_change? : () -> Unit) -> Runtime`
 
-Creates a new runtime with an empty dependency graph.
+Creates a new runtime with an empty dependency graph. The optional `on_change` callback is equivalent to calling `Runtime::set_on_change` immediately after construction.
 
 ```moonbit
 let rt = Runtime::new()
+let rt = Runtime::new(on_change=fn() { rerender() })
 ```
 
 ### `Runtime::batch(self, f: () -> Unit) -> Unit`
@@ -429,13 +430,21 @@ For signals, `dependencies` is empty.
 
 ### `Signal::on_change(self, f : (T) -> Unit) -> Unit`
 
-Registers a callback fired when this signal's value changes.
+Registers a callback fired when this signal's value changes. Replaces any previously registered callback.
 
 ```moonbit
 let count = Signal::new(rt, 0)
 count.on_change(fn(new_val) {
   println("Count: " + new_val.to_string())
 })
+```
+
+### `Signal::clear_on_change(self) -> Unit`
+
+Removes the registered `on_change` callback for this signal.
+
+```moonbit
+count.clear_on_change()
 ```
 
 ### `Memo::on_change(self, f : (T) -> Unit) -> Unit`
@@ -449,7 +458,15 @@ doubled.on_change(fn(new_val) {
 })
 ```
 
-**Behavior:**
+### `Memo::clear_on_change(self) -> Unit`
+
+Removes the registered `on_change` callback for this memo.
+
+```moonbit
+doubled.clear_on_change()
+```
+
+**Behavior (on_change):**
 - Fires after the cell's value changes
 - Fires before `Runtime::on_change` callback
 - During batch: fires at batch end for all changed cells
