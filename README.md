@@ -129,6 +129,7 @@ The library is split into four MoonBit sub-packages:
 | `dowdiness/incr/types` | Pure value types: `Revision`, `Durability`, `CellId` |
 | `dowdiness/incr/internal` | Engine implementation: `Signal`, `Memo`, `Runtime`, verification algorithm |
 | `dowdiness/incr/pipeline` | Experimental pipeline traits: `Sourceable`, `Parseable`, `Checkable`, `Executable` |
+| `dowdiness/incr/tests` | Integration tests exercising the full `@incr` public API |
 
 Users always import the root `@incr` package — the sub-package structure is an implementation detail.
 

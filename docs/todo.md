@@ -94,6 +94,8 @@ Concrete, actionable tasks for the `incr` library.
 - [x] Move experimental pipeline traits to `dowdiness/incr/pipeline`
 - [x] Re-export all public types from root via `pub type` transparent aliases in `incr.mbt`
 - [x] Move whitebox tests (`*_wbtest.mbt`) to `internal/` for private field access
+- [x] Move unit tests (`*_test.mbt`) to `internal/` (co-located with source)
+- [x] Create `tests/` package for integration tests exercising the full `@incr` public API
 - [x] Zero breaking changes — downstream users see identical `@incr` API
 
 ## Documentation

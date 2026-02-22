@@ -12,9 +12,9 @@ A Salsa-inspired incremental recomputation library written in MoonBit. Provides 
 moon check          # Type-check without building
 moon build          # Build the library
 moon test           # Run all tests (142 total across all packages)
-moon test -p dowdiness/incr -f memo_test.mbt           # Run tests in a specific file
-moon test -p dowdiness/incr -f memo_test.mbt -i 0      # Run a single test by index
-moon test -p dowdiness/incr/internal                   # Run internal package whitebox tests only
+moon test -p dowdiness/incr/internal -f memo_test.mbt           # Run tests in a specific file
+moon test -p dowdiness/incr/internal -f memo_test.mbt -i 0      # Run a single test by index
+moon test -p dowdiness/incr/tests                               # Run integration tests only
 ```
 
 ## Architecture
@@ -26,13 +26,12 @@ dowdiness/incr/
 ├── moon.pkg                    (root facade — imports types + internal + pipeline)
 ├── incr.mbt                    (pub type re-exports for all public types)
 ├── traits.mbt                  (IncrDb, Readable traits; create_signal, create_memo, batch helpers)
-├── *_test.mbt                  (blackbox tests — test via public API)
 │
 ├── types/                      (pure value types, zero dependencies)
 │   ├── revision.mbt            (Revision, Durability, DURABILITY_COUNT)
 │   └── cell_id.mbt             (CellId + Hash impl)
 │
-├── internal/                   (all engine implementation)
+├── internal/                   (all engine implementation + unit tests)
 │   ├── cell.mbt                (CellMeta, CellKind)
 │   ├── cycle.mbt               (CycleError)
 │   ├── tracking.mbt            (ActiveQuery)
@@ -40,10 +39,17 @@ dowdiness/incr/
 │   ├── verify.mbt              (maybe_changed_after)
 │   ├── signal.mbt              (Signal[T])
 │   ├── memo.mbt                (Memo[T])
+│   ├── *_test.mbt              (unit tests — black-box tests of the internal package)
 │   └── *_wbtest.mbt            (whitebox tests — co-located for private field access)
 │
-└── pipeline/                   (experimental pipeline traits, zero dependencies)
-    └── pipeline_traits.mbt     (Sourceable, Parseable, Checkable, Executable)
+├── pipeline/                   (experimental pipeline traits, zero dependencies)
+│   └── pipeline_traits.mbt     (Sourceable, Parseable, Checkable, Executable)
+│
+└── tests/                      (integration tests — exercises the full @incr public API)
+    ├── moon.pkg                (imports dowdiness/incr and dowdiness/incr/pipeline for test)
+    ├── integration_test.mbt    (end-to-end graph scenarios)
+    ├── fanout_test.mbt         (wide fanout stress tests)
+    └── traits_test.mbt         (IncrDb, Readable, and pipeline trait tests)
 ```
 
 The root package re-exports all public types via `pub type` transparent aliases in `incr.mbt`, so downstream users see a unified `@incr` API with no awareness of the internal package structure.
@@ -80,7 +86,8 @@ The library implements Salsa's incremental computation pattern with three key ty
 - Assertions use `inspect(expr, content="expected")` pattern
 - Panic tests: `test "panic ..."` (name starting with `"panic "`) expects `abort()` to fire — the test runner marks it passed when the abort occurs
 - Whitebox tests (`*_wbtest.mbt`): live in `internal/` alongside the private types they test; can access private fields and internal functions
-- Blackbox tests (`*_test.mbt`): live in the root package; test the public API via `@incr` and require no knowledge of the internal package structure
+- Unit tests (`*_test.mbt`): live in `internal/` alongside source; test the internal package API as a black-box consumer
+- Integration tests: live in `tests/`; test the full `@incr` public API end-to-end across multiple scenarios
 - The `internal/` package imports `moonbitlang/core/hashset` as its only external dependency
 - `internal/moon.pkg` suppresses warning 15 (`unused_mut`) because `recompute_and_check` is only written in whitebox test compilation, not source-only compilation
 
