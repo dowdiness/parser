@@ -44,7 +44,15 @@ High-level future direction for the `incr` library, organized by phase. Each pha
 - ~~**HashSet-based dependency deduplication**: Replace linear scan in `ActiveQuery::record` with a `HashSet` for O(1) dedup~~ ✓ Implemented
 - ~~**Array-based cell storage**: Use `CellId` as a direct index into an array instead of a `HashMap` lookup~~ ✓ Implemented
 - ~~**Iterative verification**: Convert recursive `maybe_changed_after` to iterative with explicit stack~~ ✓ Implemented
-- **Incremental dependency diffing**: When a memo recomputes, diff the new dependency list against the old one to avoid full replacement
+- ~~**Incremental dependency diffing**: When a memo recomputes, diff the new dependency list against the old one to skip durability rescans for unchanged deps~~ ✓ Implemented
+
+### Phase 3B: Package Modularization ✓
+
+- ~~**Sub-package split**: Reorganize the flat single-package library into four MoonBit sub-packages~~ ✓ Implemented
+  - `dowdiness/incr/types` — pure value types (`Revision`, `Durability`, `CellId`) with zero dependencies
+  - `dowdiness/incr/internal` — all engine code (`Signal`, `Memo`, `Runtime`, verification algorithm)
+  - `dowdiness/incr/pipeline` — experimental pipeline traits, standalone with zero dependencies
+  - Root facade re-exports all public types via `pub type` transparent aliases — zero breaking changes
 
 ## Phase 4 — Advanced Features
 

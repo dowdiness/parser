@@ -39,7 +39,7 @@ Concrete, actionable tasks for the `incr` library.
 - [x] Change `CycleError` to include cycle path: `CycleDetected(CellId, Array[CellId])`
 - [x] Add `CycleError::path(self) -> Array[CellId]`
 - [x] Add `CycleError::format_path(self, Runtime) -> String` for human-readable output
-- [x] Update cycle detection in `verify.mbt` to track path during traversal
+- [x] Update cycle detection in `internal/verify.mbt` to track path during traversal
 
 ### Per-Cell Callbacks (Phase 2B - High Priority)
 
@@ -85,6 +85,16 @@ Concrete, actionable tasks for the `incr` library.
 - [x] Wide fanout test: single signal with many downstream memos
 - [x] Test `Memo` with custom `Eq` types where structural equality differs from identity
 - [x] Test cycle detection across 3+ mutually recursive memos
+
+## Package Structure
+
+- [x] Split flat single-package library into four MoonBit sub-packages (`types/`, `internal/`, `pipeline/`, root facade)
+- [x] Move pure value types (`Revision`, `Durability`, `CellId`) to `dowdiness/incr/types`
+- [x] Move all engine code to `dowdiness/incr/internal`
+- [x] Move experimental pipeline traits to `dowdiness/incr/pipeline`
+- [x] Re-export all public types from root via `pub type` transparent aliases in `incr.mbt`
+- [x] Move whitebox tests (`*_wbtest.mbt`) to `internal/` for private field access
+- [x] Zero breaking changes — downstream users see identical `@incr` API
 
 ## Documentation
 
