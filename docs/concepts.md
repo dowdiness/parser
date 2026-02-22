@@ -225,6 +225,62 @@ When a cycle is detected via `get_result()`:
 - No dependency is recorded for failed reads (prevents spurious future cycles)
 - The runtime remains in a consistent state for subsequent operations
 
+## Field-Level Tracking
+
+When a struct has several logically related fields, you often want memos that depend on only one field to skip recomputation when a different field changes. `Signal[MyStruct]` cannot do this — updating any field forces every downstream memo to reverify.
+
+**`TrackedCell[T]`** solves this by giving each field its own independent cell:
+
+```moonbit
+struct SourceFile {
+  path    : TrackedCell[String]
+  content : TrackedCell[String]
+  version : TrackedCell[Int]
+}
+```
+
+Each `TrackedCell` is an input cell identical to `Signal[T]` in every way — same-value optimization, durability levels, change hooks — but it belongs to a named field.
+
+### Trackable Trait
+
+Implement the `Trackable` trait to declare which cells a struct owns:
+
+```moonbit
+impl Trackable for SourceFile with cell_ids(self) {
+  [self.path.id(), self.content.id(), self.version.id()]
+}
+```
+
+This enables bulk operations on all cells in the struct (e.g., introspection, future GC).
+
+### Field-Level Dependency Isolation
+
+Memos that read individual `TrackedCell` fields only depend on those fields, not on the whole struct:
+
+```moonbit
+let word_count = Memo::new(rt, fn() {
+  file.content.get().split(" ").fold(init=0, fn(acc, _s) { acc + 1 })
+})
+
+let is_test = Memo::new(rt, fn() {
+  file.path.get().ends_with("_test.mbt")
+})
+
+// Change version — neither memo recomputes
+file.version.set(1)
+
+// Change content — only word_count recomputes; is_test is untouched
+file.content.set("fn main { let x = 42 }")
+```
+
+### When to Use TrackedCell vs Signal
+
+| Situation | Recommendation |
+|-----------|----------------|
+| Single scalar value | `Signal[T]` |
+| Multiple related fields with independent consumers | `TrackedCell[T]` in a tracked struct |
+| Monolithic struct updated atomically | `Signal[MyStruct]` with batch |
+
 ## Summary
 
 | Concept | Purpose |
@@ -235,9 +291,10 @@ When a cycle is detected via `get_result()`:
 | Backdating | Skip downstream work when values don't actually change |
 | Durability | Skip verification for stable subgraphs |
 | Batch | Atomic multi-signal updates |
+| TrackedCell | Field-level input cells for fine-grained dependency isolation |
 
 ## Further Reading
 
 - [API Reference](./api-reference.md) — Complete method reference
-- [Cookbook](./cookbook.md) — Common patterns
+- [Cookbook](./cookbook.md) — Common patterns (including the Tracked Struct recipe)
 - [design.md](design.md) — Implementation details

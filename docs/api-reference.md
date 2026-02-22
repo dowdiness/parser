@@ -114,6 +114,79 @@ Signals are always up-to-date (`true`).
 
 ---
 
+## TrackedCell[T]
+
+A named, field-level input cell. `TrackedCell[T]` wraps a `Signal[T]` and provides an identical API; it is intended for use as a field in a tracked struct where you want each field to be tracked independently.
+
+### `TrackedCell::new[T](rt: Runtime, initial: T, durability?: Durability, label?: String) -> TrackedCell[T]`
+
+Creates a tracked cell. Both `durability` (default `Low`) and `label` are optional.
+
+```moonbit
+let path    = TrackedCell::new(rt, "/src/main.mbt", label="SourceFile.path")
+let version = TrackedCell::new(rt, 0, durability=High, label="SourceFile.version")
+```
+
+### `TrackedCell::get(self) -> T`
+
+Returns the current value and records a dependency when called inside a memo computation.
+
+```moonbit
+let value = path.get()
+```
+
+### `TrackedCell::get_result(self) -> Result[T, CycleError]`
+
+Always returns `Ok(value)`. Present for API symmetry with `Memo::get_result()`.
+
+### `TrackedCell::set[T : Eq](self, value: T) -> Unit`
+
+Sets a new value with same-value optimization (no-op when value is unchanged).
+
+```moonbit
+path.set("/src/lib.mbt")
+path.set("/src/lib.mbt") // No-op
+```
+
+### `TrackedCell::set_unconditional[T](self, value: T) -> Unit`
+
+Sets a new value without equality checking; always treated as a change.
+
+### `TrackedCell::id(self) -> CellId`
+
+Returns the unique identifier for this cell. Use with `Runtime::cell_info()` or when implementing `Trackable`.
+
+```moonbit
+let id = path.id()
+```
+
+### `TrackedCell::durability(self) -> Durability`
+
+Returns the durability level set at construction time.
+
+### `TrackedCell::on_change(self, f: (T) -> Unit) -> Unit`
+
+Registers a callback fired when this cell's value changes. Replaces any previously registered callback.
+
+### `TrackedCell::clear_on_change(self) -> Unit`
+
+Removes the registered `on_change` callback.
+
+### `TrackedCell::is_up_to_date(self) -> Bool`
+
+Always `true`. TrackedCells are input cells with directly-set values.
+
+### `TrackedCell::as_signal(self) -> Signal[T]`
+
+Returns the underlying `Signal[T]` for interop with APIs that expect a plain signal.
+
+```moonbit
+let sig = path.as_signal()
+let memo = Memo::new(rt, fn() { sig.get().length() })
+```
+
+---
+
 ## Memo[T]
 
 Derived computations with dependency tracking and memoization.
@@ -403,6 +476,30 @@ pub(open) trait Readable {
 
 Implemented for both `Signal[T]` and `Memo[T]`.
 
+### `Trackable`
+
+```moonbit
+pub(open) trait Trackable {
+  cell_ids(Self) -> Array[CellId]
+}
+```
+
+Implemented by structs that contain `TrackedCell` fields. The single method returns the `CellId` of every cell owned by the struct, in a stable order.
+
+```moonbit
+struct SourceFile {
+  path    : TrackedCell[String]
+  content : TrackedCell[String]
+  version : TrackedCell[Int]
+}
+
+impl Trackable for SourceFile with cell_ids(self) {
+  [self.path.id(), self.content.id(), self.version.id()]
+}
+```
+
+`Trackable` is required by `gc_tracked`. The ordering of IDs must be deterministic across calls.
+
 ### Pipeline Traits (Experimental)
 
 > **Experimental.** These traits may change or be removed in future versions.
@@ -449,6 +546,31 @@ create_signal(db, value, durability=High, label="cfg") // both
 ### `create_memo[Db : IncrDb, T : Eq](db: Db, f: () -> T) -> Memo[T]`
 
 Creates a memo using `db.runtime()`.
+
+### `create_tracked_cell`
+
+Creates a new `TrackedCell` using the database's runtime. Follows the same pattern as `create_signal`.
+
+```moonbit nocheck
+create_tracked_cell(db, value)                               // Low durability, no label
+create_tracked_cell(db, value, durability=High)              // explicit durability
+create_tracked_cell(db, value, label="SourceFile.path")      // with debug label
+create_tracked_cell(db, value, durability=High, label="cfg") // both
+```
+
+**Parameters:** `db: Db` (IncrDb), `value: T`, `durability?: Durability = Low`, `label?: String`
+
+**Returns:** `TrackedCell[T]`
+
+### `gc_tracked[T : Trackable](rt: Runtime, tracked: T) -> Unit`
+
+Marks all cells of a `Trackable` struct as GC roots.
+
+> **Note:** This is a no-op stub until Phase 4 adds GC infrastructure to the runtime. Include the call in your code now so that upgrading later requires no changes.
+
+```moonbit
+gc_tracked(rt, my_tracked_struct)
+```
 
 ### `batch[Db : IncrDb](db: Db, f: () -> Unit) -> Unit`
 

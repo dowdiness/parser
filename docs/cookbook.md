@@ -274,6 +274,131 @@ Useful for:
 
 ---
 
+## Tracked Struct
+
+Use `TrackedCell` fields to give each field of a struct its own dependency cell. Memos that read only one field are unaffected when a different field changes.
+
+### When to Use TrackedCell vs Signal
+
+| Situation | Recommendation |
+|-----------|----------------|
+| Single scalar value | `Signal[T]` |
+| Multiple related fields with independent consumers | `TrackedCell[T]` in a tracked struct |
+| Monolithic struct updated atomically | `Signal[MyStruct]` with `batch` |
+
+### Defining a Tracked Struct
+
+Declare the struct with `TrackedCell` fields, implement the `Trackable` trait, and provide a constructor:
+
+```moonbit
+struct SourceFile {
+  path    : @incr.TrackedCell[String]
+  content : @incr.TrackedCell[String]
+  version : @incr.TrackedCell[Int]
+}
+
+impl @incr.Trackable for SourceFile with cell_ids(self) {
+  [self.path.id(), self.content.id(), self.version.id()]
+}
+
+fn SourceFile::new(
+  rt      : @incr.Runtime,
+  path    : String,
+  content : String,
+  version~ : Int = 0,
+) -> SourceFile {
+  {
+    path:    @incr.TrackedCell::new(rt, path,    label="SourceFile.path"),
+    content: @incr.TrackedCell::new(rt, content, label="SourceFile.content"),
+    version: @incr.TrackedCell::new(rt, version, label="SourceFile.version"),
+  }
+}
+```
+
+### Composing with Memos
+
+Each memo declares dependency only on the fields it actually reads:
+
+```moonbit
+let rt   = @incr.Runtime::new()
+let file = SourceFile::new(rt, "/src/main.mbt", "fn main { 42 }")
+
+let word_count = @incr.Memo::new(rt, fn() {
+  file.content.get().split(" ").fold(init=0, fn(acc, _s) { acc + 1 })
+})
+
+let is_test = @incr.Memo::new(rt, fn() {
+  file.path.get().ends_with("_test.mbt")
+})
+
+// Change version — neither memo recomputes
+file.version.set(1)
+
+// Change content — only word_count recomputes; is_test is not touched
+file.content.set("fn main { let x = 42\n  x }")
+```
+
+### Batch Updates Across Multiple Fields
+
+Use `rt.batch` to update several fields atomically:
+
+```moonbit
+rt.batch(fn() {
+  file.path.set("/src/lib.mbt")
+  file.content.set("pub fn greet() -> String { \"hello\" }")
+  file.version.set(2)
+})
+// Single revision bump; downstream memos reverify once
+```
+
+### Using IncrDb with TrackedCell
+
+When your runtime is wrapped in a database type, use `create_tracked_cell` instead of `TrackedCell::new`:
+
+```moonbit
+struct MyDb {
+  rt : @incr.Runtime
+}
+
+impl @incr.IncrDb for MyDb with runtime(self) { self.rt }
+
+fn MyDb::new() -> MyDb {
+  { rt: @incr.Runtime::new() }
+}
+
+let db   = MyDb::new()
+let path = @incr.create_tracked_cell(db, "/src/main.mbt", label="path")
+```
+
+### GC Roots (Future-Proof)
+
+Call `gc_tracked` to declare a tracked struct as live. This is a no-op today but ensures zero-change migration when GC support lands in Phase 4:
+
+```moonbit
+@incr.gc_tracked(rt, file)
+```
+
+### Migration: Signal[MyStruct] → Tracked Struct
+
+If you have an existing `Signal[MyStruct]` and memo recomputation is too coarse, migrate field by field:
+
+```moonbit
+// Before
+struct Doc { content : String; version : Int }
+let doc = Signal::new(rt, { content: "hello", version: 0 })
+let length_memo = Memo::new(rt, fn() { doc.get().content.length() })
+// Updating version also invalidates length_memo — unnecessary work
+
+// After
+struct Doc {
+  content : @incr.TrackedCell[String]
+  version : @incr.TrackedCell[Int]
+}
+// Now version.set(...) does not touch length_memo at all
+```
+
+---
+
 ## Anti-Pattern: Reading During Batch
 
 Avoid reading memos inside a batch — they see pre-batch values:
