@@ -237,6 +237,44 @@ test "ReuseCursor no reuse when node overlaps damage" {
 }
 
 ///|
+///|
+test "ReuseCursor::try_reuse accepts post-damage node when follow token unchanged" {
+  // In "\\x.y", VarRef("y") is emitted with NO leading whitespace: the "."
+  // is a non-whitespace token so emit_whitespace_before emits nothing before "y".
+  // VarRef("y") starts at byte 3, text_len=1 — its byte offset matches the
+  // token position — so seek_node_at(3, VarRef) finds it.
+  //
+  // Edit: replace "x" with "y" at byte 1 (delta=0). New source: "\\y.y".
+  // Damage covers [0, 2) (the lambda+param "\\x"). VarRef("y")@[3,4] is
+  // post-damage (3 > damaged_range.end=2). Its old follow is EOF; new follow
+  // (token index 4) is also EOF. Trailing context matches → reuse accepted.
+  let (green, _) = parse_green_recover("\\x.y")
+  let new_tokens = @lexer.tokenize("\\y.y")
+  let damaged_range = @range.Range::new(0, 2)
+  let cursor = make_reuse_cursor(green, damaged_range, new_tokens)
+  // byte_offset=3 (where "y" appears in new source), token_pos=3 (fourth token)
+  let result = cursor.try_reuse(@syntax.VarRef.to_raw(), 3, 3)
+  inspect(result is Some(_), content="true")
+}
+
+///|
+test "ReuseCursor::try_reuse rejects post-damage node when follow token changes" {
+  // Same old tree "\\x.y" and damage [0,2).
+  // New source: "\\y.y z" — adds " z" after the body, changing the follow
+  // token of VarRef("y") from EOF to Identifier("z").
+  // seek_node_at(3, VarRef) finds VarRef("y")@3 (post-damage, outside [0,2)).
+  // leading_token_matches passes (token[3] is Identifier("y") == old text "y").
+  // trailing_context_matches: old_follow=None (EOF), new_follow=Some(Identifier("z"))
+  // → (None, Some) → false → reuse rejected via follow-token check.
+  let (green, _) = parse_green_recover("\\x.y")
+  let new_tokens = @lexer.tokenize("\\y.y z")
+  let damaged_range = @range.Range::new(0, 2)
+  let cursor = make_reuse_cursor(green, damaged_range, new_tokens)
+  let result = cursor.try_reuse(@syntax.VarRef.to_raw(), 3, 3)
+  inspect(result is None, content="true")
+}
+
+///|
 test "ReuseCursor verify kind extraction works" {
   // Sanity: expected kinds are stable and round-trip through RawKind.
   inspect(@syntax.SyntaxKind::from_raw(@syntax.VarRef.to_raw()), content="VarRef")

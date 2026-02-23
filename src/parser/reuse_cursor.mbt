@@ -48,7 +48,12 @@ fn collect_old_tokens(
   for child in node.children {
     match child {
       @green_tree.GreenElement::Token(t) => {
-        if t.kind != @syntax.WhitespaceToken.to_raw() {
+        // Exclude whitespace and error tokens. ErrorTokens (kind 12) are
+        // inserted by error recovery and do not represent real syntactic
+        // tokens; including them would cause trailing_context_matches to
+        // silently reject reuse via fall-through in token_matches_syntax_kind.
+        if t.kind != @syntax.WhitespaceToken.to_raw() &&
+          t.kind != @syntax.ErrorToken.to_raw() {
           out.push({ kind: t.kind, text: t.text, start: offset })
         }
         offset = offset + t.text_len()
@@ -264,10 +269,17 @@ fn trailing_context_matches(
   token_pos : Int,
   node_token_count : Int,
 ) -> Bool {
-  // Note: node_end is in old-source coordinates. For a node outside the
-  // damaged range, its boundary byte offset is unchanged in the new source,
-  // so the old follow token and the new token at after_pos represent the
-  // same source boundary.
+  // Coordinate note: node_end is in old-source coordinates.
+  // Pre-damage nodes: their boundary byte offset is unchanged in the new
+  // source, so old-source and new-source coordinates agree at node_end.
+  // Post-damage nodes: their byte offset in the new source differs by the
+  // edit delta, so old-source and new-source coordinates do NOT agree.
+  // However, this check compares token kind and text, not byte offsets, so
+  // correctness holds regardless of which coordinate space node_end is in:
+  // after_pos indexes into the new token array by token count (not bytes),
+  // and old_follow_token searches old_tokens by start offset in old-source
+  // coordinates. Both sides refer to the token immediately following the
+  // node in their respective streams, which is the correct comparison.
   let after_pos = token_pos + node_token_count
   let old_follow = old_follow_token(old_tokens, node_end)
   let new_follow = if after_pos < tokens.length() {
