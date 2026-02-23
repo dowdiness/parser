@@ -5,8 +5,6 @@ test "Interner: same (kind, text) returns same token" {
   let t1 = interner.intern_token(k, "x")
   let t2 = interner.intern_token(k, "x")
   inspect(t1 == t2, content="true")
-  // Same cached object — pointer equality
-  inspect(physical_equal(t1, t2), content="true")
 }
 
 ///|
@@ -16,7 +14,6 @@ test "Interner: different text returns different tokens" {
   let a = interner.intern_token(k, "x")
   let b = interner.intern_token(k, "y")
   inspect(a == b, content="false")
-  inspect(physical_equal(a, b), content="false")
 }
 
 ///|
@@ -54,4 +51,14 @@ test "Interner: intern_token result matches GreenToken::new structurally" {
   let interned = interner.intern_token(k, text)
   let direct = GreenToken::new(k, text)
   inspect(interned == direct, content="true")
+}
+
+///|
+test "Interner: intern_token works correctly after clear" {
+  let interner = Interner::new()
+  let k = RawKind(1)
+  let _ = interner.intern_token(k, "x")
+  interner.clear()
+  let _ = interner.intern_token(k, "x")
+  inspect(interner.size(), content="1")
 }

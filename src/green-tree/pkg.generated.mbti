@@ -1,10 +1,6 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/parser/green-tree"
 
-import {
-  "moonbitlang/core/hashmap",
-}
-
 // Values
 pub fn build_tree(Array[ParseEvent], RawKind) -> GreenNode
 
@@ -58,7 +54,7 @@ pub impl Hash for GreenToken
 pub impl Show for GreenToken
 
 pub struct Interner {
-  tokens : @hashmap.HashMap[String, GreenToken]
+  // private fields
 }
 pub fn Interner::clear(Self) -> Unit
 pub fn Interner::intern_token(Self, RawKind, String) -> GreenToken

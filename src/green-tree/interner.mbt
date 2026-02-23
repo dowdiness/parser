@@ -2,15 +2,13 @@
 /// Session-scoped token intern table.
 ///
 /// Deduplicates GreenToken objects by (kind, text): every call to
-/// intern_token with the same arguments returns the exact same heap object.
-/// This means for any two tokens a, b produced through the same Interner:
-///   a == b  implies  physical_equal(a, b)
+/// intern_token with the same arguments returns a structurally equal token.
 ///
 /// Lifetime: own one Interner per parse session (e.g. per IncrementalParser).
 /// The GC collects the Interner and all its tokens when the owner is dropped.
 /// Not thread-safe.
 pub struct Interner {
-  tokens : @hashmap.HashMap[String, GreenToken]
+  priv tokens : @hashmap.HashMap[String, GreenToken]
 }
 
 ///|
