@@ -1,0 +1,57 @@
+///|
+test "Interner: same (kind, text) returns same token" {
+  let interner = Interner::new()
+  let k = RawKind(1)
+  let t1 = interner.intern_token(k, "x")
+  let t2 = interner.intern_token(k, "x")
+  inspect(t1 == t2, content="true")
+  // Same cached object — pointer equality
+  inspect(physical_equal(t1, t2), content="true")
+}
+
+///|
+test "Interner: different text returns different tokens" {
+  let interner = Interner::new()
+  let k = RawKind(1)
+  let a = interner.intern_token(k, "x")
+  let b = interner.intern_token(k, "y")
+  inspect(a == b, content="false")
+  inspect(physical_equal(a, b), content="false")
+}
+
+///|
+test "Interner: different kind returns different tokens" {
+  let interner = Interner::new()
+  let a = interner.intern_token(RawKind(1), "x")
+  let b = interner.intern_token(RawKind(2), "x")
+  inspect(a == b, content="false")
+}
+
+///|
+test "Interner: size counts distinct pairs only" {
+  let interner = Interner::new()
+  let k = RawKind(1)
+  let _ = interner.intern_token(k, "x")
+  let _ = interner.intern_token(k, "x") // duplicate — no size increase
+  let _ = interner.intern_token(k, "y")
+  inspect(interner.size(), content="2")
+}
+
+///|
+test "Interner: clear resets size to zero" {
+  let interner = Interner::new()
+  let _ = interner.intern_token(RawKind(1), "x")
+  inspect(interner.size(), content="1")
+  interner.clear()
+  inspect(interner.size(), content="0")
+}
+
+///|
+test "Interner: intern_token result matches GreenToken::new structurally" {
+  let interner = Interner::new()
+  let k = RawKind(7)
+  let text = "lambda"
+  let interned = interner.intern_token(k, text)
+  let direct = GreenToken::new(k, text)
+  inspect(interned == direct, content="true")
+}
