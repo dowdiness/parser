@@ -55,13 +55,6 @@ pub fn[T, K] ParserContext::start_at(Self[T, K], Int, K) -> Unit
 pub fn[T, K] ParserContext::start_node(Self[T, K], K) -> Unit
 pub fn[T, K] ParserContext::token_text(Self[T, K], TokenInfo[T]) -> String
 
-type TestKind
-pub impl Show for TestKind
-
-type TestTok
-pub impl Eq for TestTok
-pub impl Show for TestTok
-
 pub struct TokenInfo[T] {
   token : T
   start : Int
