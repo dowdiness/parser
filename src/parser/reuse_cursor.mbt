@@ -105,23 +105,6 @@ pub fn ReuseCursor::is_reuse_disabled(self : ReuseCursor) -> Bool {
 }
 
 ///|
-/// Count the total number of non-whitespace tokens in a green node
-fn count_tokens_in_node(node : @green_tree.GreenNode) -> Int {
-  let mut count = 0
-  for child in node.children {
-    match child {
-      @green_tree.GreenElement::Token(t) =>
-        if t.kind != @syntax.WhitespaceToken.to_raw() {
-          count = count + 1
-        }
-      @green_tree.GreenElement::Node(n) =>
-        count = count + count_tokens_in_node(n)
-    }
-  }
-  count
-}
-
-///|
 /// Get the first non-whitespace token text from a green node
 fn first_token_text(node : @green_tree.GreenNode) -> String? {
   for child in node.children {
@@ -451,8 +434,8 @@ pub fn ReuseCursor::try_reuse(
       } else if not(leading_token_matches(node, self.tokens, token_pos)) {
         None
       } else {
-        // Condition 4: Trailing context matches
-        let node_token_count = count_tokens_in_node(node)
+        // Condition 4: Trailing context matches (O(1) via cached token_count)
+        let node_token_count = node.token_count
         if not(
             trailing_context_matches(
               self.old_tokens,

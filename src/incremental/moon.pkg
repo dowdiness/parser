@@ -4,7 +4,6 @@ import {
   "dowdiness/parser/term",
   "dowdiness/parser/edit",
   "dowdiness/parser/lexer",
-  "dowdiness/parser/syntax",
   "dowdiness/parser/parser" @parse,
   "dowdiness/parser/green-tree" @green_tree,
 }

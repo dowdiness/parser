@@ -66,10 +66,14 @@ pub fn EventBuffer::start_at(
 ///
 /// Use this variant when tokens will be reused across multiple parses of the
 /// same document (e.g. in IncrementalParser).
+///
+/// `trivia_kind`: forwarded to every `GreenNode::new` call; leaf tokens with
+/// this kind are excluded from each node's `token_count`.
 pub fn build_tree_interned(
   events : Array[ParseEvent],
   root_kind : RawKind,
   interner : Interner,
+  trivia_kind? : RawKind? = None,
 ) -> GreenNode {
   let stack : Array[Array[GreenElement]] = [[]]
   let kinds : Array[RawKind] = [root_kind]
@@ -92,7 +96,7 @@ pub fn build_tree_interned(
           None =>
             abort("build_tree_interned: kind stack underflow on FinishNode")
         }
-        let node = GreenNode::new(kind, children)
+        let node = GreenNode::new(kind, children, trivia_kind~)
         match stack.last() {
           Some(parent) => parent.push(Node(node))
           None =>
@@ -115,13 +119,20 @@ pub fn build_tree_interned(
       stack.length().to_string(),
     )
   }
-  GreenNode::new(root_kind, stack[0])
+  GreenNode::new(root_kind, stack[0], trivia_kind~)
 }
 
 ///|
 /// Build a green tree from a flat event stream.
 /// root_kind is the kind of the implicit root node (e.g., SourceFile).
-pub fn build_tree(events : Array[ParseEvent], root_kind : RawKind) -> GreenNode {
+///
+/// `trivia_kind`: forwarded to every `GreenNode::new` call; leaf tokens with
+/// this kind are excluded from each node's `token_count`.
+pub fn build_tree(
+  events : Array[ParseEvent],
+  root_kind : RawKind,
+  trivia_kind? : RawKind? = None,
+) -> GreenNode {
   // stack and kinds move in lockstep:
   // - StartNode pushes one frame + one kind
   // - FinishNode pops one frame + one kind
@@ -145,7 +156,7 @@ pub fn build_tree(events : Array[ParseEvent], root_kind : RawKind) -> GreenNode 
           Some(k) => k
           None => abort("build_tree: kind stack underflow on FinishNode")
         }
-        let node = GreenNode::new(kind, children)
+        let node = GreenNode::new(kind, children, trivia_kind~)
         match stack.last() {
           Some(parent) => parent.push(Node(node))
           None => abort("build_tree: parent stack empty when attaching node")
@@ -170,5 +181,5 @@ pub fn build_tree(events : Array[ParseEvent], root_kind : RawKind) -> GreenNode 
       stack.length().to_string(),
     )
   }
-  GreenNode::new(root_kind, stack[0])
+  GreenNode::new(root_kind, stack[0], trivia_kind~)
 }

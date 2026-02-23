@@ -2,9 +2,9 @@
 package "dowdiness/parser/green-tree"
 
 // Values
-pub fn build_tree(Array[ParseEvent], RawKind) -> GreenNode
+pub fn build_tree(Array[ParseEvent], RawKind, trivia_kind? : RawKind?) -> GreenNode
 
-pub fn build_tree_interned(Array[ParseEvent], RawKind, Interner) -> GreenNode
+pub fn build_tree_interned(Array[ParseEvent], RawKind, Interner, trivia_kind? : RawKind?) -> GreenNode
 
 pub fn combine_hash(Int, Int) -> Int
 
@@ -36,10 +36,11 @@ pub(all) struct GreenNode {
   children : Array[GreenElement]
   text_len : Int
   hash : Int
+  token_count : Int
 }
 pub fn GreenNode::has_errors(Self, RawKind, RawKind) -> Bool
 pub fn GreenNode::kind(Self) -> RawKind
-pub fn GreenNode::new(RawKind, Array[GreenElement]) -> Self
+pub fn GreenNode::new(RawKind, Array[GreenElement], trivia_kind? : RawKind?) -> Self
 pub impl Eq for GreenNode
 pub impl Hash for GreenNode
 pub impl Show for GreenNode

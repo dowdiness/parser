@@ -87,22 +87,43 @@ pub(all) struct GreenNode {
   children : Array[GreenElement]
   text_len : Int
   hash : Int
+  /// Non-trivia leaf token count. Equals the number of leaf tokens whose kind
+  /// is NOT equal to `trivia_kind` (when provided to `GreenNode::new`).
+  /// Equals the total leaf token count when no `trivia_kind` is given.
+  /// Used by the incremental parser to advance `position` (whitespace-free
+  /// token index) without an O(subtree) traversal on every reuse.
+  token_count : Int
 } derive(Show)
 
 ///|
-/// Create a GreenNode. text_len and hash are computed from children.
+/// Create a GreenNode. text_len, hash, and token_count are computed from children.
+///
+/// `trivia_kind`: when provided, leaf tokens with this kind are excluded from
+/// `token_count`.  Pass `Some(whitespace_raw_kind)` from the language layer to
+/// get a non-whitespace token count.  Pass nothing (or `None`) for a
+/// language-agnostic total leaf token count.
 pub fn GreenNode::new(
   kind : RawKind,
   children : Array[GreenElement],
+  trivia_kind? : RawKind? = None,
 ) -> GreenNode {
   let RawKind(k) = kind
   let mut text_len = 0
   let mut h = k
+  let mut token_count = 0
   for child in children {
     text_len = text_len + child.text_len()
     h = combine_hash(h, child_hash(child))
+    match child {
+      Token(t) =>
+        match trivia_kind {
+          Some(ws) => if t.kind != ws { token_count = token_count + 1 }
+          None => token_count = token_count + 1
+        }
+      Node(n) => token_count = token_count + n.token_count
+    }
   }
-  { kind, children, text_len, hash: h }
+  { kind, children, text_len, hash: h, token_count }
 }
 
 ///|

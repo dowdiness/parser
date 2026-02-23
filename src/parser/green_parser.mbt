@@ -36,10 +36,21 @@ fn select_build_tree(
   events : Array[@green_tree.ParseEvent],
   interner : @green_tree.Interner?,
 ) -> @green_tree.GreenNode {
+  let ws = raw(@syntax.WhitespaceToken)
   match interner {
     Some(i) =>
-      @green_tree.build_tree_interned(events, raw(@syntax.SourceFile), i)
-    None => @green_tree.build_tree(events, raw(@syntax.SourceFile))
+      @green_tree.build_tree_interned(
+        events,
+        raw(@syntax.SourceFile),
+        i,
+        trivia_kind=Some(ws),
+      )
+    None =>
+      @green_tree.build_tree(
+        events,
+        raw(@syntax.SourceFile),
+        trivia_kind=Some(ws),
+      )
   }
 }
 
@@ -87,6 +98,7 @@ pub fn parse_green_with_cursor(
   let tree = @green_tree.build_tree(
     parser.events.events,
     raw(@syntax.SourceFile),
+    trivia_kind=Some(raw(@syntax.WhitespaceToken)),
   )
   (tree, parser.errors, parser.reuse_count)
 }
@@ -285,25 +297,6 @@ fn GreenParser::emit_reused_node_events(
 }
 
 ///|
-/// Count non-whitespace tokens in a green node (recursive).
-/// This matches how the lexer produces tokens (whitespace is skipped).
-fn count_tokens_in_green(node : @green_tree.GreenNode) -> Int {
-  let mut count = 0
-  for child in node.children {
-    match child {
-      @green_tree.GreenElement::Token(t) =>
-        // Only count non-whitespace tokens to match lexer output
-        if t.kind != @syntax.WhitespaceToken.to_raw() {
-          count = count + 1
-        }
-      @green_tree.GreenElement::Node(n) =>
-        count = count + count_tokens_in_green(n)
-    }
-  }
-  count
-}
-
-///|
 /// Try to reuse a node at current position for given expected kind
 fn GreenParser::try_reuse(
   self : GreenParser,
@@ -329,9 +322,8 @@ fn GreenParser::try_reuse(
           self.last_end = info.start
           // Emit the reused node events
           self.emit_reused_node_events(node)
-          // Update position by non-whitespace token count
-          let token_count = count_tokens_in_green(node)
-          self.position = self.position + token_count
+          // Update position by non-whitespace token count (O(1) via cached field)
+          self.position = self.position + node.token_count
           // Update last_end past the reused node
           self.last_end = info.start + node.text_len
           self.reuse_count = self.reuse_count + 1

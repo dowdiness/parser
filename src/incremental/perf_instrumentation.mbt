@@ -91,21 +91,11 @@ pub fn perf_report() -> String {
 // Use these when profiling, swap back to production for benchmarks.
 
 ///|
-/// Instrumented version of count_tokens_in_node for profiling
+/// Instrumented version of count_tokens_in_node for profiling.
+/// Uses the cached `token_count` field (O(1)) rather than a recursive traversal.
 pub fn count_tokens_in_node_instrumented(node : @green_tree.GreenNode) -> Int {
   if perf_stats.enabled.val {
     perf_stats.count_tokens_calls.val = perf_stats.count_tokens_calls.val + 1
   }
-  let mut count = 0
-  for child in node.children {
-    match child {
-      @green_tree.GreenElement::Token(t) =>
-        if t.kind != @syntax.WhitespaceToken.to_raw() {
-          count = count + 1
-        }
-      @green_tree.GreenElement::Node(n) =>
-        count = count + count_tokens_in_node_instrumented(n)
-    }
-  }
-  count
+  node.token_count
 }
