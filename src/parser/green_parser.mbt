@@ -32,6 +32,18 @@ priv struct GreenParser {
 }
 
 ///|
+fn select_build_tree(
+  events : Array[@green_tree.ParseEvent],
+  interner : @green_tree.Interner?,
+) -> @green_tree.GreenNode {
+  match interner {
+    Some(i) =>
+      @green_tree.build_tree_interned(events, raw(@syntax.SourceFile), i)
+    None => @green_tree.build_tree(events, raw(@syntax.SourceFile))
+  }
+}
+
+///|
 /// Strict: raises ParseError on first syntax error (backward compat)
 pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
   let (green, errors) = parse_green_recover(source)
@@ -53,16 +65,7 @@ pub fn parse_green_recover(
   let parser = GreenParser::new(tokens, source)
   parser.parse_source_file()
   parser.assert_event_balance()
-  let tree = match interner {
-    Some(i) =>
-      @green_tree.build_tree_interned(
-        parser.events.events,
-        raw(@syntax.SourceFile),
-        i,
-      )
-    None =>
-      @green_tree.build_tree(parser.events.events, raw(@syntax.SourceFile))
-  }
+  let tree = select_build_tree(parser.events.events, interner)
   (tree, parser.errors)
 }
 
@@ -99,16 +102,7 @@ pub fn parse_green_recover_with_tokens(
   }
   parser.parse_source_file()
   parser.assert_event_balance()
-  let tree = match interner {
-    Some(i) =>
-      @green_tree.build_tree_interned(
-        parser.events.events,
-        raw(@syntax.SourceFile),
-        i,
-      )
-    None =>
-      @green_tree.build_tree(parser.events.events, raw(@syntax.SourceFile))
-  }
+  let tree = select_build_tree(parser.events.events, interner)
   (tree, parser.errors, parser.reuse_count)
 }
 
