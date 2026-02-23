@@ -285,8 +285,6 @@ fn trailing_context_matches(
   old_tokens : Array[OldToken],
   tokens : Array[@token.TokenInfo],
   node_end : Int,
-  _token_pos : Int,
-  _node_token_count : Int,
 ) -> Bool {
   // Coordinate note: node_end is in old-source coordinates.
   // Pre-damage nodes: their boundary byte offset is unchanged in the new
@@ -461,23 +459,14 @@ pub fn ReuseCursor::try_reuse(
         None
       } else if not(leading_token_matches(node, self.tokens, token_pos)) {
         None
+        // Condition 4: Trailing context matches
+      } else if not(
+          trailing_context_matches(self.old_tokens, self.tokens, node_end),
+        ) {
+        None
       } else {
-        // Condition 4: Trailing context matches (O(1) via cached token_count)
-        let node_token_count = node.token_count
-        if not(
-            trailing_context_matches(
-              self.old_tokens,
-              self.tokens,
-              node_end,
-              token_pos,
-              node_token_count,
-            ),
-          ) {
-          None
-        } else {
-          // All conditions met - can reuse!
-          Some(node)
-        }
+        // All conditions met - can reuse!
+        Some(node)
       }
     }
   }

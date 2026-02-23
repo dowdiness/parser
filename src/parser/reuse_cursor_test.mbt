@@ -276,6 +276,52 @@ test "ReuseCursor::try_reuse rejects post-damage node when follow token changes"
 }
 
 ///|
+/// Test that try_reuse handles a Whitespace token at self.position correctly.
+///
+/// Setup: old source "x + y" (BinaryExpr with two VarRef nodes).
+/// New source is the same "x + y" with damage limited to [2, 3) — only the "+"
+/// character.  The token layout is:
+///   [Identifier("x")@0, Whitespace(" ")@[1,2], Plus("+")@2,
+///    Whitespace(" ")@[3,4], Identifier("y")@4, EOF@5]
+///
+/// VarRef("x") at [0,1) is outside damage [2,3) and is reused.  After reuse,
+/// the advance loop stops at tokens[1] (Whitespace at start=1, which is NOT
+/// strictly less than node_end=1), so position stays at 1 — a Whitespace
+/// token.  The parser then emits "+" and calls parse_atom for the right
+/// operand with position=3, another Whitespace token.  In GreenParser::
+/// try_reuse the single-scan loop must skip that Whitespace before finding
+/// Identifier("y"), demonstrating the whitespace-inclusive position handling.
+///
+/// The test verifies:
+///   - reuse_count >= 1: VarRef("x") is reused, confirming the overall reuse
+///     machinery works in this expression.
+///   - errors.length() == 0: no parse errors.
+///   - new_tree == full_tree: incremental result matches a full reparse,
+///     confirming correctness after the whitespace scan.
+test "try_reuse handles Whitespace token at self.position correctly" {
+  let source = "x + y"
+  let (old_tree, _) = parse_green_recover(source)
+  let new_tokens = @lexer.tokenize(source)
+  // Damage covers only the "+" character [2, 3).
+  // VarRef("x")@[0,1] is pre-damage and reusable.
+  // After reusing VarRef("x"), position advances to the Whitespace token.
+  // The subsequent try_reuse call for the right operand exercises the
+  // whitespace-skipping scan loop with position pointing at Whitespace.
+  let damaged_range = @range.Range::new(2, 3)
+  let cursor = make_reuse_cursor(old_tree, damaged_range, new_tokens)
+  let (new_tree, errors, reuse_count) = parse_green_with_cursor(
+    source, new_tokens, cursor,
+  )
+  // No parse errors
+  inspect(errors.length(), content="0")
+  // VarRef("x") before the damage was reused
+  inspect(reuse_count >= 1, content="true")
+  // Result matches a full reparse
+  let (full_tree, _) = parse_green_recover(source)
+  inspect(new_tree == full_tree, content="true")
+}
+
+///|
 test "ReuseCursor verify kind extraction works" {
   // Sanity: expected kinds are stable and round-trip through RawKind.
   inspect(

@@ -236,19 +236,6 @@ fn GreenParser::peek_info(self : GreenParser) -> @token.TokenInfo {
 }
 
 ///|
-/// Return the array index of the next non-Whitespace token at or after start_pos.
-fn GreenParser::find_next_syntactic(self : GreenParser, start_pos : Int) -> Int {
-  let mut pos = start_pos
-  while pos < self.tokens.length() {
-    match self.tokens[pos].token {
-      @token.Whitespace => pos = pos + 1
-      _ => return pos
-    }
-  }
-  self.tokens.length()
-}
-
-///|
 fn GreenParser::advance(self : GreenParser) -> Unit {
   self.position = self.position + 1
 }
@@ -328,12 +315,24 @@ fn GreenParser::try_reuse(
       if cursor.is_reuse_disabled() {
         return false
       }
-      // Get the current byte offset from the next syntactic token (skip whitespace)
-      let info = self.peek_info()
+      // Single scan: find the first syntactic (non-whitespace) token at or
+      // after self.position, capturing both the array index (token_pos) and
+      // the TokenInfo (for byte_offset). This eliminates the duplicate scan
+      // that peek_info() and find_next_syntactic() previously performed.
+      let mut token_pos = self.position
+      while token_pos < self.tokens.length() {
+        match self.tokens[token_pos].token {
+          @token.Whitespace => token_pos = token_pos + 1
+          _ => break
+        }
+      }
+      let info = if token_pos < self.tokens.length() {
+        self.tokens[token_pos]
+      } else {
+        let end = self.source.length()
+        @token.TokenInfo::new(@token.EOF, end, end)
+      }
       let byte_offset = info.start
-      // token_pos must point to the first syntactic (non-whitespace) token so
-      // leading_token_matches and trailing_context_matches see real tokens.
-      let token_pos = self.find_next_syntactic(self.position)
       match cursor.try_reuse(expected_kind, byte_offset, token_pos) {
         None => false
         Some(node) => {
