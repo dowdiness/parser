@@ -39,6 +39,36 @@ test "parse_green: raises with offending token, not EOF" {
 }
 
 ///|
+test "parse_green_recover_with_tokens: uses supplied tokens, not re-tokenization" {
+  // Regression guard: the old stub called parse_green_recover(source) and
+  // would abort() on TokenizationError for temporarily invalid source text.
+  // The function must parse the supplied token stream, never re-tokenize.
+  // "@invalid" raises TokenizationError if passed to @lexer.tokenize, but
+  // the function must return normally when given valid tokens.
+  let tokens = @lexer.tokenize("x + y")
+  let (_, errors, reuse_count) = parse_green_recover_with_tokens(
+    "@invalid", tokens, None,
+  )
+  inspect(errors.length(), content="0")
+  inspect(reuse_count, content="0")
+}
+
+///|
+test "parse_green_with_cursor: uses supplied tokens, not re-tokenization" {
+  // Same regression guard for parse_green_with_cursor.
+  let source = "x + y"
+  let tokens = @lexer.tokenize(source)
+  let cursor = make_reuse_cursor(
+    parse_green_recover(source).0,
+    @range.Range::new(0, 0),
+    tokens,
+  )
+  let (_, errors, reuse_count) = parse_green_with_cursor("@invalid", tokens, cursor)
+  inspect(errors.length(), content="0")
+  inspect(reuse_count, content="0")
+}
+
+///|
 test "parse_green_recover_with_tokens: with interner matches without" {
   let source = "λx.x"
   let tokens = @lexer.tokenize(source)

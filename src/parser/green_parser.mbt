@@ -98,43 +98,63 @@ pub fn parse_green_recover(
 ///|
 /// Parse with reuse cursor for incremental parsing with subtree reuse.
 ///
-/// DEFERRED: cursor support is not yet implemented. The cursor and tokens
-/// parameters are ignored; the function delegates to parse_green_recover.
-/// reuse_count is always 0 until cursor support is restored.
+/// Uses the supplied token stream directly — never re-tokenizes from source.
+/// DEFERRED: cursor is ignored and reuse_count is always 0 until cursor
+/// support is restored.
 ///
 /// Note: this function does not accept an Interner. For incremental use with
 /// token deduplication, prefer parse_green_recover_with_tokens which supports
 /// the interner? parameter.
 pub fn parse_green_with_cursor(
   source : String,
-  _tokens : Array[@token.TokenInfo],
+  tokens : Array[@token.TokenInfo],
   _cursor : ReuseCursor,
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic], Int) {
-  let (tree, errors) = parse_green_recover(source) catch {
-    @lexer.TokenizationError(msg) =>
-      abort("parse_green_with_cursor: tokenization error: " + msg)
+  let core_tokens = tokens.map(fn(ti) {
+    @core.TokenInfo::new(ti.token, ti.start, ti.end)
+  })
+  let ctx = @core.ParserContext::new(core_tokens, source, lambda_spec)
+  parse_lambda_root(ctx)
+  ctx.flush_trivia()
+  if ctx.open_nodes != 0 {
+    abort(
+      "parse_green_with_cursor: grammar left " +
+      ctx.open_nodes.to_string() +
+      " unclosed nodes",
+    )
   }
-  (tree, errors, 0)
+  let tree = select_build_tree(ctx.events.events, None)
+  (tree, ctx.errors, 0)
 }
 
 ///|
 /// Parse with pre-tokenized input and optional reuse cursor.
 ///
-/// DEFERRED: cursor support is not yet implemented. The tokens and cursor
-/// parameters are ignored; the function re-tokenizes from source via
-/// parse_green_recover. reuse_count is always 0 until cursor support is
-/// restored.
+/// Uses the supplied token stream directly — never re-tokenizes from source,
+/// so temporarily invalid source text does not cause a hard crash.
+/// DEFERRED: cursor is ignored and reuse_count is always 0 until cursor
+/// support is restored.
 pub fn parse_green_recover_with_tokens(
   source : String,
-  _tokens : Array[@token.TokenInfo],
+  tokens : Array[@token.TokenInfo],
   _cursor : ReuseCursor?,
   interner? : @green_tree.Interner? = None,
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic], Int) {
-  let (tree, errors) = parse_green_recover(source, interner~) catch {
-    @lexer.TokenizationError(msg) =>
-      abort("parse_green_recover_with_tokens: tokenization error: " + msg)
+  let core_tokens = tokens.map(fn(ti) {
+    @core.TokenInfo::new(ti.token, ti.start, ti.end)
+  })
+  let ctx = @core.ParserContext::new(core_tokens, source, lambda_spec)
+  parse_lambda_root(ctx)
+  ctx.flush_trivia()
+  if ctx.open_nodes != 0 {
+    abort(
+      "parse_green_recover_with_tokens: grammar left " +
+      ctx.open_nodes.to_string() +
+      " unclosed nodes",
+    )
   }
-  (tree, errors, 0)
+  let tree = select_build_tree(ctx.events.events, interner)
+  (tree, ctx.errors, 0)
 }
 
 // ─── Grammar helpers ─────────────────────────────────────────────────────────
