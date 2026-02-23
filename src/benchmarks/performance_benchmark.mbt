@@ -1,5 +1,5 @@
 // Detailed performance benchmarks for incremental parser
-// Measures scaling behavior and incremental-state overhead
+// Measures scaling behavior, incremental-state overhead, and token-interning cost.
 // Run with: moon bench --package dowdiness/parser/benchmarks --release
 
 ///|
@@ -351,5 +351,76 @@ test "phase1: full re-tokenize after edit - 110 tokens" (b : @bench.T) {
       _ => abort("benchmark failed")
     }
     b.keep(result)
+  })
+}
+
+// --- Token interning overhead in full parse pipeline ---
+// Compares parse_green_recover with and without an Interner to measure the
+// per-parse cost of interning. These are the reference numbers for evaluating
+// whether node-level interning is worth its additional lookup overhead.
+
+///|
+/// Benchmark: parse_green_recover without interner (baseline, no dedup).
+test "parse_green_recover - no interner, small" (b : @bench.T) {
+  b.bench(fn() {
+    let (tree, _) = @parse.parse_green_recover("x + 1") catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: parse_green_recover with interner, cold (first parse of session).
+test "parse_green_recover - cold interner, small" (b : @bench.T) {
+  b.bench(fn() {
+    let interner = @green_tree.Interner::new()
+    let (tree, _) = @parse.parse_green_recover("x + 1", interner=Some(interner)) catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: parse_green_recover with interner, warm (subsequent parses of same session).
+test "parse_green_recover - warm interner, small" (b : @bench.T) {
+  let interner = @green_tree.Interner::new()
+  let _ = @parse.parse_green_recover("x + 1", interner=Some(interner)) catch {
+    _ => abort("benchmark failed")
+  }
+  b.bench(fn() {
+    let (tree, _) = @parse.parse_green_recover("x + 1", interner=Some(interner)) catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: parse_green_recover without interner - larger input (baseline).
+test "parse_green_recover - no interner, large" (b : @bench.T) {
+  let src = "λf.λx.if f x then (λy.y + 1) x else (λz.z - 1) (f x)"
+  b.bench(fn() {
+    let (tree, _) = @parse.parse_green_recover(src) catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: parse_green_recover with warm interner - larger input.
+test "parse_green_recover - warm interner, large" (b : @bench.T) {
+  let src = "λf.λx.if f x then (λy.y + 1) x else (λz.z - 1) (f x)"
+  let interner = @green_tree.Interner::new()
+  let _ = @parse.parse_green_recover(src, interner=Some(interner)) catch {
+    _ => abort("benchmark failed")
+  }
+  b.bench(fn() {
+    let (tree, _) = @parse.parse_green_recover(src, interner=Some(interner)) catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(tree)
   })
 }

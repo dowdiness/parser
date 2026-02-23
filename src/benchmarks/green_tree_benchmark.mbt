@@ -1,4 +1,5 @@
-// Focused microbenchmarks for green-tree construction and equality/hash fast paths.
+// Focused microbenchmarks for green-tree construction, equality/hash fast paths,
+// and token interning (baseline for future node-interning evaluation).
 // Run with: moon bench --package dowdiness/parser/benchmarks --release
 
 ///|
@@ -65,5 +66,144 @@ test "green-tree - equality mismatch hash fast path" (b : @bench.T) {
   b.bench(fn() {
     let same = left == right
     b.keep(same)
+  })
+}
+
+// --- Token interning benchmarks ---
+// Baseline measurements for token interning overhead and deduplication benefit.
+// Used as the reference point before evaluating whether node interning is worthwhile.
+//
+// SyntaxKind mappings used here:
+//   9  = IdentToken     14 = LambdaExpr    19 = IntLiteral
+//   10 = IntToken       15 = AppExpr       20 = VarRef
+//   11 = WhitespaceToken  16 = BinaryExpr  22 = SourceFile (root)
+//   4  = PlusToken
+
+///|
+/// Events for "x + 1": BinaryExpr(VarRef(x), +, IntLiteral(1)) under SourceFile root.
+fn make_x_plus_1_events() -> Array[@green_tree.ParseEvent] {
+  [
+    @green_tree.ParseEvent::StartNode(@green_tree.RawKind(16)), // BinaryExpr
+    @green_tree.ParseEvent::StartNode(@green_tree.RawKind(20)), // VarRef
+    @green_tree.ParseEvent::Token(@green_tree.RawKind(9), "x"),
+    @green_tree.ParseEvent::FinishNode,
+    @green_tree.ParseEvent::Token(@green_tree.RawKind(11), " "),
+    @green_tree.ParseEvent::Token(@green_tree.RawKind(4), "+"),
+    @green_tree.ParseEvent::Token(@green_tree.RawKind(11), " "),
+    @green_tree.ParseEvent::StartNode(@green_tree.RawKind(19)), // IntLiteral
+    @green_tree.ParseEvent::Token(@green_tree.RawKind(10), "1"),
+    @green_tree.ParseEvent::FinishNode,
+    @green_tree.ParseEvent::FinishNode,
+  ]
+}
+
+///|
+/// Benchmark: Interner::intern_token - cold miss path (token not yet in table).
+/// Measures HashMap insert + key string alloc + GreenToken::new.
+test "interner - intern_token cold miss" (b : @bench.T) {
+  b.bench(fn() {
+    let interner = @green_tree.Interner::new()
+    let t = interner.intern_token(@green_tree.RawKind(9), "identifier_123")
+    b.keep(t)
+  })
+}
+
+///|
+/// Benchmark: Interner::intern_token - warm hit path (token already cached).
+/// Measures only HashMap lookup + key string alloc; no GreenToken allocation.
+test "interner - intern_token warm hit" (b : @bench.T) {
+  let interner = @green_tree.Interner::new()
+  let _ = interner.intern_token(@green_tree.RawKind(9), "identifier_123")
+  b.bench(fn() {
+    let t = interner.intern_token(@green_tree.RawKind(9), "identifier_123")
+    b.keep(t)
+  })
+}
+
+///|
+/// Benchmark: build_tree on "x + 1" (no interning, allocates fresh tokens each call).
+test "build_tree - x + 1" (b : @bench.T) {
+  let events = make_x_plus_1_events()
+  b.bench(fn() {
+    let tree = @green_tree.build_tree(events, @green_tree.RawKind(22))
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: build_tree_interned on "x + 1" with a cold interner (first parse).
+/// Overhead = warm-hit benchmark + miss cost for each distinct token.
+test "build_tree_interned - x + 1, cold interner" (b : @bench.T) {
+  let events = make_x_plus_1_events()
+  b.bench(fn() {
+    let interner = @green_tree.Interner::new()
+    let tree = @green_tree.build_tree_interned(
+      events,
+      @green_tree.RawKind(22),
+      interner,
+    )
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: build_tree_interned on "x + 1" with a warm interner (subsequent parses).
+/// Models steady-state: all tokens already cached, every Token event is a hit.
+test "build_tree_interned - x + 1, warm interner" (b : @bench.T) {
+  let events = make_x_plus_1_events()
+  let interner = @green_tree.Interner::new()
+  let _ = @green_tree.build_tree_interned(
+    events,
+    @green_tree.RawKind(22),
+    interner,
+  )
+  b.bench(fn() {
+    let tree = @green_tree.build_tree_interned(
+      events,
+      @green_tree.RawKind(22),
+      interner,
+    )
+    b.keep(tree)
+  })
+}
+
+///|
+fn make_repeated_ident_events(count : Int) -> Array[@green_tree.ParseEvent] {
+  let events : Array[@green_tree.ParseEvent] = []
+  for i = 0; i < count; i = i + 1 {
+    events.push(@green_tree.ParseEvent::Token(@green_tree.RawKind(9), "x"))
+  }
+  events
+}
+
+///|
+/// Benchmark: build_tree with 100 identical ident tokens (100 GreenToken::new calls).
+/// Upper bound on token-level savings from interning when all tokens are identical.
+test "build_tree - 100 identical ident tokens" (b : @bench.T) {
+  let events = make_repeated_ident_events(100)
+  b.bench(fn() {
+    let tree = @green_tree.build_tree(events, @green_tree.RawKind(22))
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: build_tree_interned with 100 identical ident tokens, warm interner.
+/// 1 miss + 99 hits; shows maximum deduplication benefit for tokens.
+test "build_tree_interned - 100 identical tokens, warm interner" (b : @bench.T) {
+  let events = make_repeated_ident_events(100)
+  let interner = @green_tree.Interner::new()
+  let _ = @green_tree.build_tree_interned(
+    events,
+    @green_tree.RawKind(22),
+    interner,
+  )
+  b.bench(fn() {
+    let tree = @green_tree.build_tree_interned(
+      events,
+      @green_tree.RawKind(22),
+      interner,
+    )
+    b.keep(tree)
   })
 }
