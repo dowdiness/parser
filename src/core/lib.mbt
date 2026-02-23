@@ -23,14 +23,16 @@ pub struct Diagnostic {
 /// Fields:
 ///   kind_to_raw     — maps your SyntaxKind to the green tree's RawKind (an Int)
 ///   token_is_eof    — returns true for the end-of-input sentinel token
+///   token_is_trivia — returns true for whitespace/trivia tokens to skip in peek
 ///   tokens_equal    — equality check (needed because T has no Eq constraint)
-///   whitespace_kind — the SyntaxKind for whitespace trivia nodes
+///   whitespace_kind — the SyntaxKind for whitespace trivia nodes in the tree
 ///   error_kind      — the SyntaxKind for error tokens/nodes
 ///   root_kind       — the SyntaxKind for the root node (e.g. SourceFile)
 ///   eof_token       — the T value returned when past end of input
 pub struct LanguageSpec[T, K] {
   kind_to_raw : (K) -> @green_tree.RawKind
   token_is_eof : (T) -> Bool
+  token_is_trivia : (T) -> Bool
   tokens_equal : (T, T) -> Bool
   whitespace_kind : K
   error_kind : K
@@ -46,7 +48,6 @@ pub struct ParserContext[T, K] {
   tokens : Array[TokenInfo[T]]
   source : String
   mut position : Int
-  mut last_end : Int
   events : @green_tree.EventBuffer
   errors : Array[Diagnostic]
   mut error_count : Int
@@ -64,7 +65,6 @@ pub fn[T, K] ParserContext::new(
     tokens,
     source,
     position: 0,
-    last_end: 0,
     events: @green_tree.EventBuffer::new(),
     errors: [],
     error_count: 0,
@@ -73,36 +73,46 @@ pub fn[T, K] ParserContext::new(
 }
 
 ///|
-/// Return the current token without consuming it.
+/// Return the next non-trivia token without consuming it.
 pub fn[T, K] ParserContext::peek(self : ParserContext[T, K]) -> T {
-  if self.position < self.tokens.length() {
-    self.tokens[self.position].token
-  } else {
-    self.spec.eof_token
+  let mut pos = self.position
+  while pos < self.tokens.length() {
+    let t = self.tokens[pos].token
+    if (self.spec.token_is_trivia)(t) {
+      pos = pos + 1
+    } else {
+      return t
+    }
   }
+  self.spec.eof_token
 }
 
 ///|
-/// Return current token with position info.
+/// Return the TokenInfo for the next non-trivia token.
 pub fn[T, K] ParserContext::peek_info(
   self : ParserContext[T, K],
 ) -> TokenInfo[T] {
-  if self.position < self.tokens.length() {
-    self.tokens[self.position]
-  } else {
-    let end = self.source.length()
-    { token: self.spec.eof_token, start: end, end }
+  let mut pos = self.position
+  while pos < self.tokens.length() {
+    let info = self.tokens[pos]
+    if (self.spec.token_is_trivia)(info.token) {
+      pos = pos + 1
+    } else {
+      return info
+    }
   }
+  let end = self.source.length()
+  { token: self.spec.eof_token, start: end, end }
 }
 
 ///|
-/// Return true if the current token equals the given token.
+/// Return true if the current non-trivia token equals the given token.
 pub fn[T, K] ParserContext::at(self : ParserContext[T, K], token : T) -> Bool {
   (self.spec.tokens_equal)(self.peek(), token)
 }
 
 ///|
-/// Return true if at end of input.
+/// Return true if at end of input (ignoring trivia).
 pub fn[T, K] ParserContext::at_eof(self : ParserContext[T, K]) -> Bool {
   (self.spec.token_is_eof)(self.peek())
 }
@@ -118,36 +128,40 @@ pub fn[T, K] ParserContext::token_text(
 }
 
 ///|
-fn[T, K] ParserContext::emit_whitespace_before(
-  self : ParserContext[T, K],
-  info : TokenInfo[T],
-) -> Unit {
-  if info.start > self.last_end {
-    let ws_text : StringView = self.source[self.last_end:info.start] catch {
-        _ => ""
-      }
-    self.events.push(
-      @green_tree.ParseEvent::Token(
-        (self.spec.kind_to_raw)(self.spec.whitespace_kind),
-        ws_text.to_string(),
-      ),
-    )
+/// Emit all consecutive trivia tokens at current position to the event stream,
+/// advancing position past each one. Call this before emitting syntactic tokens,
+/// and at the end of the top-level grammar function before returning.
+pub fn[T, K] ParserContext::flush_trivia(self : ParserContext[T, K]) -> Unit {
+  while self.position < self.tokens.length() {
+    let info = self.tokens[self.position]
+    if (self.spec.token_is_trivia)(info.token) {
+      let text = self.token_text(info)
+      self.events.push(
+        @green_tree.ParseEvent::Token(
+          (self.spec.kind_to_raw)(self.spec.whitespace_kind),
+          text,
+        ),
+      )
+      self.position = self.position + 1
+    } else {
+      break
+    }
   }
 }
 
 ///|
 /// Consume the current token and emit it as a leaf in the green tree.
+/// Automatically flushes leading trivia before the token.
 pub fn[T, K] ParserContext::emit_token(
   self : ParserContext[T, K],
   kind : K,
 ) -> Unit {
+  self.flush_trivia()
   let info = self.peek_info()
-  self.emit_whitespace_before(info)
   let text = self.token_text(info)
   self.events.push(
     @green_tree.ParseEvent::Token((self.spec.kind_to_raw)(kind), text),
   )
-  self.last_end = info.end
   self.position = self.position + 1
 }
 
@@ -202,9 +216,10 @@ pub fn[T, K] ParserContext::error(
 
 ///|
 /// Consume the current token and emit it as an error token (for error recovery).
+/// Automatically flushes leading trivia before the token.
 pub fn[T, K] ParserContext::bump_error(self : ParserContext[T, K]) -> Unit {
+  self.flush_trivia()
   let info = self.peek_info()
-  self.emit_whitespace_before(info)
   let text = self.token_text(info)
   self.events.push(
     @green_tree.ParseEvent::Token(
@@ -212,7 +227,6 @@ pub fn[T, K] ParserContext::bump_error(self : ParserContext[T, K]) -> Unit {
       text,
     ),
   )
-  self.last_end = info.end
   self.position = self.position + 1
 }
 
@@ -237,6 +251,7 @@ fn make_test_fixtures() -> (LanguageSpec[String, Int], Array[TokenInfo[String]])
   let spec : LanguageSpec[String, Int] = {
     kind_to_raw: fn(k) { @green_tree.RawKind(k) },
     token_is_eof: fn(t) { t == "EOF" },
+    token_is_trivia: fn(_) { false },
     tokens_equal: fn(a, b) { a == b },
     whitespace_kind: 0,
     error_kind: 1,
@@ -269,6 +284,27 @@ test "peek returns eof when past end" {
   let (spec, _) = make_test_fixtures()
   let ctx = ParserContext::new([], "", spec)
   inspect(ctx.peek(), content="EOF")
+}
+
+///|
+test "peek skips trivia tokens" {
+  let spec : LanguageSpec[String, Int] = {
+    kind_to_raw: fn(k) { @green_tree.RawKind(k) },
+    token_is_eof: fn(t) { t == "EOF" },
+    token_is_trivia: fn(t) { t == " " },
+    tokens_equal: fn(a, b) { a == b },
+    whitespace_kind: 0,
+    error_kind: 1,
+    root_kind: 2,
+    eof_token: "EOF",
+  }
+  let tokens = [
+    { token: " ", start: 0, end: 1 },
+    { token: " ", start: 1, end: 2 },
+    { token: "x", start: 2, end: 3 },
+  ]
+  let ctx = ParserContext::new(tokens, "  x", spec)
+  inspect(ctx.peek(), content="x")
 }
 
 ///|
