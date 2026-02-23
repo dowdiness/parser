@@ -1,6 +1,7 @@
 # Green Tree Token Interning Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **Status:** Completed / Implemented 2026-02-23.
+> All 5 tasks delivered: `Interner` type in `green-tree`, `build_tree_interned`, optional `interner~` parameter threaded into `parse_green_recover` and `parse_green_recover_with_tokens`, and `IncrementalParser` wired with a session-scoped `Interner` field.
 
 **Goal:** Add a session-scoped `Interner` type to `green-tree` that deduplicates `GreenToken` objects by `(kind, text)`, and wire it into `IncrementalParser`.
 
