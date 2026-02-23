@@ -288,6 +288,16 @@ pub fn[T, K] ParserContext::emit_zero_width(
   )
 }
 
+///|
+/// Emit a zero-width error placeholder (no source text consumed).
+/// Shorthand for emit_zero_width(spec.error_kind). Use this in grammar code
+/// to represent a missing or erroneous token without consuming input.
+pub fn[T, K] ParserContext::emit_error_placeholder(
+  self : ParserContext[T, K],
+) -> Unit {
+  self.emit_zero_width(self.spec.error_kind)
+}
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 ///|

@@ -74,6 +74,28 @@ fn token_at_offset(source : String, offset : Int) -> @token.Token {
 }
 
 ///|
+/// Core parse-and-build sequence shared by all three public entry points.
+/// Accepts pre-converted core tokens, source, and optional interner.
+/// Aborts if the grammar leaves unclosed nodes (programming error).
+fn run_parse(
+  core_tokens : Array[@core.TokenInfo[@token.Token]],
+  source : String,
+  interner : @green_tree.Interner?,
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic]) {
+  let ctx = @core.ParserContext::new(core_tokens, source, lambda_spec)
+  parse_lambda_root(ctx)
+  ctx.flush_trivia()
+  if ctx.open_nodes != 0 {
+    abort(
+      "run_parse: grammar left " +
+      ctx.open_nodes.to_string() +
+      " unclosed nodes",
+    )
+  }
+  (select_build_tree(ctx.events.events, interner), ctx.errors)
+}
+
+///|
 /// Recovering: returns tree with ErrorNodes + diagnostic list.
 /// Only raises for TokenizationError (unrecoverable).
 pub fn parse_green_recover(
@@ -84,18 +106,7 @@ pub fn parse_green_recover(
   let tokens = raw_tokens.map(fn(ti) {
     @core.TokenInfo::new(ti.token, ti.start, ti.end)
   })
-  let ctx = @core.ParserContext::new(tokens, source, lambda_spec)
-  parse_lambda_root(ctx)
-  ctx.flush_trivia()
-  if ctx.open_nodes != 0 {
-    abort(
-      "parse_green_recover: grammar left " +
-      ctx.open_nodes.to_string() +
-      " unclosed nodes",
-    )
-  }
-  let tree = select_build_tree(ctx.events.events, interner)
-  (tree, ctx.errors)
+  run_parse(tokens, source, interner)
 }
 
 ///|
@@ -116,18 +127,8 @@ pub fn parse_green_with_cursor(
   let core_tokens = tokens.map(fn(ti) {
     @core.TokenInfo::new(ti.token, ti.start, ti.end)
   })
-  let ctx = @core.ParserContext::new(core_tokens, source, lambda_spec)
-  parse_lambda_root(ctx)
-  ctx.flush_trivia()
-  if ctx.open_nodes != 0 {
-    abort(
-      "parse_green_with_cursor: grammar left " +
-      ctx.open_nodes.to_string() +
-      " unclosed nodes",
-    )
-  }
-  let tree = select_build_tree(ctx.events.events, None)
-  (tree, ctx.errors, 0)
+  let (tree, errors) = run_parse(core_tokens, source, None)
+  (tree, errors, 0)
 }
 
 ///|
@@ -146,18 +147,8 @@ pub fn parse_green_recover_with_tokens(
   let core_tokens = tokens.map(fn(ti) {
     @core.TokenInfo::new(ti.token, ti.start, ti.end)
   })
-  let ctx = @core.ParserContext::new(core_tokens, source, lambda_spec)
-  parse_lambda_root(ctx)
-  ctx.flush_trivia()
-  if ctx.open_nodes != 0 {
-    abort(
-      "parse_green_recover_with_tokens: grammar left " +
-      ctx.open_nodes.to_string() +
-      " unclosed nodes",
-    )
-  }
-  let tree = select_build_tree(ctx.events.events, interner)
-  (tree, ctx.errors, 0)
+  let (tree, errors) = run_parse(core_tokens, source, interner)
+  (tree, errors, 0)
 }
 
 // ─── Grammar helpers ─────────────────────────────────────────────────────────
@@ -184,7 +175,7 @@ fn lambda_expect(
     _ => {
       ctx.error("Expected " + @token.print_token(expected))
       // Emit zero-width ErrorToken — do NOT consume current token
-      ctx.emit_zero_width(@syntax.ErrorToken)
+      ctx.emit_error_placeholder()
     }
   }
 }
@@ -304,7 +295,7 @@ fn parse_atom(
         _ => {
           ctx.error("Expected parameter after λ")
           // Emit zero-width ErrorToken for missing identifier
-          ctx.emit_zero_width(@syntax.ErrorToken)
+          ctx.emit_error_placeholder()
         }
       }
       lambda_expect(ctx, @token.Dot, @syntax.DotToken)
@@ -333,7 +324,7 @@ fn parse_atom(
       if at_stop_token(ctx) {
         // Stop token: emit zero-width ErrorNode (don't consume)
         ctx.start_node(@syntax.ErrorNode)
-        ctx.emit_zero_width(@syntax.ErrorToken)
+        ctx.emit_error_placeholder()
         ctx.finish_node()
       } else {
         // Wrap current token in ErrorNode (consume it)
