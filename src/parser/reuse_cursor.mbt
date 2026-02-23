@@ -247,14 +247,46 @@ fn old_follow_token(old_tokens : Array[OldToken], offset : Int) -> OldToken? {
 }
 
 ///|
+/// Find the first non-Whitespace token in the new token array with start >= byte_offset.
+/// This replaces the old `token_pos + node_token_count` calculation which breaks
+/// when whitespace tokens are interleaved in the token array.
+fn new_follow_token(
+  tokens : Array[@token.TokenInfo],
+  byte_offset : Int,
+) -> @token.TokenInfo? {
+  // Binary search for first token with start >= byte_offset, then skip whitespace.
+  let mut lo = 0
+  let mut hi = tokens.length()
+  while lo < hi {
+    let mid = (lo + hi) / 2
+    if tokens[mid].start < byte_offset {
+      lo = mid + 1
+    } else {
+      hi = mid
+    }
+  }
+  // Scan forward from lo skipping whitespace tokens
+  let mut pos = lo
+  while pos < tokens.length() {
+    let info = tokens[pos]
+    match info.token {
+      @token.Whitespace => pos = pos + 1
+      @token.EOF => return None
+      _ => return Some(info)
+    }
+  }
+  None
+}
+
+///|
 /// Compare follow token from old tree and new token stream.
 /// Option B: follow-token equality must hold for reuse.
 fn trailing_context_matches(
   old_tokens : Array[OldToken],
   tokens : Array[@token.TokenInfo],
   node_end : Int,
-  token_pos : Int,
-  node_token_count : Int,
+  _token_pos : Int,
+  _node_token_count : Int,
 ) -> Bool {
   // Coordinate note: node_end is in old-source coordinates.
   // Pre-damage nodes: their boundary byte offset is unchanged in the new
@@ -263,20 +295,16 @@ fn trailing_context_matches(
   // edit delta, so old-source and new-source coordinates do NOT agree.
   // However, this check compares token kind and text, not byte offsets, so
   // correctness holds regardless of which coordinate space node_end is in:
-  // after_pos indexes into the new token array by token count (not bytes),
-  // and old_follow_token searches old_tokens by start offset in old-source
+  // new_follow_token searches by byte offset in the new token array, and
+  // old_follow_token searches old_tokens by start offset in old-source
   // coordinates. Both sides refer to the token immediately following the
   // node in their respective streams, which is the correct comparison.
-  let after_pos = token_pos + node_token_count
+  //
+  // We locate the new follow token by byte offset (node_end) rather than
+  // by token count, so that whitespace tokens in the new array do not
+  // shift the index and cause incorrect follow-token comparisons.
   let old_follow = old_follow_token(old_tokens, node_end)
-  let new_follow = if after_pos < tokens.length() {
-    match tokens[after_pos].token {
-      @token.EOF => None
-      _ => Some(tokens[after_pos])
-    }
-  } else {
-    None
-  }
+  let new_follow = new_follow_token(tokens, node_end)
   match (old_follow, new_follow) {
     (None, None) => true
     (Some(old), Some(new_info)) =>

@@ -22,7 +22,6 @@ priv struct GreenParser {
   tokens : Array[@token.TokenInfo]
   source : String
   mut position : Int
-  mut last_end : Int // Track last token end to emit whitespace
   events : @green_tree.EventBuffer
   errors : Array[ParseDiagnostic]
   mut error_count : Int
@@ -131,7 +130,6 @@ fn GreenParser::new(
     tokens,
     source,
     position: 0,
-    last_end: 0,
     events: @green_tree.EventBuffer::new(),
     errors: [],
     error_count: 0,
@@ -151,7 +149,6 @@ fn GreenParser::new_with_cursor(
     tokens,
     source,
     position: 0,
-    last_end: 0,
     events: @green_tree.EventBuffer::new(),
     errors: [],
     error_count: 0,
@@ -211,22 +208,44 @@ fn GreenParser::assert_event_balance(self : GreenParser) -> Unit {
 }
 
 ///|
+/// Return the next non-Whitespace token, skipping any Whitespace entries.
 fn GreenParser::peek(self : GreenParser) -> @token.Token {
-  if self.position < self.tokens.length() {
-    self.tokens[self.position].token
-  } else {
-    @token.EOF
+  let mut pos = self.position
+  while pos < self.tokens.length() {
+    match self.tokens[pos].token {
+      @token.Whitespace => pos = pos + 1
+      token => return token
+    }
   }
+  @token.EOF
 }
 
 ///|
+/// Return the TokenInfo for the next non-Whitespace token.
 fn GreenParser::peek_info(self : GreenParser) -> @token.TokenInfo {
-  if self.position < self.tokens.length() {
-    self.tokens[self.position]
-  } else {
-    let end = self.source.length()
-    @token.TokenInfo::new(@token.EOF, end, end)
+  let mut pos = self.position
+  while pos < self.tokens.length() {
+    let info = self.tokens[pos]
+    match info.token {
+      @token.Whitespace => pos = pos + 1
+      _ => return info
+    }
   }
+  let end = self.source.length()
+  @token.TokenInfo::new(@token.EOF, end, end)
+}
+
+///|
+/// Return the array index of the next non-Whitespace token at or after start_pos.
+fn GreenParser::find_next_syntactic(self : GreenParser, start_pos : Int) -> Int {
+  let mut pos = start_pos
+  while pos < self.tokens.length() {
+    match self.tokens[pos].token {
+      @token.Whitespace => pos = pos + 1
+      _ => return pos
+    }
+  }
+  self.tokens.length()
 }
 
 ///|
@@ -244,20 +263,21 @@ fn GreenParser::token_text(
 }
 
 ///|
-fn GreenParser::emit_whitespace_before(
-  self : GreenParser,
-  info : @token.TokenInfo,
-) -> Unit {
-  if info.start > self.last_end {
-    let ws_text : StringView = self.source[self.last_end:info.start] catch {
-        _ => ""
+/// Emit all consecutive Whitespace tokens at current position to the
+/// event stream, advancing position past each one.
+fn GreenParser::flush_trivia(self : GreenParser) -> Unit {
+  while self.position < self.tokens.length() {
+    let info = self.tokens[self.position]
+    match info.token {
+      @token.Whitespace => {
+        let text = self.token_text(info)
+        self.events.push(
+          @green_tree.ParseEvent::Token(raw(@syntax.WhitespaceToken), text),
+        )
+        self.position = self.position + 1
       }
-    self.events.push(
-      @green_tree.ParseEvent::Token(
-        raw(@syntax.WhitespaceToken),
-        ws_text.to_string(),
-      ),
-    )
+      _ => break
+    }
   }
 }
 
@@ -266,17 +286,16 @@ fn GreenParser::emit_token(
   self : GreenParser,
   kind : @syntax.SyntaxKind,
 ) -> Unit {
+  self.flush_trivia()
   let info = self.peek_info()
-  self.emit_whitespace_before(info)
   let text = self.token_text(info)
   self.events.push(@green_tree.ParseEvent::Token(raw(kind), text))
-  self.last_end = info.end
   self.advance()
 }
 
 ///|
 /// Emit events to reconstruct a reused green node.
-/// Does NOT update position/last_end - caller must do that.
+/// Does NOT update position — caller must advance position after calling this.
 fn GreenParser::emit_reused_node_events(
   self : GreenParser,
   node : @green_tree.GreenNode,
@@ -309,23 +328,26 @@ fn GreenParser::try_reuse(
       if cursor.is_reuse_disabled() {
         return false
       }
-      // Get the current byte offset from the current token
+      // Get the current byte offset from the next syntactic token (skip whitespace)
       let info = self.peek_info()
       let byte_offset = info.start
-      match cursor.try_reuse(expected_kind, byte_offset, self.position) {
+      // token_pos must point to the first syntactic (non-whitespace) token so
+      // leading_token_matches and trailing_context_matches see real tokens.
+      let token_pos = self.find_next_syntactic(self.position)
+      match cursor.try_reuse(expected_kind, byte_offset, token_pos) {
         None => false
         Some(node) => {
-          // Emit whitespace before the reused node (gap between last_end and token start)
-          self.emit_whitespace_before(info)
-          // Set last_end to node start before emitting reused events,
-          // so internal whitespace in the reused node is not double-counted
-          self.last_end = info.start
+          // Flush any leading trivia (whitespace before the reused node)
+          self.flush_trivia()
           // Emit the reused node events
           self.emit_reused_node_events(node)
-          // Update position by non-whitespace token count (O(1) via cached field)
-          self.position = self.position + node.token_count
-          // Update last_end past the reused node
-          self.last_end = info.start + node.text_len
+          // Advance position past ALL tokens (whitespace + syntactic) that
+          // fall within the reused node's byte span [byte_offset, node_end).
+          let node_end = byte_offset + node.text_len
+          while self.position < self.tokens.length() &&
+                self.tokens[self.position].start < node_end {
+            self.position = self.position + 1
+          }
           self.reuse_count = self.reuse_count + 1
           // Advance cursor past the reused node
           cursor.advance_past(node)
@@ -350,13 +372,12 @@ fn GreenParser::error(
 }
 
 ///|
-/// Consume current token as an ErrorToken (emit whitespace + token).
+/// Consume current token as an ErrorToken (flush trivia then emit token).
 fn GreenParser::bump_error(self : GreenParser) -> Unit {
+  self.flush_trivia()
   let info = self.peek_info()
-  self.emit_whitespace_before(info)
   let text = self.token_text(info)
   self.events.push(@green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), text))
-  self.last_end = info.end
   self.advance()
 }
 
@@ -399,18 +420,8 @@ fn GreenParser::parse_source_file(self : GreenParser) -> Unit {
   self.parse_expression()
   match self.peek() {
     @token.EOF =>
-      if self.last_end < self.source.length() {
-        let ws_text : StringView = self.source[self.last_end:self.source.length()] catch {
-            _ => ""
-          }
-        self.events.push(
-          @green_tree.ParseEvent::Token(
-            raw(@syntax.WhitespaceToken),
-            ws_text.to_string(),
-          ),
-        )
-        self.last_end = self.source.length()
-      }
+      // Flush any trailing whitespace tokens before EOF
+      self.flush_trivia()
     _ => {
       // Wrap all remaining tokens (until EOF) in a single ErrorNode
       let info = self.peek_info()
@@ -425,19 +436,8 @@ fn GreenParser::parse_source_file(self : GreenParser) -> Unit {
         self.bump_error()
       }
       self.finish_node()
-      // Emit trailing whitespace if any
-      if self.last_end < self.source.length() {
-        let ws_text : StringView = self.source[self.last_end:self.source.length()] catch {
-            _ => ""
-          }
-        self.events.push(
-          @green_tree.ParseEvent::Token(
-            raw(@syntax.WhitespaceToken),
-            ws_text.to_string(),
-          ),
-        )
-        self.last_end = self.source.length()
-      }
+      // Flush any trailing whitespace tokens after the ErrorNode
+      self.flush_trivia()
     }
   }
 }
