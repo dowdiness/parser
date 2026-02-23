@@ -193,20 +193,15 @@ pub fn[T, K] ParserContext::at_eof(self : ParserContext[T, K]) -> Bool {
 
 ///|
 /// Extract source text for a token from the source string.
+/// Returns "" on invalid spans rather than aborting — span errors (whether
+/// from a tokenizer bug or a grammar invariant violation) produce an empty
+/// leaf in the tree instead of crashing a long-running host process or LSP.
 pub fn[T, K] ParserContext::token_text(
   self : ParserContext[T, K],
   info : TokenInfo[T],
 ) -> String {
   let slice : StringView = self.source[info.start:info.end] catch {
-      _ =>
-        abort(
-          "token_text: invalid span [" +
-          info.start.to_string() +
-          ":" +
-          info.end.to_string() +
-          "] for source of length " +
-          self.source.length().to_string(),
-        )
+      _ => return ""
     }
   slice.to_string()
 }
@@ -214,6 +209,7 @@ pub fn[T, K] ParserContext::token_text(
 ///|
 /// Extract source text at a token index. Internal helper to avoid constructing
 /// intermediate TokenInfo structs on the hot path.
+/// Returns "" on invalid spans (same policy as token_text).
 fn[T, K] ParserContext::text_at(
   self : ParserContext[T, K],
   pos : Int,
@@ -221,15 +217,7 @@ fn[T, K] ParserContext::text_at(
   let start = (self.get_start)(pos)
   let end = (self.get_end)(pos)
   let slice : StringView = self.source[start:end] catch {
-      _ =>
-        abort(
-          "text_at: invalid span [" +
-          start.to_string() +
-          ":" +
-          end.to_string() +
-          "] for source of length " +
-          self.source.length().to_string(),
-        )
+      _ => return ""
     }
   slice.to_string()
 }
