@@ -103,7 +103,7 @@ test "Signal derives Debug" {
 test "Memo derives Debug" {
   let rt = Runtime::new()
   let s = Signal::new(rt, 10)
-  let m = Memo::new(rt, fn() { s.get() * 2 })
+  let m = Memo::new(rt, () => s.get() * 2)
   let _ = m.get()
   debug_inspect(
     m,

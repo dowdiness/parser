@@ -42,7 +42,7 @@ pub fn[T] Signal::clear_on_change(self : Signal[T]) -> Unit
 ```moonbit
 pub fn[T] Signal::on_change(self : Signal[T], f : (T) -> Unit) -> Unit {
   let cell = self.rt.get_cell(self.cell_id)
-  cell.on_change = Some(fn() { f(self.value) })
+  cell.on_change = Some(() => f(self.value))
 }
 ```
 
@@ -67,7 +67,7 @@ pub fn[T] Memo::clear_on_change(self : Memo[T]) -> Unit
 ```moonbit
 pub fn[T] Memo::on_change(self : Memo[T], f : (T) -> Unit) -> Unit {
   let cell = self.rt.get_cell(self.cell_id)
-  cell.on_change = Some(fn() {
+  cell.on_change = Some(() => {
     match self.value {
       Some(v) => f(v)
       None => ()

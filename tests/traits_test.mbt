@@ -47,7 +47,7 @@ test "trait: create_signal with High durability" {
 test "trait: create_memo via IncrDb" {
   let db = TestDb()
   let sig = @incr.create_signal(db, 10)
-  let memo = @incr.create_memo(db, fn() { sig.get() * 2 })
+  let memo = @incr.create_memo(db, () => sig.get() * 2)
   inspect(memo.get(), content="20")
 }
 
@@ -56,9 +56,9 @@ test "trait: batch via IncrDb" {
   let db = TestDb()
   let x = @incr.create_signal(db, 1)
   let y = @incr.create_signal(db, 2)
-  let sum = @incr.create_memo(db, fn() { x.get() + y.get() })
+  let sum = @incr.create_memo(db, () => x.get() + y.get())
   inspect(sum.get(), content="3")
-  @incr.batch(db, fn() {
+  @incr.batch(db, () => {
     x.set(10)
     y.set(20)
   })
@@ -80,7 +80,7 @@ test "trait: signal is always up-to-date" {
 test "trait: memo is up-to-date after get" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 1)
-  let memo = Memo::new(rt, fn() { input.get() + 1 })
+  let memo = Memo::new(rt, () => input.get() + 1)
   // After get, memo should be up-to-date
   let _ = memo.get()
   inspect(memo.is_up_to_date(), content="true")
@@ -96,7 +96,7 @@ test "trait: memo is up-to-date after get" {
 test "trait: memo not yet computed is not up-to-date" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 1)
-  let memo = Memo::new(rt, fn() { input.get() + 1 })
+  let memo = Memo::new(rt, () => input.get() + 1)
   // Before any get, memo has no cached value, so it is not up-to-date
   inspect(memo.is_up_to_date(), content="false")
   // After computing, memo is up-to-date
@@ -120,7 +120,7 @@ test "trait: readable trait dispatch for signal" {
 test "trait: readable trait dispatch for memo" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 1)
-  let memo = Memo::new(rt, fn() { input.get() + 1 })
+  let memo = Memo::new(rt, () => input.get() + 1)
   let _ = memo.get()
   inspect(check_up_to_date(memo), content="true")
   input.set(2)
@@ -143,7 +143,7 @@ struct CalcPipeline {
 fn CalcPipeline::new() -> CalcPipeline {
   let rt = Runtime::new()
   let source = Signal::new(rt, "")
-  let errors = Memo::new(rt, fn() {
+  let errors = Memo::new(rt, () => {
     let src = source.get()
     if src == "" {
       ["empty source"]
@@ -151,7 +151,7 @@ fn CalcPipeline::new() -> CalcPipeline {
       []
     }
   })
-  let output = Memo::new(rt, fn() {
+  let output = Memo::new(rt, () => {
     let src = source.get()
     if src == "" {
       []
@@ -299,7 +299,7 @@ test "trait: create_signal with label" {
 test "trait: create_memo with label" {
   let db = TestDb()
   let x = @incr.create_signal(db, 1)
-  let m = @incr.create_memo(db, fn() { x.get() * 2 }, label="doubled")
+  let m = @incr.create_memo(db, () => x.get() * 2, label="doubled")
   let _ = m.get()
   match db.rt.cell_info(m.id()) {
     Some(info) => inspect(info.label, content="Some(\"doubled\")")

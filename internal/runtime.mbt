@@ -21,7 +21,7 @@ let next_runtime_id : Ref[Int] = { val: 0 }
 ///
 /// let x = Signal(rt, 10)
 ///
-/// let doubled = Memo(rt, fn() { x.get() * 2 })
+/// let doubled = Memo(rt, () => x.get() * 2)
 /// ```
 pub(all) struct Runtime {
   priv runtime_id : Int
@@ -59,11 +59,11 @@ pub(all) struct Runtime {
 /// ```moonbit nocheck
 /// let rt = Runtime()
 ///
-/// let rt = Runtime(on_change=fn() { rerender() })
+/// let rt = Runtime(on_change=() => rerender())
 ///
 /// let x = Signal(rt, 10)
 ///
-/// let doubled = Memo(rt, fn() { x.get() * 2 })
+/// let doubled = Memo(rt, () => x.get() * 2)
 /// ```
 pub fn Runtime::new(on_change? : () -> Unit) -> Runtime {
   let id = next_runtime_id.val
@@ -221,7 +221,7 @@ fn Runtime::fire_on_change(self : Runtime) -> Unit {
 /// ```moonbit nocheck
 /// let rt = Runtime()
 /// let sig = Signal(rt, 42)
-/// let memo = Memo(rt, fn() { sig.get() * 2 })
+/// let memo = Memo(rt, () => sig.get() * 2)
 /// let _ = memo.get()  // Force computation
 ///
 /// // Query signal metadata
@@ -340,7 +340,7 @@ fn Runtime::bump_revision(self : Runtime, durability : Durability) -> Unit {
 /// # Example
 ///
 /// ```moonbit nocheck
-/// rt.batch(fn() {
+/// rt.batch(() => {
 ///   x.set(10)
 ///   y.set(20)
 ///   z.set(30)
@@ -351,7 +351,7 @@ fn Runtime::bump_revision(self : Runtime, durability : Durability) -> Unit {
 /// # Revert Detection
 ///
 /// ```moonbit nocheck
-/// rt.batch(fn() {
+/// rt.batch(() => {
 ///   x.set(5)   // Change from 0 to 5
 ///   x.set(0)   // Change back to 0
 /// })

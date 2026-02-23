@@ -59,7 +59,7 @@ test "signal: no label gives None in cell_info" {
 ///|
 test "memo: id() returns valid CellId" {
   let rt = Runtime::new()
-  let m = Memo::new(rt, fn() { 42 })
+  let m = Memo::new(rt, () => 42)
   let id = m.id()
   inspect(id.id >= 0, content="true")
 }
@@ -67,7 +67,7 @@ test "memo: id() returns valid CellId" {
 ///|
 test "memo: dependencies() returns empty before computation" {
   let rt = Runtime::new()
-  let m = Memo::new(rt, fn() { 10 })
+  let m = Memo::new(rt, () => 10)
   inspect(m.dependencies(), content="[]")
 }
 
@@ -76,7 +76,7 @@ test "memo: dependencies() includes all inputs after computation" {
   let rt = Runtime::new()
   let x = Signal::new(rt, 1)
   let y = Signal::new(rt, 2)
-  let sum = Memo::new(rt, fn() { x.get() + y.get() })
+  let sum = Memo::new(rt, () => x.get() + y.get())
 
   sum.get() |> ignore
   let deps = sum.dependencies()
@@ -90,7 +90,7 @@ test "memo: changed_at and verified_at track revisions" {
   let rt = Runtime::new()
   let x = Signal::new(rt, 5)
   x.set(10) // Bump revision to 1
-  let doubled = Memo::new(rt, fn() { x.get() * 2 })
+  let doubled = Memo::new(rt, () => x.get() * 2)
 
   doubled.get() |> ignore
   let initial_changed = doubled.changed_at()
@@ -114,13 +114,7 @@ test "memo: dependencies update on recomputation" {
   let a = Signal::new(rt, 1)
   let b = Signal::new(rt, 2)
 
-  let dynamic = Memo::new(rt, fn() {
-    if cond.get() {
-      a.get()
-    } else {
-      b.get()
-    }
-  })
+  let dynamic = Memo::new(rt, () => if cond.get() { a.get() } else { b.get() })
 
   dynamic.get() |> ignore
   let deps1 = dynamic.dependencies()
@@ -138,7 +132,7 @@ test "memo: dependencies update on recomputation" {
 test "memo: label stored via optional param" {
   let rt = Runtime::new()
   let x = Signal::new(rt, 1)
-  let m = Memo::new(rt, fn() { x.get() * 2 }, label="doubled")
+  let m = Memo::new(rt, () => x.get() * 2, label="doubled")
   let _ = m.get()
   match rt.cell_info(m.id()) {
     Some(info) => inspect(info.label, content="Some(\"doubled\")")
@@ -150,7 +144,7 @@ test "memo: label stored via optional param" {
 test "memo: no label gives None in cell_info" {
   let rt = Runtime::new()
   let x = Signal::new(rt, 1)
-  let m = Memo::new(rt, fn() { x.get() * 2 })
+  let m = Memo::new(rt, () => x.get() * 2)
   let _ = m.get()
   match rt.cell_info(m.id()) {
     Some(info) => inspect(info.label, content="None")
@@ -180,7 +174,7 @@ test "runtime: cell_info() returns metadata for memo" {
   let rt = Runtime::new()
   let x = Signal::new(rt, 10)
   x.set(20) // Bump revision to 1
-  let doubled = Memo::new(rt, fn() { x.get() * 2 })
+  let doubled = Memo::new(rt, () => x.get() * 2)
 
   doubled.get() |> ignore
 
@@ -267,7 +261,7 @@ test "integration: debug why memo recomputed" {
   let rt = Runtime::new()
   let x = Signal::new(rt, 10)
   let y = Signal::new(rt, 20)
-  let sum = Memo::new(rt, fn() { x.get() + y.get() })
+  let sum = Memo::new(rt, () => x.get() + y.get())
 
   sum.get() |> ignore
   let initial_verified = sum.verified_at()
@@ -301,9 +295,9 @@ test "integration: debug why memo recomputed" {
 test "integration: analyze dependency chain" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 5)
-  let step1 = Memo::new(rt, fn() { input.get() * 2 })
-  let step2 = Memo::new(rt, fn() { step1.get() + 10 })
-  let step3 = Memo::new(rt, fn() { step2.get() * 3 })
+  let step1 = Memo::new(rt, () => input.get() * 2)
+  let step2 = Memo::new(rt, () => step1.get() + 10)
+  let step3 = Memo::new(rt, () => step2.get() * 3)
 
   step3.get() |> ignore
 
@@ -320,9 +314,9 @@ test "integration: analyze dependency chain" {
 test "integration: diamond dependency has no duplicates" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 10)
-  let left = Memo::new(rt, fn() { input.get() + 1 })
-  let right = Memo::new(rt, fn() { input.get() + 2 })
-  let merge = Memo::new(rt, fn() { left.get() + right.get() })
+  let left = Memo::new(rt, () => input.get() + 1)
+  let right = Memo::new(rt, () => input.get() + 2)
+  let merge = Memo::new(rt, () => left.get() + right.get())
 
   merge.get() |> ignore
 
@@ -352,7 +346,7 @@ test "integration: diamond dependency has no duplicates" {
 test "integration: understanding backdating with introspection" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 5)
-  let abs_value = Memo::new(rt, fn() {
+  let abs_value = Memo::new(rt, () => {
     let val = input.get()
     if val < 0 {
       -val

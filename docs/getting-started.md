@@ -68,12 +68,12 @@ Memos are computed values that automatically track their dependencies.
 
 **Database pattern:**
 ```moonbit
-let total = create_memo(app, fn() { price.get() * quantity.get() })
+let total = create_memo(app, () => price.get() * quantity.get())
 ```
 
 **Direct Runtime:**
 ```moonbit
-let total = Memo(rt, fn() { price.get() * quantity.get() })
+let total = Memo(rt, () => price.get() * quantity.get())
 ```
 
 ### Step 4: Read and Update
@@ -96,7 +96,7 @@ Use `Runtime::set_on_change` to run a callback whenever the runtime commits a ch
 **Database pattern:**
 ```moonbit
 let mut changes = 0
-app.runtime().set_on_change(fn() { changes = changes + 1 })
+app.runtime().set_on_change(() => { changes = changes + 1 })
 
 quantity.set(12)
 inspect(changes, content="1")
@@ -109,7 +109,7 @@ inspect(changes, content="1")
 **Direct Runtime:**
 ```moonbit
 let mut changes = 0
-rt.set_on_change(fn() { changes = changes + 1 })
+rt.set_on_change(() => { changes = changes + 1 })
 
 quantity.set(12)
 inspect(changes, content="1")
@@ -127,9 +127,9 @@ fn main {
   let quantity = Signal(rt, 2)
 
   // Derived values
-  let subtotal = Memo(rt, fn() { base_price.get() * quantity.get() })
-  let tax = Memo(rt, fn() { subtotal.get().to_double() * tax_rate.get() })
-  let total = Memo(rt, fn() { subtotal.get().to_double() + tax.get() })
+  let subtotal = Memo(rt, () => base_price.get() * quantity.get())
+  let tax = Memo(rt, () => subtotal.get().to_double() * tax_rate.get())
+  let total = Memo(rt, () => subtotal.get().to_double() + tax.get())
 
   println("Subtotal: \{subtotal.get()}")  // 200
   println("Tax: \{tax.get()}")            // 20.0

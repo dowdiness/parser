@@ -16,7 +16,7 @@ let count = Signal(rt, 0)
 let config = Signal(rt, 100, durability=High)
 
 // Advanced: Full control
-let memo = Memo(rt, fn() {
+let memo = Memo(rt, () => {
   match other_memo.get_result() {
     Ok(v) => v + 1
     Err(CycleDetected(_, _)) => 0
@@ -163,14 +163,10 @@ pub fn[T] Memo::clear_on_change(self) -> Unit
 
 ```moonbit
 let count = Signal(rt, 0)
-count.on_change(fn(new_val) {
-  println("Count: " + new_val.to_string())
-})
+count.on_change(new_val => println("Count: " + new_val.to_string()))
 
-let doubled = Memo(rt, fn() { count.get() * 2 })
-doubled.on_change(fn(new_val) {
-  update_ui(new_val)
-})
+let doubled = Memo(rt, () => count.get() * 2)
+doubled.on_change(new_val => update_ui(new_val))
 ```
 
 **Behavior:**
@@ -192,12 +188,12 @@ Signal(rt, 100, durability=High)                   // explicit durability
 Signal(rt, 100, durability=High, label="config")   // both
 
 // Memo: label is optional
-Memo(rt, fn() { x.get() * 2 })                    // default
-Memo(rt, fn() { x.get() * 2 }, label="doubled")   // with label
+Memo(rt, () => x.get() * 2)                    // default
+Memo(rt, () => x.get() * 2, label="doubled")   // with label
 
 // Helper functions follow the same pattern
 create_signal(db, value, durability=High, label="cfg")
-create_memo(db, fn() { ... }, label="tax")
+create_memo(db, () => { ... }, label="tax")
 ```
 
 This replaced `Signal::new_with_durability` and `create_signal_durable` with unified constructors. Labels propagate through `CellMeta`, `CellInfo`, and `format_path` for debugging.
@@ -239,7 +235,7 @@ pub fn Runtime::with_on_change(self, f : () -> Unit) -> Runtime {
 
 // Usage
 let rt = Runtime()
-  .with_on_change(fn() { println("Changed!") })
+  .with_on_change(() => println("Changed!"))
 ```
 
 **Trade-off:** Requires mutable self, which conflicts with MoonBit's borrowing if runtime is already borrowed by signals. **Deferred** until usage patterns clarify this.
@@ -285,9 +281,7 @@ fn MyApp::new() -> MyApp {
 
 // Users never see Runtime
 fn process(app : MyApp) -> Memo[String] {
-  create_memo(app, fn() {
-    app.input.get().to_upper() + " [" + app.config.get() + "]"
-  })
+  create_memo(app, () => app.input.get().to_upper() + " [" + app.config.get() + "]")
 }
 ```
 
@@ -315,7 +309,7 @@ trait MyFullCompiler : IncrDb + Sourceable + Parseable + Checkable { ... }
 **Use `get_result()` for self-referential or plugin systems:**
 
 ```moonbit
-let memo = Memo(rt, fn() {
+let memo = Memo(rt, () => {
   match potentially_cyclic.get_result() {
     Ok(v) => v + 1
     Err(CycleDetected(_, _)) => 0  // Base case
@@ -331,7 +325,7 @@ let memo = Memo(rt, fn() {
 
 ```moonbit
 // Bad: Large computation
-let result = Memo(rt, fn() {
+let result = Memo(rt, () => {
   let a = step1(input.get())
   let b = step2(a)
   let c = step3(b)
@@ -345,17 +339,17 @@ let result = Memo(rt, fn() {
 
 ```moonbit
 // Good: Composable pipeline
-let step1_out = Memo(rt, fn() { step1(input.get()) })
-let step2_out = Memo(rt, fn() { step2(step1_out.get()) })
-let step3_out = Memo(rt, fn() { step3(step2_out.get()) })
-let result = Memo(rt, fn() { step4(step3_out.get()) })
+let step1_out = Memo(rt, () => step1(input.get()))
+let step2_out = Memo(rt, () => step2(step1_out.get()))
+let step3_out = Memo(rt, () => step3(step2_out.get()))
+let result = Memo(rt, () => step4(step3_out.get()))
 ```
 
 ### ❌ Anti-Pattern 2: Reading Memos During Batch
 
 ```moonbit
 // Bad: Unexpected behavior
-rt.batch(fn() {
+rt.batch(() => {
   x.set(20)
   println(doubled.get())  // Still returns old value!
 })
@@ -367,7 +361,7 @@ rt.batch(fn() {
 
 ```moonbit
 // Good: Read after commit
-rt.batch(fn() {
+rt.batch(() => {
   x.set(20)
 })
 println(doubled.get())  // Now sees new value

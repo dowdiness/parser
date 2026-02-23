@@ -23,7 +23,7 @@ Append this block (note the `///|` prefix — required for every MoonBit test):
 ///|
 test "on_change optional param fires on signal set" {
   let mut count = 0
-  let rt = Runtime::new(on_change=fn() { count = count + 1 })
+  let rt = Runtime::new(on_change=() => count = count + 1)
   let s = Signal::new(rt, 0)
   s.set(1)
   inspect(count, content="1")
@@ -130,11 +130,11 @@ Add the `on_change?` parameter to the Parameters section and extend the example.
 /// ```moonbit nocheck
 /// let rt = Runtime::new()
 ///
-/// let rt = Runtime::new(on_change=fn() { rerender() })
+/// let rt = Runtime::new(on_change=() => rerender())
 ///
 /// let x = Signal::new(rt, 10)
 ///
-/// let doubled = Memo::new(rt, fn() { x.get() * 2 })
+/// let doubled = Memo::new(rt, () => x.get() * 2)
 /// ```
 ```
 

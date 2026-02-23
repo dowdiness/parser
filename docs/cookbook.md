@@ -18,9 +18,9 @@ Handle computations where multiple paths converge:
 let rt = Runtime()
 
 let a = Signal(rt, 10)
-let b = Memo(rt, fn() { a.get() * 2 })
-let c = Memo(rt, fn() { a.get() + 5 })
-let d = Memo(rt, fn() { b.get() + c.get() })
+let b = Memo(rt, () => a.get() * 2)
+let c = Memo(rt, () => a.get() + 5)
+let d = Memo(rt, () => b.get() + c.get())
 
 inspect(d.get(), content="35")  // (10*2) + (10+5)
 
@@ -43,7 +43,7 @@ let use_cache = Signal(rt, true)
 let cache = Signal(rt, "cached_value")
 let expensive_source = Signal(rt, "computed_value")
 
-let result = Memo(rt, fn() {
+let result = Memo(rt, () => {
   if use_cache.get() {
     cache.get()
   } else {
@@ -83,14 +83,10 @@ for i = 0; i < 1000; i = i + 1 {
 }
 
 // Config-only computation
-let config_factor = Memo(rt, fn() {
-  multiplier.get() * 10.0.pow(precision.get().to_double())
-})
+let config_factor = Memo(rt, () => multiplier.get() * 10.0.pow(precision.get().to_double()))
 
 // Mixed computation
-let process = fn(i: Int) {
-  Memo(rt, fn() { measurements[i].get() * config_factor.get() })
-}
+let process = (i : Int) => Memo(rt, () => measurements[i].get() * config_factor.get())
 ```
 
 When measurements change:
@@ -108,11 +104,11 @@ let rt = Runtime()
 
 let x = Signal(rt, 0)
 let y = Signal(rt, 0)
-let position = Memo(rt, fn() { (x.get(), y.get()) })
+let position = Memo(rt, () => (x.get(), y.get()))
 
 // Without batch: two revision bumps, position could see inconsistent state
 // With batch: single revision bump, atomic update
-rt.batch(fn() {
+rt.batch(() => {
   x.set(100)
   y.set(200)
 })
@@ -130,12 +126,12 @@ Use batch semantics for speculative changes:
 let rt = Runtime()
 
 let value = Signal(rt, 10)
-let derived = Memo(rt, fn() { value.get() * 2 })
+let derived = Memo(rt, () => value.get() * 2)
 
 // Get initial state
 let initial = value.get()
 
-rt.batch(fn() {
+rt.batch(() => {
   // Try a change
   value.set(99)
 
@@ -159,7 +155,7 @@ let rt = Runtime()
 let user_override : Signal[Int?] = Signal(rt, None)
 let computed_default = Signal(rt, 100)
 
-let effective_value = Memo(rt, fn() {
+let effective_value = Memo(rt, () => {
   match user_override.get() {
     Some(v) => v
     None => computed_default.get()
@@ -185,19 +181,13 @@ let rt = Runtime()
 let raw_data = Signal(rt, "  Hello World  ")
 
 // Layer 1: Normalize
-let normalized = Memo(rt, fn() {
-  raw_data.get().trim()
-})
+let normalized = Memo(rt, () => raw_data.get().trim())
 
 // Layer 2: Transform
-let transformed = Memo(rt, fn() {
-  normalized.get().to_lower()
-})
+let transformed = Memo(rt, () => normalized.get().to_lower())
 
 // Layer 3: Format
-let formatted = Memo(rt, fn() {
-  "[" + transformed.get() + "]"
-})
+let formatted = Memo(rt, () => "[" + transformed.get() + "]")
 
 inspect(formatted.get(), content="[hello world]")
 
@@ -221,7 +211,7 @@ let items : Array[Signal[Int]] = [
   Signal(rt, 30),
 ]
 
-let sum = Memo(rt, fn() {
+let sum = Memo(rt, () => {
   let mut total = 0
   for item in items {
     total = total + item.get()
@@ -230,7 +220,7 @@ let sum = Memo(rt, fn() {
 })
 
 let count = items.length()
-let average = Memo(rt, fn() { sum.get() / count })
+let average = Memo(rt, () => sum.get() / count)
 
 inspect(sum.get(), content="60")
 inspect(average.get(), content="20")
@@ -252,7 +242,7 @@ let a = Signal(rt, 0)
 let b = Signal(rt, 0)
 let mut notifications = 0
 
-rt.set_on_change(fn() { notifications = notifications + 1 })
+rt.set_on_change(() => { notifications = notifications + 1 })
 
 // Outside batch: one callback per committed change
 a.set(1)
@@ -260,7 +250,7 @@ b.set(2)
 inspect(notifications, content="2")
 
 // Inside batch: at most one callback at batch end
-rt.batch(fn() {
+rt.batch(() => {
   a.set(3)
   b.set(4)
 })
@@ -330,13 +320,9 @@ Each memo declares dependency only on the fields it actually reads:
 let rt   = @incr.Runtime()
 let file = SourceFile(rt, "/src/main.mbt", "fn main { 42 }")
 
-let word_count = @incr.Memo(rt, fn() {
-  file.content.get().split(" ").fold(init=0, fn(acc, _s) { acc + 1 })
-})
+let word_count = @incr.Memo(rt, () => file.content.get().split(" ").fold(init=0, (acc, _s) => acc + 1))
 
-let is_test = @incr.Memo(rt, fn() {
-  file.path.get().ends_with("_test.mbt")
-})
+let is_test = @incr.Memo(rt, () => file.path.get().ends_with("_test.mbt"))
 
 // Change version — neither memo recomputes
 file.version.set(1)
@@ -350,7 +336,7 @@ file.content.set("fn main { let x = 42\n  x }")
 Use `rt.batch` to update several fields atomically:
 
 ```moonbit
-rt.batch(fn() {
+rt.batch(() => {
   file.path.set("/src/lib.mbt")
   file.content.set("pub fn greet() -> String { \"hello\" }")
   file.version.set(2)
@@ -395,7 +381,7 @@ If you have an existing `Signal[MyStruct]` and memo recomputation is too coarse,
 // Before
 struct Doc { content : String; version : Int }
 let doc = Signal(rt, { content: "hello", version: 0 })
-let length_memo = Memo(rt, fn() { doc.get().content.length() })
+let length_memo = Memo(rt, () => doc.get().content.length())
 // Updating version also invalidates length_memo — unnecessary work
 
 // After
@@ -416,9 +402,9 @@ Avoid reading memos inside a batch — they see pre-batch values:
 let rt = Runtime()
 
 let x = Signal(rt, 10)
-let doubled = Memo(rt, fn() { x.get() * 2 })
+let doubled = Memo(rt, () => x.get() * 2)
 
-rt.batch(fn() {
+rt.batch(() => {
   x.set(20)
   // doubled.get() still returns 20, not 40!
   // Batch provides transactional isolation
@@ -435,7 +421,7 @@ Keep compute functions focused:
 
 ```moonbit
 // Bad: Monolithic computation
-let result = Memo(rt, fn() {
+let result = Memo(rt, () => {
   let a = step1(input.get())
   let b = step2(a)
   let c = step3(b)
@@ -443,10 +429,10 @@ let result = Memo(rt, fn() {
 })
 
 // Better: Composable memos
-let step1_result = Memo(rt, fn() { step1(input.get()) })
-let step2_result = Memo(rt, fn() { step2(step1_result.get()) })
-let step3_result = Memo(rt, fn() { step3(step2_result.get()) })
-let final_result = Memo(rt, fn() { step4(step3_result.get()) })
+let step1_result = Memo(rt, () => step1(input.get()))
+let step2_result = Memo(rt, () => step2(step1_result.get()))
+let step3_result = Memo(rt, () => step3(step2_result.get()))
+let final_result = Memo(rt, () => step4(step3_result.get()))
 ```
 
 Benefits:
@@ -465,7 +451,7 @@ let rt = Runtime()
 
 // Self-referential memo that handles cycles gracefully
 let memo_ref : Ref[Memo[Int]?] = { val: None }
-let memo = Memo(rt, fn() {
+let memo = Memo(rt, () => {
   match memo_ref.val {
     Some(m) =>
       match m.get_result() {
@@ -504,7 +490,7 @@ Use introspection to identify which dependency triggered recomputation:
 let rt = Runtime()
 let x = Signal(rt, 10)
 let y = Signal(rt, 20)
-let sum = Memo(rt, fn() { x.get() + y.get() })
+let sum = Memo(rt, () => x.get() + y.get())
 
 sum.get() |> ignore
 let baseline = sum.verified_at()
@@ -556,7 +542,7 @@ test "memo only depends on x, not y" {
   let rt = Runtime()
   let x = Signal(rt, 1)
   let y = Signal(rt, 2)
-  let uses_x_only = Memo(rt, fn() { x.get() * 2 })
+  let uses_x_only = Memo(rt, () => x.get() * 2)
 
   uses_x_only.get() |> ignore
 
@@ -571,7 +557,7 @@ test "memo only depends on x, not y" {
 Check if a memo's value actually changed:
 
 ```moonbit
-let memo = Memo(rt, fn() { config.get().length() })
+let memo = Memo(rt, () => config.get().length())
 memo.get() |> ignore
 let old_changed = memo.changed_at()
 
@@ -626,7 +612,7 @@ This helps identify:
 Add logging inside compute functions during development:
 
 ```moonbit
-let expensive = Memo(rt, fn() {
+let expensive = Memo(rt, () => {
   println("Computing expensive...")
   heavy_computation(input.get())
 })
@@ -640,12 +626,12 @@ High-durability memos should not log when only low-durability inputs change:
 let config = Signal(rt, 100, durability=High)
 let data = Signal(rt, 1)
 
-let config_derived = Memo(rt, fn() {
+let config_derived = Memo(rt, () => {
   println("Config derived computing...")  // Should not print when data changes
   config.get() * 2
 })
 
-let data_derived = Memo(rt, fn() {
+let data_derived = Memo(rt, () => {
   println("Data derived computing...")
   data.get() * 2
 })

@@ -14,7 +14,7 @@ Creates a new runtime with an empty dependency graph. The optional `on_change` c
 
 ```moonbit
 let rt = Runtime()
-let rt = Runtime(on_change=fn() { rerender() })
+let rt = Runtime(on_change=() => rerender())
 ```
 
 ### `Runtime::batch(self, f: () -> Unit) -> Unit`
@@ -24,7 +24,7 @@ Executes `f` with batched signal updates.
 Inside a batch, `Signal::set()` and `Signal::set_unconditional()` writes are deferred and committed when the outermost batch exits.
 
 ```moonbit
-rt.batch(fn() {
+rt.batch(() => {
   x.set(1)
   y.set(2)
 })
@@ -42,7 +42,7 @@ Registers a callback fired when the runtime records a committed change.
 
 ```moonbit
 let mut count = 0
-rt.set_on_change(fn() { count = count + 1 })
+rt.set_on_change(() => { count = count + 1 })
 ```
 
 Behavior:
@@ -183,7 +183,7 @@ Returns the underlying `Signal[T]` for interop with APIs that expect a plain sig
 
 ```moonbit
 let sig = path.as_signal()
-let memo = Memo(rt, fn() { sig.get().length() })
+let memo = Memo(rt, () => sig.get().length())
 ```
 
 ---
@@ -197,8 +197,8 @@ Derived computations with dependency tracking and memoization.
 Creates a lazily evaluated memo. The optional `label` names the memo for debug output and cycle error messages.
 
 ```moonbit
-let doubled = Memo(rt, fn() { count.get() * 2 })
-let tax = Memo(rt, fn() { price.get() * 0.1 }, label="tax")
+let doubled = Memo(rt, () => count.get() * 2)
+let tax = Memo(rt, () => price.get() * 0.1, label="tax")
 ```
 
 ### `Memo::get[T : Eq](self) -> T`
@@ -379,7 +379,7 @@ Returns the list of cells this memo currently depends on. Empty if the memo has 
 **Example:**
 ```moonbit
 let x = Signal(rt, 1)
-let doubled = Memo(rt, fn() { x.get() * 2 })
+let doubled = Memo(rt, () => x.get() * 2)
 doubled.get() |> ignore
 inspect(doubled.dependencies().contains(x.id()), content="true")
 ```
@@ -434,9 +434,7 @@ Registers a callback fired when this signal's value changes. Replaces any previo
 
 ```moonbit
 let count = Signal(rt, 0)
-count.on_change(fn(new_val) {
-  println("Count: " + new_val.to_string())
-})
+count.on_change(new_val => println("Count: " + new_val.to_string()))
 ```
 
 ### `Signal::clear_on_change(self) -> Unit`
@@ -452,10 +450,8 @@ count.clear_on_change()
 Registers a callback fired when this memo's value changes.
 
 ```moonbit
-let doubled = Memo(rt, fn() { count.get() * 2 })
-doubled.on_change(fn(new_val) {
-  update_ui(new_val)
-})
+let doubled = Memo(rt, () => count.get() * 2)
+doubled.on_change(new_val => update_ui(new_val))
 ```
 
 ### `Memo::clear_on_change(self) -> Unit`

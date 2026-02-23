@@ -82,7 +82,7 @@ Modify `cycle.mbt`:
 /// ```moonbit nocheck
 /// let rt = Runtime::new()
 /// let memo_ref : Ref[Memo[Int]?] = { val: None }
-/// let memo = Memo::new(rt, fn() {
+/// let memo = Memo::new(rt, () => {
 ///   match memo_ref.val {
 ///     Some(m) => m.get_result().unwrap() + 1
 ///     None => 0
@@ -222,7 +222,7 @@ test "verify: cycle path includes all traversed cells" {
 
   // Create B depends on C
   let c_ref : Ref[Memo[Int]?] = { val: None }
-  let b = Memo::new(rt, fn() {
+  let b = Memo::new(rt, () => {
     match c_ref.val {
       Some(c) => a.get() + c.get()
       None => 0
@@ -230,7 +230,7 @@ test "verify: cycle path includes all traversed cells" {
   })
 
   // Create C depends on B (cycle: B → C → B)
-  let c = Memo::new(rt, fn() { b.get() * 2 })
+  let c = Memo::new(rt, () => b.get() * 2)
   c_ref.val = Some(c)
 
   // Trigger computation
@@ -249,7 +249,7 @@ test "verify: cycle path includes all traversed cells" {
 test "verify: self-cycle path shows cell twice" {
   let rt = Runtime::new()
   let self_ref : Ref[Memo[Int]?] = { val: None }
-  let m = Memo::new(rt, fn() {
+  let m = Memo::new(rt, () => {
     match self_ref.val {
       Some(memo) => memo.get() + 1
       None => 0
@@ -580,14 +580,14 @@ test "cycle path: simple two-cell cycle" {
   let b_ref : Ref[Memo[Int]?] = { val: None }
   let c_ref : Ref[Memo[Int]?] = { val: None }
 
-  let b = Memo::new(rt, fn() {
+  let b = Memo::new(rt, () => {
     match c_ref.val {
       Some(c) => a.get() + c.get()
       None => 0
     }
   })
 
-  let c = Memo::new(rt, fn() {
+  let c = Memo::new(rt, () => {
     match b_ref.val {
       Some(b_val) => b_val.get() * 2
       None => 0
@@ -611,7 +611,7 @@ test "cycle path: simple two-cell cycle" {
 test "cycle path: format_path produces readable output" {
   let rt = Runtime::new()
   let self_ref : Ref[Memo[Int]?] = { val: None }
-  let m = Memo::new(rt, fn() {
+  let m = Memo::new(rt, () => {
     match self_ref.val {
       Some(memo) => memo.get() + 1
       None => 0
@@ -640,9 +640,9 @@ test "cycle path: long cycle is truncated" {
   for i = 0; i < 25; i = i + 1 {
     let idx = i
     let memo = if i == 0 {
-      Memo::new(rt, fn() { memos[24].get() })  // Cycle back to last
+      Memo::new(rt, () => memos[24].get())  // Cycle back to last
     } else {
-      Memo::new(rt, fn() { memos[idx - 1].get() + 1 })
+      Memo::new(rt, () => memos[idx - 1].get() + 1)
     }
     memos.push(memo)
   }

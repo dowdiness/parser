@@ -17,7 +17,7 @@ test "cycle path: simple two-cell cycle" {
   let c_ref : Ref[Memo[Int]?] = { val: None }
   let captured_path : Ref[Array[CellId]?] = { val: None }
 
-  let b = Memo::new(rt, fn() {
+  let b = Memo::new(rt, () => {
     match c_ref.val {
       Some(c) =>
         match c.get_result() {
@@ -31,7 +31,7 @@ test "cycle path: simple two-cell cycle" {
     }
   })
 
-  let c = Memo::new(rt, fn() {
+  let c = Memo::new(rt, () => {
     match b_ref.val {
       Some(b_val) =>
         match b_val.get_result() {
@@ -68,7 +68,7 @@ test "cycle path: format_path produces readable output" {
   let self_ref : Ref[Memo[Int]?] = { val: None }
   let captured_formatted : Ref[String] = { val: "" }
 
-  let m = Memo::new(rt, fn() {
+  let m = Memo::new(rt, () => {
     match self_ref.val {
       Some(memo) =>
         match memo.get_result() {
@@ -106,7 +106,7 @@ test "cycle path: long cycle is truncated" {
   for i = 0; i < 25; i = i + 1 {
     let idx = i
     let memo = if i == 0 {
-      Memo::new(rt, fn() {
+      Memo::new(rt, () => {
         match memos_ref.val {
           Some(ms) =>
             match ms[24].get_result() {
@@ -121,7 +121,7 @@ test "cycle path: long cycle is truncated" {
         }
       })
     } else {
-      Memo::new(rt, fn() {
+      Memo::new(rt, () => {
         match memos_ref.val {
           Some(ms) =>
             match ms[idx - 1].get_result() {
@@ -166,7 +166,7 @@ test "format_path uses label when available" {
 
   let memo = Memo::new(
     rt,
-    fn() {
+    () => {
       match memo_ref.val {
         Some(m) =>
           match m.get_result() {

@@ -36,7 +36,7 @@ let x = create_signal(app, 10)
 let y = create_signal(app, 20)
 
 // Create derived computations
-let sum = create_memo(app, fn() { x.get() + y.get() })
+let sum = create_memo(app, () => x.get() + y.get())
 
 inspect(sum.get(), content="30")
 
@@ -53,7 +53,7 @@ For simple scripts or when you need more control:
 let rt = Runtime()
 let x = Signal(rt, 10)
 let y = Signal(rt, 20)
-let sum = Memo(rt, fn() { x.get() + y.get() })
+let sum = Memo(rt, () => x.get() + y.get())
 
 inspect(sum.get(), content="30")
 x.set(5)
@@ -67,8 +67,8 @@ When an intermediate memo recomputes to the same value, downstream memos skip re
 ```moonbit
 let rt = Runtime()
 let input = Signal(rt, 4)
-let is_even = Memo(rt, fn() { input.get() % 2 == 0 })
-let label = Memo(rt, fn() { if is_even.get() { "even" } else { "odd" } })
+let is_even = Memo(rt, () => input.get() % 2 == 0)
+let label = Memo(rt, () => if is_even.get() { "even" } else { "odd" })
 
 inspect(label.get(), content="even")
 
@@ -85,7 +85,7 @@ Signals that change rarely can be marked as high durability. Memos that only dep
 let rt = Runtime()
 let config = Signal(rt, 100, durability=High)
 let source = Signal(rt, 1)
-let config_derived = Memo(rt, fn() { config.get() * 2 })
+let config_derived = Memo(rt, () => config.get() * 2)
 
 inspect(config_derived.get(), content="200")
 

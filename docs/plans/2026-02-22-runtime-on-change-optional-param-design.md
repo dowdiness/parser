@@ -31,7 +31,7 @@ Update the doc comment example to show both forms:
 
 ```moonbit
 /// let rt = Runtime::new()
-/// let rt = Runtime::new(on_change=fn() { rerender() })
+/// let rt = Runtime::new(on_change=() => rerender())
 ```
 
 ### No other runtime changes

@@ -18,7 +18,7 @@
 /// let rt = Runtime()
 /// let a = Signal(rt, 10)
 /// let b = Signal(rt, 20)
-/// let sum = Memo(rt, fn() { a.get() + b.get() })
+/// let sum = Memo(rt, () => a.get() + b.get())
 ///
 /// inspect(sum.get(), content="30")  // Computes and caches
 /// inspect(sum.get(), content="30")  // Returns cached value
@@ -64,7 +64,7 @@ pub fn[T : Eq] Memo::new(
 ) -> Memo[T] {
   let cell_id = rt.alloc_cell_id()
   let memo : Memo[T] = { label, rt, cell_id, compute, value: None }
-  let recompute_and_check : () -> Result[Bool, CycleError] = fn() {
+  let recompute_and_check : () -> Result[Bool, CycleError] = () => {
     memo.recompute_inner()
   }
   let meta = CellMeta::new_derived(cell_id, recompute_and_check, label)
@@ -186,7 +186,7 @@ fn[T : Eq] Memo::force_recompute(self : Memo[T]) -> Result[Unit, CycleError] {
       deps_changed = true
     }
   }
-  // Phase 4: removed = old_deps.filter(fn(d) { not(new_seen.contains(d)) })
+  // Phase 4: removed = old_deps.filter(d => not(new_seen.contains(d)))
   // Phase 4: unsubscribe self.cell_id from each removed dep's subscriber list
   cell.dependencies = new_deps
   // Update durability only when the dep set changed (skip rescan on stable path)
@@ -277,7 +277,7 @@ pub fn[T] Memo::id(self : Memo[T]) -> CellId {
 ///
 /// ```moonbit nocheck
 /// let x = Signal(rt, 1)
-/// let m = Memo(rt, fn() { x.get() * 2 })
+/// let m = Memo(rt, () => x.get() * 2)
 /// m.get() |> ignore
 /// inspect(m.dependencies().contains(x.id()), content="true")
 /// ```
@@ -338,7 +338,7 @@ pub fn[T] Memo::verified_at(self : Memo[T]) -> Revision {
 /// - `f`: Called with the new value whenever this memo's value changes
 pub fn[T] Memo::on_change(self : Memo[T], f : (T) -> Unit) -> Unit {
   let cell = self.rt.get_cell(self.cell_id)
-  cell.on_change = Some(fn() {
+  cell.on_change = Some(() => {
     match self.value {
       Some(v) => f(v)
       None => ()

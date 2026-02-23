@@ -91,6 +91,7 @@ The library implements Salsa's incremental computation pattern with three key ty
 - Integration tests: live in `tests/`; test the full `@incr` public API end-to-end across multiple scenarios
 - The `internal/` package imports `moonbitlang/core/hashset` as its only external dependency
 - `internal/moon.pkg` suppresses warning 15 (`unused_mut`) because `recompute_and_check` is only written in whitebox test compilation, not source-only compilation
+- Anonymous callbacks use arrow function syntax: `() => expr` (zero params, single expression), `() => { stmts }` (multi-statement), `x => expr` (one param), `(x, y) => expr` (multiple params). Empty bodies use `() => ()` — not `() => {}` which MoonBit parses as a map literal. Named functions (`pub fn`, `fn name(...)`) are unaffected.
 
 ## Documentation Hierarchy
 

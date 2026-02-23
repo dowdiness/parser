@@ -7,12 +7,12 @@ test "backdating: intermediate memo unchanged stops downstream recompute" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 4)
   let mut is_even_count = 0
-  let is_even = Memo::new(rt, fn() {
+  let is_even = Memo::new(rt, () => {
     is_even_count = is_even_count + 1
     input.get() % 2 == 0
   })
   let mut downstream_count = 0
-  let downstream = Memo::new(rt, fn() {
+  let downstream = Memo::new(rt, () => {
     downstream_count = downstream_count + 1
     if is_even.get() {
       "even"
@@ -38,12 +38,12 @@ test "backdating: value actually changes propagates" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 4)
   let mut is_even_count = 0
-  let is_even = Memo::new(rt, fn() {
+  let is_even = Memo::new(rt, () => {
     is_even_count = is_even_count + 1
     input.get() % 2 == 0
   })
   let mut downstream_count = 0
-  let downstream = Memo::new(rt, fn() {
+  let downstream = Memo::new(rt, () => {
     downstream_count = downstream_count + 1
     if is_even.get() {
       "even"
@@ -66,7 +66,7 @@ test "backdating: three-level chain with stable middle" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 5)
   let mut abs_count = 0
-  let abs_val = Memo::new(rt, fn() {
+  let abs_val = Memo::new(rt, () => {
     abs_count = abs_count + 1
     let v = input.get()
     if v < 0 {
@@ -76,7 +76,7 @@ test "backdating: three-level chain with stable middle" {
     }
   })
   let mut doubled_count = 0
-  let doubled = Memo::new(rt, fn() {
+  let doubled = Memo::new(rt, () => {
     doubled_count = doubled_count + 1
     abs_val.get() * 2
   })
@@ -95,7 +95,7 @@ test "backdating: multiple changes, some stable some not" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 10)
   let mut clamp_count = 0
-  let clamped = Memo::new(rt, fn() {
+  let clamped = Memo::new(rt, () => {
     clamp_count = clamp_count + 1
     let v = input.get()
     if v > 100 {
@@ -107,7 +107,7 @@ test "backdating: multiple changes, some stable some not" {
     }
   })
   let mut fmt_count = 0
-  let formatted = Memo::new(rt, fn() {
+  let formatted = Memo::new(rt, () => {
     fmt_count = fmt_count + 1
     clamped.get()
   })

@@ -52,7 +52,7 @@ count.set_unconditional(5)  // Always bumps revision
 Memos compute derived values and cache the result:
 
 ```moonbit
-let doubled = Memo(rt, fn() { count.get() * 2 })
+let doubled = Memo(rt, () => count.get() * 2)
 ```
 
 Key properties:
@@ -70,7 +70,7 @@ let mode = Signal(rt, "add")
 let x = Signal(rt, 10)
 let y = Signal(rt, 20)
 
-let result = Memo(rt, fn() {
+let result = Memo(rt, () => {
   if mode.get() == "add" {
     x.get() + y.get()
   } else {
@@ -105,8 +105,8 @@ A memo is stale when `verified_at < current_revision`.
 
 ```moonbit
 let input = Signal(rt, 4)
-let is_even = Memo(rt, fn() { input.get() % 2 == 0 })
-let label = Memo(rt, fn() { if is_even.get() { "even" } else { "odd" } })
+let is_even = Memo(rt, () => input.get() % 2 == 0)
+let label = Memo(rt, () => if is_even.get() { "even" } else { "odd" })
 
 inspect(label.get(), content="even")
 
@@ -144,8 +144,8 @@ When only low-durability inputs change, memos that depend solely on high-durabil
 let config = Signal(rt, "production", durability=High)
 let user_input = Signal(rt, "hello")  // Low durability
 
-let config_hash = Memo(rt, fn() { hash(config.get()) })
-let processed = Memo(rt, fn() { process(user_input.get()) })
+let config_hash = Memo(rt, () => hash(config.get()))
+let processed = Memo(rt, () => process(user_input.get()))
 
 // Only user_input changed
 user_input.set("world")
@@ -162,7 +162,7 @@ Memos inherit the **minimum** durability of their dependencies:
 let high = Signal(rt, 1, durability=High)
 let low = Signal(rt, 2)  // Low durability
 
-let mixed = Memo(rt, fn() { high.get() + low.get() })
+let mixed = Memo(rt, () => high.get() + low.get())
 // mixed inherits Low durability (can't use the shortcut)
 ```
 
@@ -171,7 +171,7 @@ let mixed = Memo(rt, fn() { high.get() + low.get() })
 Update multiple signals atomically:
 
 ```moonbit
-rt.batch(fn() {
+rt.batch(() => {
   x.set(10)
   y.set(20)
   z.set(30)
@@ -184,7 +184,7 @@ Benefits:
 - Enables **revert detection**: if you set and then reset a value within a batch, no change is recorded
 
 ```moonbit
-rt.batch(fn() {
+rt.batch(() => {
   counter.set(5)   // temporary
   counter.set(0)   // back to original
 })
@@ -196,8 +196,8 @@ rt.batch(fn() {
 Cyclic dependencies are detected at runtime:
 
 ```moonbit
-let a = Memo(rt, fn() { b.get() + 1 })
-let b = Memo(rt, fn() { a.get() + 1 })
+let a = Memo(rt, () => b.get() + 1)
+let b = Memo(rt, () => a.get() + 1)
 
 a.get()  // Aborts: "Cycle detected"
 ```
@@ -207,7 +207,7 @@ a.get()  // Aborts: "Cycle detected"
 Use `get_result()` to handle cycles without aborting:
 
 ```moonbit
-let memo = Memo(rt, fn() {
+let memo = Memo(rt, () => {
   match self_ref.get_result() {
     Ok(v) => v + 1
     Err(CycleDetected(_, _)) => -1  // Fallback value
@@ -258,13 +258,11 @@ This enables bulk operations on all cells in the struct (e.g., introspection, fu
 Memos that read individual `TrackedCell` fields only depend on those fields, not on the whole struct:
 
 ```moonbit
-let word_count = Memo(rt, fn() {
-  file.content.get().split(" ").fold(init=0, fn(acc, _s) { acc + 1 })
+let word_count = Memo(rt, () => {
+  file.content.get().split(" ").fold(init=0, (acc, _s) => acc + 1)
 })
 
-let is_test = Memo(rt, fn() {
-  file.path.get().ends_with("_test.mbt")
-})
+let is_test = Memo(rt, () => file.path.get().ends_with("_test.mbt"))
 
 // Change version — neither memo recomputes
 file.version.set(1)

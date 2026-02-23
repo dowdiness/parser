@@ -4,7 +4,7 @@ test "batch: basic - single revision for multiple sets" {
   let a = Signal::new(rt, 1)
   let b = Signal::new(rt, 2)
   inspect(rt.current_revision.value, content="0")
-  rt.batch(fn() {
+  rt.batch(() => {
     a.set(10)
     b.set(20)
   })
@@ -20,9 +20,9 @@ test "batch: nested - only outermost commits" {
   let a = Signal::new(rt, 1)
   let b = Signal::new(rt, 2)
   let c = Signal::new(rt, 3)
-  rt.batch(fn() {
+  rt.batch(() => {
     a.set(10)
-    rt.batch(fn() {
+    rt.batch(() => {
       b.set(20)
       c.set(30)
     })
@@ -39,9 +39,7 @@ test "batch: nested - only outermost commits" {
 test "batch: empty - no revision bump" {
   let rt = Runtime::new()
   let _a = Signal::new(rt, 1)
-  rt.batch(fn() {
-    // No sets inside batch
-  })
+  rt.batch(() => ())
   inspect(rt.current_revision.value, content="0")
 }
 
@@ -50,7 +48,7 @@ test "batch: mixed durabilities" {
   let rt = Runtime::new()
   let low = Signal::new(rt, 1)
   let high = Signal::new(rt, 100, durability=High)
-  rt.batch(fn() {
+  rt.batch(() => {
     low.set(2)
     high.set(200)
   })
@@ -70,7 +68,7 @@ test "batch: memo read after batch" {
   let a = Signal::new(rt, 1)
   let b = Signal::new(rt, 2)
   let mut compute_count = 0
-  let sum = Memo::new(rt, fn() {
+  let sum = Memo::new(rt, () => {
     compute_count = compute_count + 1
     a.get() + b.get()
   })
@@ -78,7 +76,7 @@ test "batch: memo read after batch" {
   inspect(sum.get(), content="3")
   inspect(compute_count, content="1")
   // Batch update both inputs
-  rt.batch(fn() {
+  rt.batch(() => {
     a.set(10)
     b.set(20)
   })
@@ -91,9 +89,8 @@ test "batch: memo read after batch" {
 test "batch: same-value set is still no-op in batch" {
   let rt = Runtime::new()
   let a = Signal::new(rt, 42)
-  rt.batch(fn() {
-    a.set(42) // same value, should not record pending
-  })
+  rt.batch(() => a.set(42), // same value, should not record pending
+  )
   // Same-value optimization still applies
   inspect(rt.current_revision.value, content="0")
 }
@@ -105,7 +102,7 @@ test "batch: revert detection - set then revert is no-op" {
   let rt = Runtime::new()
   let a = Signal::new(rt, 0)
   let mut compute_count = 0
-  let doubled = Memo::new(rt, fn() {
+  let doubled = Memo::new(rt, () => {
     compute_count = compute_count + 1
     a.get() * 2
   })
@@ -113,7 +110,7 @@ test "batch: revert detection - set then revert is no-op" {
   inspect(doubled.get(), content="0")
   inspect(compute_count, content="1")
   // Batch: set(1) then revert to set(0) — net effect is no change
-  rt.batch(fn() {
+  rt.batch(() => {
     a.set(1)
     a.set(0)
   })
@@ -133,14 +130,14 @@ test "batch: multi-signal with mixed changes" {
   let b = Signal::new(rt, 20)
   let c = Signal::new(rt, 30)
   let mut compute_count = 0
-  let sum = Memo::new(rt, fn() {
+  let sum = Memo::new(rt, () => {
     compute_count = compute_count + 1
     a.get() + b.get() + c.get()
   })
   inspect(sum.get(), content="60")
   inspect(compute_count, content="1")
   // Batch: a changes, b reverts, c changes
-  rt.batch(fn() {
+  rt.batch(() => {
     a.set(100)
     b.set(999)
     b.set(20) // revert to original
@@ -163,17 +160,17 @@ test "batch: diamond dependency with batch" {
   let input = Signal::new(rt, 10)
   let extra = Signal::new(rt, 1)
   let mut a_count = 0
-  let a = Memo::new(rt, fn() {
+  let a = Memo::new(rt, () => {
     a_count = a_count + 1
     input.get() + 1
   })
   let mut b_count = 0
-  let b = Memo::new(rt, fn() {
+  let b = Memo::new(rt, () => {
     b_count = b_count + 1
     input.get() + extra.get()
   })
   let mut c_count = 0
-  let c = Memo::new(rt, fn() {
+  let c = Memo::new(rt, () => {
     c_count = c_count + 1
     a.get() + b.get()
   })
@@ -183,7 +180,7 @@ test "batch: diamond dependency with batch" {
   inspect(b_count, content="1")
   inspect(c_count, content="1")
   // Batch update both inputs at once
-  rt.batch(fn() {
+  rt.batch(() => {
     input.set(5)
     extra.set(2)
   })
@@ -200,7 +197,7 @@ test "panic batch: corrupted negative batch_depth triggers underflow abort" {
   // decrement site is added without a matching increment.
   // batch() will: +1 (to 0), run f(), -1 (to -1), then hit the guard.
   rt.batch_depth = -1
-  rt.batch(fn() { () })
+  rt.batch(() => ())
 }
 
 ///|

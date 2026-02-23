@@ -6,17 +6,17 @@ test "integration: diamond dependency" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 10)
   let mut a_count = 0
-  let a = Memo::new(rt, fn() {
+  let a = Memo::new(rt, () => {
     a_count = a_count + 1
     input.get() + 1
   })
   let mut b_count = 0
-  let b = Memo::new(rt, fn() {
+  let b = Memo::new(rt, () => {
     b_count = b_count + 1
     input.get() * 2
   })
   let mut c_count = 0
-  let c = Memo::new(rt, fn() {
+  let c = Memo::new(rt, () => {
     c_count = c_count + 1
     a.get() + b.get()
   })
@@ -37,11 +37,11 @@ test "integration: diamond dependency" {
 test "integration: long chain (5 levels)" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 1)
-  let l1 = Memo::new(rt, fn() { input.get() + 1 })
-  let l2 = Memo::new(rt, fn() { l1.get() + 1 })
-  let l3 = Memo::new(rt, fn() { l2.get() + 1 })
-  let l4 = Memo::new(rt, fn() { l3.get() + 1 })
-  let l5 = Memo::new(rt, fn() { l4.get() + 1 })
+  let l1 = Memo::new(rt, () => input.get() + 1)
+  let l2 = Memo::new(rt, () => l1.get() + 1)
+  let l3 = Memo::new(rt, () => l2.get() + 1)
+  let l4 = Memo::new(rt, () => l3.get() + 1)
+  let l5 = Memo::new(rt, () => l4.get() + 1)
   inspect(l5.get(), content="6") // 1 + 5
   input.set(10)
   inspect(l5.get(), content="15") // 10 + 5
@@ -56,7 +56,7 @@ test "integration: multiple independent inputs" {
   let y = Signal::new(rt, 3)
   let z = Signal::new(rt, 5)
   let mut compute_count = 0
-  let result = Memo::new(rt, fn() {
+  let result = Memo::new(rt, () => {
     compute_count = compute_count + 1
     x.get() * y.get() + z.get()
   })
@@ -85,8 +85,8 @@ test "integration: diamond with backdating" {
   // - abs_val stays 5 (backdated)
   let rt = Runtime::new()
   let input = Signal::new(rt, 5)
-  let is_positive = Memo::new(rt, fn() { input.get() > 0 })
-  let abs_val = Memo::new(rt, fn() {
+  let is_positive = Memo::new(rt, () => input.get() > 0)
+  let abs_val = Memo::new(rt, () => {
     let v = input.get()
     if v < 0 {
       -v
@@ -95,7 +95,7 @@ test "integration: diamond with backdating" {
     }
   })
   let mut result_count = 0
-  let result = Memo::new(rt, fn() {
+  let result = Memo::new(rt, () => {
     result_count = result_count + 1
     let sign = if is_positive.get() { 1 } else { -1 }
     sign * abs_val.get()
@@ -117,7 +117,7 @@ test "integration: multiple reads of same memo" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 7)
   let mut compute_count = 0
-  let memo = Memo::new(rt, fn() {
+  let memo = Memo::new(rt, () => {
     compute_count = compute_count + 1
     input.get() * input.get()
   })
@@ -133,9 +133,9 @@ test "integration: cascading updates" {
   let rt = Runtime::new()
   let a = Signal::new(rt, 1)
   let b = Signal::new(rt, 2)
-  let sum = Memo::new(rt, fn() { a.get() + b.get() })
-  let product = Memo::new(rt, fn() { a.get() * b.get() })
-  let combined = Memo::new(rt, fn() { sum.get() + product.get() })
+  let sum = Memo::new(rt, () => a.get() + b.get())
+  let product = Memo::new(rt, () => a.get() * b.get())
+  let combined = Memo::new(rt, () => sum.get() + product.get())
   inspect(combined.get(), content="5") // (1+2) + (1*2) = 3 + 2
   a.set(3)
   inspect(combined.get(), content="11") // (3+2) + (3*2) = 5 + 6
@@ -148,7 +148,7 @@ test "integration: mixed durability chain" {
   let rt = Runtime::new()
   let config = Signal::new(rt, 10, durability=High)
   let source = Signal::new(rt, 5)
-  let scaled = Memo::new(rt, fn() { source.get() * config.get() })
+  let scaled = Memo::new(rt, () => source.get() * config.get())
   inspect(scaled.get(), content="50")
   // Only change low-durability input
   source.set(3)
@@ -162,7 +162,7 @@ test "integration: mixed durability chain" {
 test "integration: repeated set-get cycles" {
   let rt = Runtime::new()
   let input = Signal::new(rt, 0)
-  let doubled = Memo::new(rt, fn() { input.get() * 2 })
+  let doubled = Memo::new(rt, () => input.get() * 2)
   for i = 1; i <= 10; i = i + 1 {
     input.set(i)
     let _ = doubled.get()
@@ -179,10 +179,10 @@ test "integration: deep chain (200+ levels) - iterative verification" {
   let depth = 250
   // Build chain: memos[0] depends on input, memos[i] depends on memos[i-1]
   let memos : Array[Memo[Int]] = []
-  memos.push(Memo::new(rt, fn() { input.get() + 1 }))
+  memos.push(Memo::new(rt, () => input.get() + 1))
   for i = 1; i < depth; i = i + 1 {
     let prev = memos[i - 1]
-    memos.push(Memo::new(rt, fn() { prev.get() + 1 }))
+    memos.push(Memo::new(rt, () => prev.get() + 1))
   }
   let tail = memos[depth - 1]
   // Initial: 1 + 250 = 251
@@ -204,7 +204,7 @@ test "integration: dynamic dependencies" {
   let a = Signal::new(rt, 10)
   let b = Signal::new(rt, 20)
   let mut compute_count = 0
-  let result = Memo::new(rt, fn() {
+  let result = Memo::new(rt, () => {
     compute_count = compute_count + 1
     if flag.get() {
       a.get()

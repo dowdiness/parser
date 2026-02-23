@@ -12,7 +12,7 @@ test "fanout: single signal with many downstream memos" {
     compute_counts.push(counter)
     let multiplier = i + 1
     memos.push(
-      Memo::new(rt, fn() {
+      Memo::new(rt, () => {
         counter.val = counter.val + 1
         input.get() * multiplier
       }),
@@ -54,7 +54,7 @@ test "fanout: aggregator memo over many inputs" {
   }
 
   let mut compute_count = 0
-  let sum = Memo::new(rt, fn() {
+  let sum = Memo::new(rt, () => {
     compute_count = compute_count + 1
     let mut total = 0
     for i = 0; i < count; i = i + 1 {
@@ -87,7 +87,7 @@ test "fanout: two-level fanout (signal -> level1 -> level2)" {
   let level1 : Array[Memo[Int]] = []
   for i = 0; i < 10; i = i + 1 {
     let offset = i
-    level1.push(Memo::new(rt, fn() { input.get() + offset }))
+    level1.push(Memo::new(rt, () => input.get() + offset))
   }
 
   // Level 2: each level1 memo has 5 downstream memos (50 total)
@@ -100,7 +100,7 @@ test "fanout: two-level fanout (signal -> level1 -> level2)" {
       level2_counts.push(counter)
       let mult = j + 1
       level2.push(
-        Memo::new(rt, fn() {
+        Memo::new(rt, () => {
           counter.val = counter.val + 1
           parent.get() * mult
         }),

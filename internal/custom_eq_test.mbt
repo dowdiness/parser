@@ -30,7 +30,7 @@ test "custom_eq: backdating with Point struct" {
   let input = Signal::new(rt, 5)
 
   let mut point_count = 0
-  let point_memo = Memo::new(rt, fn() {
+  let point_memo = Memo::new(rt, () => {
     point_count = point_count + 1
     // x is input mod 10, y is always 0
     // So 5, 15, 25, etc. all produce Point(5, 0)
@@ -38,7 +38,7 @@ test "custom_eq: backdating with Point struct" {
   })
 
   let mut downstream_count = 0
-  let downstream = Memo::new(rt, fn() {
+  let downstream = Memo::new(rt, () => {
     downstream_count = downstream_count + 1
     let p = point_memo.get()
     p.x * 100 + p.y
@@ -92,7 +92,7 @@ test "custom_eq: backdating ignores generation field" {
 
   let mut gen = 0
   let mut versioned_count = 0
-  let versioned_memo : Memo[Versioned] = Memo::new(rt, fn() {
+  let versioned_memo : Memo[Versioned] = Memo::new(rt, () => {
     versioned_count = versioned_count + 1
     gen = gen + 1
     // Each computation creates new generation but value based on input
@@ -100,7 +100,7 @@ test "custom_eq: backdating ignores generation field" {
   })
 
   let mut downstream_count = 0
-  let downstream = Memo::new(rt, fn() {
+  let downstream = Memo::new(rt, () => {
     downstream_count = downstream_count + 1
     versioned_memo.get().value * 2
   })
@@ -155,13 +155,13 @@ test "custom_eq: enum with selective field comparison" {
   let error_msg = Signal::new(rt, "Not Found")
 
   let mut status_count = 0
-  let status_memo : Memo[Status] = Memo::new(rt, fn() {
+  let status_memo : Memo[Status] = Memo::new(rt, () => {
     status_count = status_count + 1
     Error(code=error_code.get(), message=error_msg.get())
   })
 
   let mut handler_count = 0
-  let handler = Memo::new(rt, fn() {
+  let handler = Memo::new(rt, () => {
     handler_count = handler_count + 1
     match status_memo.get() {
       Error(code=c, ..) => "Error: " + c.to_string()
@@ -217,7 +217,7 @@ test "custom_eq: array content equality" {
   let size = Signal::new(rt, 3)
 
   let mut array_count = 0
-  let array_memo : Memo[Array[Int]] = Memo::new(rt, fn() {
+  let array_memo : Memo[Array[Int]] = Memo::new(rt, () => {
     array_count = array_count + 1
     let arr : Array[Int] = []
     for i = 0; i < size.get(); i = i + 1 {
@@ -227,7 +227,7 @@ test "custom_eq: array content equality" {
   })
 
   let mut sum_count = 0
-  let sum_memo = Memo::new(rt, fn() {
+  let sum_memo = Memo::new(rt, () => {
     sum_count = sum_count + 1
     let arr = array_memo.get()
     let mut total = 0

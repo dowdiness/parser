@@ -224,11 +224,11 @@ let deps = memo.dependencies()
 let info = rt.cell_info(cell_id)
 
 // Per-cell callbacks
-sig.on_change(fn(v) { println("Changed to " + v.to_string()) })
+sig.on_change(v => println("Changed to " + v.to_string()))
 
 // Unified constructors with optional params
 let sig = Signal(rt, 100, durability=High, label="config")
-let m = Memo(rt, fn() { sig.get() * 2 }, label="doubled")
+let m = Memo(rt, () => sig.get() * 2, label="doubled")
 ```
 
 ## Benefits of These Updates

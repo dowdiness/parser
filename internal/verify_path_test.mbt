@@ -20,7 +20,7 @@ test "verify: cycle path includes all traversed cells" {
   let captured_path : Ref[Array[CellId]?] = { val: None }
 
   // Create memo B that depends on C
-  let b = Memo::new(rt, fn() {
+  let b = Memo::new(rt, () => {
     match c_ref.val {
       Some(c) =>
         match c.get_result() {
@@ -36,7 +36,7 @@ test "verify: cycle path includes all traversed cells" {
   b_ref.val = Some(b)
 
   // Create memo C that depends on B (creating the cycle)
-  let c = Memo::new(rt, fn() {
+  let c = Memo::new(rt, () => {
     match b_ref.val {
       Some(b_cell) =>
         match b_cell.get_result() {
@@ -79,7 +79,7 @@ test "verify: self-cycle path shows cell twice" {
   let captured_path : Ref[Array[CellId]?] = { val: None }
   let memo_ref : Ref[Memo[Int]?] = { val: None }
 
-  let memo = Memo::new(rt, fn() {
+  let memo = Memo::new(rt, () => {
     match memo_ref.val {
       Some(m) =>
         match m.get_result() {

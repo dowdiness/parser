@@ -13,7 +13,7 @@
 /// ```moonbit nocheck
 /// let rt = Runtime::new()
 /// let memo_ref : Ref[Memo[Int]?] = { val: None }
-/// let memo = Memo::new(rt, fn() {
+/// let memo = Memo::new(rt, () => {
 ///   match memo_ref.val {
 ///     Some(m) => m.get_result().unwrap() + 1
 ///     None => 0

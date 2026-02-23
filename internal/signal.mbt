@@ -206,7 +206,7 @@ fn[T : Eq] Signal::set_batch(self : Signal[T], new_value : T) -> Unit {
   // Register commit closure if not already registered
   let meta = self.rt.get_cell(self.cell_id)
   if meta.commit_pending is None {
-    meta.commit_pending = Some(fn() { self.commit() })
+    meta.commit_pending = Some(() => self.commit())
     self.rt.record_batch_signal(self.cell_id)
   }
   self.rt.bump_revision(self.durability)
@@ -218,7 +218,7 @@ fn[T] Signal::set_batch_unconditional(self : Signal[T], new_value : T) -> Unit {
   self.pending_value = Some(new_value)
   let meta = self.rt.get_cell(self.cell_id)
   if meta.commit_pending is None {
-    meta.commit_pending = Some(fn() { self.commit_unconditional() })
+    meta.commit_pending = Some(() => self.commit_unconditional())
     self.rt.record_batch_signal(self.cell_id)
   }
   self.rt.bump_revision(self.durability)
@@ -270,7 +270,7 @@ fn[T] Signal::commit_unconditional(self : Signal[T]) -> Bool {
 /// - `f`: Called with the new value whenever this signal changes
 pub fn[T] Signal::on_change(self : Signal[T], f : (T) -> Unit) -> Unit {
   let cell = self.rt.get_cell(self.cell_id)
-  cell.on_change = Some(fn() { f(self.value) })
+  cell.on_change = Some(() => f(self.value))
 }
 
 ///|
