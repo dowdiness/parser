@@ -160,3 +160,67 @@ test "token_buffer update insertion creates keyword" {
     content=@token.print_token_infos(full),
   )
 }
+
+///|
+test "tokenize includes whitespace tokens" {
+  // "x + 1" has whitespace runs between syntactic tokens
+  let tokens = tokenize("x + 1")
+  let has_whitespace = tokens.iter().any(fn(t) { t.token == @token.Whitespace })
+  inspect(has_whitespace, content="true")
+}
+
+///|
+test "tokenize leading whitespace produces whitespace token" {
+  // "  x" has leading whitespace that must become a Whitespace token
+  let tokens = tokenize("  x")
+  let first = tokens[0]
+  inspect(first.token == @token.Whitespace, content="true")
+  inspect(first.start, content="0")
+  inspect(first.end, content="2")
+}
+
+///|
+test "tokenize whitespace positions are correct" {
+  // "x + 1": x@0-1, ws@1-2, +@2-3, ws@3-4, 1@4-5, EOF@5-5
+  let tokens = tokenize("x + 1")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length(), content="2")
+  let ws0 = ws_tokens[0]
+  inspect(ws0.start, content="1")
+  inspect(ws0.end, content="2")
+  let ws1 = ws_tokens[1]
+  inspect(ws1.start, content="3")
+  inspect(ws1.end, content="4")
+}
+
+///|
+test "tokenize whitespace-only input" {
+  // "   " should produce a single Whitespace token covering the whole input, then EOF
+  let tokens = tokenize("   ")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length(), content="1")
+  let ws0 = ws_tokens[0]
+  inspect(ws0.start, content="0")
+  inspect(ws0.end, content="3")
+  let has_eof = tokens.iter().any(fn(t) { t.token == @token.EOF })
+  inspect(has_eof, content="true")
+}
+
+///|
+test "tokenize mixed whitespace characters fold into one token" {
+  // " \t\n" should produce a single Whitespace token, not three separate ones
+  let tokens = tokenize(" \t\n")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length(), content="1")
+}
+
+///|
+test "tokenize trailing whitespace produces whitespace token before EOF" {
+  // "x  " should include a Whitespace token after the identifier and before EOF
+  let tokens = tokenize("x  ")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length() > 0, content="true")
+  let last_ws = ws_tokens[ws_tokens.length() - 1]
+  inspect(last_ws.start, content="1")
+  inspect(last_ws.end, content="3")
+}

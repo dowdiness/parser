@@ -649,3 +649,44 @@ test "green tree: error recovery preserves valid input" {
     inspect(strict == recovered, content="true")
   }
 }
+
+///|
+/// Collect the text of all leaf tokens in a green tree (depth-first).
+fn collect_leaf_texts(node : @green_tree.GreenNode) -> String {
+  let parts : Array[String] = []
+  fn walk(n : @green_tree.GreenNode) -> Unit {
+    for elem in n.children {
+      match elem {
+        @green_tree.GreenElement::Token(t) => parts.push(t.text)
+        @green_tree.GreenElement::Node(child) => walk(child)
+      }
+    }
+  }
+
+  walk(node)
+  parts.join("")
+}
+
+///|
+test "parse preserves all whitespace in green tree" {
+  let source = "  x + 1  "
+  let (tree, _) = parse_green_recover(source)
+  let texts = collect_leaf_texts(tree)
+  inspect(texts, content="  x + 1  ")
+}
+
+///|
+test "parse preserves leading and trailing whitespace" {
+  let source = "  42  "
+  let (tree, _) = parse_green_recover(source)
+  let texts = collect_leaf_texts(tree)
+  inspect(texts, content="  42  ")
+}
+
+///|
+test "parse preserves internal whitespace in application" {
+  let source = "f  x"
+  let (tree, _) = parse_green_recover(source)
+  let texts = collect_leaf_texts(tree)
+  inspect(texts, content="f  x")
+}

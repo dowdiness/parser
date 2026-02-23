@@ -2,6 +2,139 @@
 
 Historical snapshots from project benchmark runs (full suite and focused runs).
 
+## 2026-02-23 (trivia-inclusive lexer)
+
+- Command: `moon bench --package dowdiness/parser/benchmarks --release`
+- Git ref: `feature/trivia-inclusive-lexer` (`114d91e`)
+- Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
+- Result: `56/56` benchmarks passed
+- Changes since previous entry:
+  - Lexer now emits `Whitespace` tokens for every whitespace span (previously
+    whitespace was silently skipped during tokenization)
+  - `GreenParser` absorbs trivia inline via `flush_trivia()` called before each
+    token is consumed; the separate pre-scan for leading whitespace is gone
+  - `last_end` field removed from `GreenParser` (trivia cursor tracks position
+    implicitly via the token stream)
+  - `emit_whitespace_before` and `trailing_context_matches` parameters removed
+    (dead code eliminated)
+  - Net result: one source scan instead of two for full parses; incremental paths
+    unaffected
+
+### Core Parse Scaling
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| parse scaling - small (5 tokens) | 0.92 µs | Full parse baseline (small) |
+| parse scaling - medium (15 tokens) | 3.90 µs | Full parse baseline (medium) |
+| parse scaling - large (30+ tokens) | 6.50 µs | Full parse baseline (large) |
+
+### Incremental Parser
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| incremental - initial parse | 0.54 µs | Parser creation + first parse |
+| incremental - small edit | 2.02 µs | `x` → `x + 1` |
+| incremental - multiple edits | 3.35 µs | 2 sequential edits |
+| incremental - replacement | 2.28 µs | `λx.x` → `\x.x` |
+| incremental vs full - edit at start | 10.64 µs | Boundary edit, medium expression |
+| incremental vs full - edit at end | 10.38 µs | Boundary edit, medium expression |
+| incremental vs full - edit in middle | 10.57 µs | Boundary edit, medium expression |
+| sequential edits - typing simulation | 1.97 µs | Single-char insert |
+| sequential edits - backspace simulation | 1.98 µs | Single-char delete |
+| incremental state baseline - repeated parsing | 4.49 µs | Edit + undo |
+| best case - cosmetic change | 2.76 µs | Localized edit path |
+| worst case - full invalidation | 10.62 µs | Full rebuild + incremental overhead |
+| memory pressure - large document | 17.32 µs | Larger input incremental edit |
+
+### Damage Tracking & Position Adjustment
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| damage tracking | 0.82 µs | Wagner-Graham damage expand |
+| damage tracking - localized damage | 1.09 µs | Small edit region |
+| damage tracking - widespread damage | 4.39 µs | Edit at start of medium expression |
+| position adjustment after edit | 2.23 µs | Tree position shift after edit |
+
+### CRDT Integration
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| tokenization | 0.30 µs | Lexer baseline |
+| ast to crdt | 2.15 µs | AST → CRDT conversion |
+| crdt to source | 2.34 µs | CRDT → source reconstruction |
+| crdt operations - nested structure | 5.79 µs | Nested structure round-trip |
+| crdt operations - round trip | 5.71 µs | Parse → CRDT → source → parse |
+
+### Error Recovery & High-level API
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| error recovery - valid | 0.78 µs | `parse_with_error_recovery`, valid input |
+| error recovery - error | 0.84 µs | `parse_with_error_recovery`, invalid input |
+| parsed document - parse | 0.70 µs | `ParsedDocument::parse` |
+| parsed document - edit | 2.55 µs | `ParsedDocument::edit` |
+
+### Phase 1: Incremental Tokenizer (110-token input)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| phase1: full tokenize - 110 tokens | 1.90 µs | Full tokenization baseline (now includes whitespace tokens) |
+| phase1: incremental tokenize - edit at start | 3.56 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit in middle | 3.33 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit at end | 3.13 µs | Includes `TokenBuffer::new()` setup |
+| phase1: full re-tokenize after edit | 1.82 µs | Comparison baseline |
+
+### Green-Tree Microbenchmarks
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| green-tree - token constructor | 0.02 µs | `GreenToken::new` hash compute path |
+| green-tree - node constructor from 32 children | 0.08 µs | `GreenNode::new` fold/hash/token_count path |
+| green-tree - equality identical 32 children | 0.17 µs | Hash check + deep equality walk |
+| green-tree - equality mismatch hash fast path | 0.01 µs | Expected early hash mismatch exit |
+
+### Token Interning
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| interner - intern_token cold miss | 0.10 µs | First call: two-level map miss + `GreenToken::new` |
+| interner - intern_token warm hit | 0.08 µs | Subsequent call: two-level map hit, allocation-free |
+| build_tree - x + 1 | 0.17 µs | No interning baseline (now 11 token events incl. whitespace) |
+| build_tree_interned - x + 1, cold interner | 0.41 µs | First parse (all misses) |
+| build_tree_interned - x + 1, warm interner | 0.24 µs | Subsequent parses (all hits); 1.4× vs `build_tree` |
+| build_tree - 100 identical ident tokens | 1.14 µs | No interning, 100 `GreenToken::new` calls |
+| build_tree_interned - 100 identical tokens, warm | 1.84 µs | 1 miss + 99 hits; 1.6× vs `build_tree` |
+| parse_green_recover - no interner, small | 0.65 µs | `x + 1`, no interning |
+| parse_green_recover - cold interner, small | 0.91 µs | `x + 1`, first parse |
+| parse_green_recover - warm interner, small | 0.73 µs | `x + 1`, subsequent; 1.13× overhead |
+| parse_green_recover - no interner, large | 5.04 µs | `λf.λx.if…`, no interning |
+| parse_green_recover - warm interner, large | 5.89 µs | `λf.λx.if…`, subsequent; 1.17× overhead |
+
+### Notable Changes vs 2026-02-23 (token_count caching)
+
+The main observable impact of the trivia-inclusive refactor is in the tokenizer
+benchmarks, where the 110-token input now also contains whitespace tokens. Full
+parse and incremental parser numbers are within run-to-run noise of the previous
+snapshot:
+
+| Metric | prev | today | Change |
+|---|---:|---:|---|
+| parse scaling - small (5 tokens) | 0.87 µs | 0.92 µs | +6% (noise/whitespace tokens in tree) |
+| parse scaling - large (30+ tokens) | 6.36 µs | 6.50 µs | +2% (noise) |
+| phase1: full tokenize - 110 tokens | 1.16 µs | 1.90 µs | +64% (whitespace tokens emitted; more tokens produced) |
+| phase1: incremental tokenize - edit at start | 2.11 µs | 3.56 µs | +69% (larger token arrays with whitespace) |
+| best case - cosmetic change | 2.57 µs | 2.76 µs | +7% (noise) |
+| incremental vs full - edit at start | 10.13 µs | 10.64 µs | +5% (noise) |
+| memory pressure - large document | 16.75 µs | 17.32 µs | +3% (noise) |
+
+The tokenizer throughput increase is expected: the 110-token arithmetic source
+`"1 + 2 + ... + 55"` now produces ~218 tokens (55 integer + 54 plus +
+108 whitespace + 1 EOF) instead of 110. The 108 whitespace spans come from one
+space before and one space after each of the 54 `+` operators. The incremental
+tokenizer benchmarks reflect this larger token array size. Full-parse and
+incremental-edit paths remain within noise because `flush_trivia` is
+O(whitespace tokens consumed) and the parser walks the same source text as before.
+
 ## 2026-02-23 (token_count caching)
 
 - Command: `moon bench --package dowdiness/parser/benchmarks --release`

@@ -241,7 +241,7 @@ test "ReuseCursor no reuse when node overlaps damage" {
 ///|
 test "ReuseCursor::try_reuse accepts post-damage node when follow token unchanged" {
   // In "\\x.y", VarRef("y") is emitted with NO leading whitespace: the "."
-  // is a non-whitespace token so emit_whitespace_before emits nothing before "y".
+  // is a non-whitespace token so flush_trivia emits nothing before "y".
   // VarRef("y") starts at byte 3, text_len=1 — its byte offset matches the
   // token position — so seek_node_at(3, VarRef) finds it.
   //
@@ -273,6 +273,118 @@ test "ReuseCursor::try_reuse rejects post-damage node when follow token changes"
   let cursor = make_reuse_cursor(green, damaged_range, new_tokens)
   let result = cursor.try_reuse(@syntax.VarRef.to_raw(), 3, 3)
   inspect(result is None, content="true")
+}
+
+///|
+/// Test that try_reuse handles a Whitespace token at self.position correctly.
+///
+/// Setup: old source "x + y" (BinaryExpr with two VarRef nodes).
+/// New source is the same "x + y" with damage limited to [2, 3) — only the "+"
+/// character.  The token layout is:
+///   [Identifier("x")@0, Whitespace(" ")@[1,2], Plus("+")@2,
+///    Whitespace(" ")@[3,4], Identifier("y")@4, EOF@5]
+///
+/// VarRef("x") at [0,1) is outside damage [2,3) and is reused.  After reuse,
+/// the advance loop stops at tokens[1] (Whitespace at start=1, which is NOT
+/// strictly less than node_end=1), so position stays at 1 — a Whitespace
+/// token.  The parser then emits "+" and calls parse_atom for the right
+/// operand with position=3, another Whitespace token.  In GreenParser::
+/// try_reuse the single-scan loop must skip that Whitespace before finding
+/// Identifier("y"), demonstrating the whitespace-inclusive position handling.
+///
+/// The test verifies:
+///   - reuse_count >= 1: VarRef("x") is reused, confirming the overall reuse
+///     machinery works in this expression.
+///   - errors.length() == 0: no parse errors.
+///   - new_tree == full_tree: incremental result matches a full reparse,
+///     confirming correctness after the whitespace scan.
+test "try_reuse handles Whitespace token at self.position correctly" {
+  let source = "x + y"
+  let (old_tree, _) = parse_green_recover(source)
+  let new_tokens = @lexer.tokenize(source)
+  // Damage covers only the "+" character [2, 3).
+  // VarRef("x")@[0,1] is pre-damage and reusable.
+  // After reusing VarRef("x"), position advances to the Whitespace token.
+  // The subsequent try_reuse call for the right operand exercises the
+  // whitespace-skipping scan loop with position pointing at Whitespace.
+  let damaged_range = @range.Range::new(2, 3)
+  let cursor = make_reuse_cursor(old_tree, damaged_range, new_tokens)
+  let (new_tree, errors, reuse_count) = parse_green_with_cursor(
+    source, new_tokens, cursor,
+  )
+  // No parse errors
+  inspect(errors.length(), content="0")
+  // BOTH VarRef("x") (pre-damage) and VarRef(" y") (post-damage, has leading
+  // whitespace) must be reused. reuse_count == 1 would mean only the left
+  // operand was reused and the whitespace-start bug is present.
+  inspect(reuse_count >= 2, content="true")
+  // Result matches a full reparse
+  let (full_tree, _) = parse_green_recover(source)
+  inspect(new_tree == full_tree, content="true")
+}
+
+///|
+/// Post-damage reuse when the edit SHRINKS the source (delta < 0).
+///
+/// Old source: "abc + y" (7 chars)
+/// Edit: replace [0, 3) "abc" with "x" → delta = -2
+/// New source: "x + y" (5 chars)
+///
+/// VarRef("abc") is inside damage [0, 3) → cannot be reused.
+/// VarRef("y") is post-damage: byte 6 in old source, byte 4 in new source.
+/// seek_node_at(4, VarRef) searches the old tree at new position 4;
+/// the old tree has VarRef("y") at position 6, so seek misses and reuse
+/// is skipped (reuse_count == 0 is acceptable).
+///
+/// The critical assertion is correctness: new_tree == full reparse of "x + y".
+test "ReuseCursor: post-damage reuse correctness when delta < 0 (source shrinks)" {
+  let old_source = "abc + y"
+  let new_source = "x + y"
+  let (old_tree, _) = parse_green_recover(old_source)
+  let new_tokens = @lexer.tokenize(new_source)
+  // Damage covers [0, 3): where "abc" was in the old source
+  let damaged_range = @range.Range::new(0, 3)
+  let cursor = make_reuse_cursor(old_tree, damaged_range, new_tokens)
+  let (new_tree, errors, _reuse_count) = parse_green_with_cursor(
+    new_source, new_tokens, cursor,
+  )
+  // No parse errors
+  inspect(errors.length(), content="0")
+  // Result must match a full reparse — no incorrect reuse
+  let (full_tree, _) = parse_green_recover(new_source)
+  inspect(new_tree == full_tree, content="true")
+}
+
+///|
+/// Post-damage reuse when the edit GROWS the source (delta > 0).
+///
+/// Old source: "x + y" (5 chars)
+/// Edit: replace [0, 1) "x" with "abc" → delta = +2
+/// New source: "abc + y" (7 chars)
+///
+/// VarRef("x") is inside damage [0, 1) → cannot be reused.
+/// VarRef("y") is post-damage: byte 4 in old source, byte 6 in new source.
+/// seek_node_at(6, VarRef) searches the old tree at new position 6;
+/// the old tree has VarRef("y") at position 4, so seek misses and reuse
+/// is skipped (reuse_count == 0 is acceptable).
+///
+/// The critical assertion is correctness: new_tree == full reparse of "abc + y".
+test "ReuseCursor: post-damage reuse correctness when delta > 0 (source grows)" {
+  let old_source = "x + y"
+  let new_source = "abc + y"
+  let (old_tree, _) = parse_green_recover(old_source)
+  let new_tokens = @lexer.tokenize(new_source)
+  // Damage covers [0, 1): where "x" was in the old source
+  let damaged_range = @range.Range::new(0, 1)
+  let cursor = make_reuse_cursor(old_tree, damaged_range, new_tokens)
+  let (new_tree, errors, _reuse_count) = parse_green_with_cursor(
+    new_source, new_tokens, cursor,
+  )
+  // No parse errors
+  inspect(errors.length(), content="0")
+  // Result must match a full reparse — no incorrect reuse
+  let (full_tree, _) = parse_green_recover(new_source)
+  inspect(new_tree == full_tree, content="true")
 }
 
 ///|
