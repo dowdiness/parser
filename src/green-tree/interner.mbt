@@ -7,8 +7,12 @@
 /// Lifetime: own one Interner per parse session (e.g. per IncrementalParser).
 /// The GC collects the Interner and all its tokens when the owner is dropped.
 /// Not thread-safe.
+///
+/// Key design: two-level map (RawKind → (String → GreenToken)).
+/// On the hot hit path neither the RawKind nor the String is allocated;
+/// the caller's existing values are used directly as lookup keys.
 pub struct Interner {
-  priv tokens : @hashmap.HashMap[String, GreenToken]
+  priv tokens : @hashmap.HashMap[RawKind, @hashmap.HashMap[String, GreenToken]]
 }
 
 ///|
@@ -26,14 +30,21 @@ pub fn Interner::intern_token(
   kind : RawKind,
   text : String,
 ) -> GreenToken {
-  // Null-byte separator: token texts never contain \x00, so this key is
-  // collision-free for all valid token content.
-  let key = kind.to_string() + "\u{0000}" + text
-  match self.tokens.get(key) {
-    Some(token) => token
+  match self.tokens.get(kind) {
+    Some(inner) =>
+      match inner.get(text) {
+        Some(token) => token
+        None => {
+          let token = GreenToken::new(kind, text)
+          inner.set(text, token)
+          token
+        }
+      }
     None => {
       let token = GreenToken::new(kind, text)
-      self.tokens.set(key, token)
+      let inner : @hashmap.HashMap[String, GreenToken] = @hashmap.HashMap::new()
+      inner.set(text, token)
+      self.tokens.set(kind, inner)
       token
     }
   }
@@ -42,7 +53,9 @@ pub fn Interner::intern_token(
 ///|
 /// Number of distinct (kind, text) pairs currently interned.
 pub fn Interner::size(self : Interner) -> Int {
-  self.tokens.length()
+  let mut total = 0
+  self.tokens.each(fn(_kind, inner) { total = total + inner.length() })
+  total
 }
 
 ///|
