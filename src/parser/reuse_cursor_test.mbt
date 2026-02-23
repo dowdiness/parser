@@ -241,7 +241,7 @@ test "ReuseCursor no reuse when node overlaps damage" {
 ///|
 test "ReuseCursor::try_reuse accepts post-damage node when follow token unchanged" {
   // In "\\x.y", VarRef("y") is emitted with NO leading whitespace: the "."
-  // is a non-whitespace token so emit_whitespace_before emits nothing before "y".
+  // is a non-whitespace token so flush_trivia emits nothing before "y".
   // VarRef("y") starts at byte 3, text_len=1 — its byte offset matches the
   // token position — so seek_node_at(3, VarRef) finds it.
   //
