@@ -315,10 +315,17 @@ fn GreenParser::try_reuse(
       if cursor.is_reuse_disabled() {
         return false
       }
-      // Single scan: find the first syntactic (non-whitespace) token at or
-      // after self.position, capturing both the array index (token_pos) and
-      // the TokenInfo (for byte_offset). This eliminates the duplicate scan
-      // that peek_info() and find_next_syntactic() previously performed.
+      // byte_offset: the start of the current token (may be Whitespace).
+      // Atom nodes in the green tree include their leading whitespace as the
+      // first child (flush_trivia runs inside emit_token before the syntactic
+      // token is emitted). seek_node_at therefore needs the whitespace start,
+      // not the syntactic token start, to locate the node in the old tree.
+      let byte_offset = if self.position < self.tokens.length() {
+        self.tokens[self.position].start
+      } else {
+        self.source.length()
+      }
+      // Separately find the syntactic token index for leading_token_matches.
       let mut token_pos = self.position
       while token_pos < self.tokens.length() {
         match self.tokens[token_pos].token {
@@ -326,19 +333,12 @@ fn GreenParser::try_reuse(
           _ => break
         }
       }
-      let info = if token_pos < self.tokens.length() {
-        self.tokens[token_pos]
-      } else {
-        let end = self.source.length()
-        @token.TokenInfo::new(@token.EOF, end, end)
-      }
-      let byte_offset = info.start
       match cursor.try_reuse(expected_kind, byte_offset, token_pos) {
         None => false
         Some(node) => {
-          // Flush any leading trivia (whitespace before the reused node)
-          self.flush_trivia()
-          // Emit the reused node events
+          // Do NOT call flush_trivia() here — the reused node already contains
+          // its leading whitespace as the first child token. Emitting trivia
+          // separately would double-emit the whitespace.
           self.emit_reused_node_events(node)
           // Advance position past ALL tokens (whitespace + syntactic) that
           // fall within the reused node's byte span [byte_offset, node_end).

@@ -314,8 +314,10 @@ test "try_reuse handles Whitespace token at self.position correctly" {
   )
   // No parse errors
   inspect(errors.length(), content="0")
-  // VarRef("x") before the damage was reused
-  inspect(reuse_count >= 1, content="true")
+  // BOTH VarRef("x") (pre-damage) and VarRef(" y") (post-damage, has leading
+  // whitespace) must be reused. reuse_count == 1 would mean only the left
+  // operand was reused and the whitespace-start bug is present.
+  inspect(reuse_count >= 2, content="true")
   // Result matches a full reparse
   let (full_tree, _) = parse_green_recover(source)
   inspect(new_tree == full_tree, content="true")

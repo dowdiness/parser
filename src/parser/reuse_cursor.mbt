@@ -200,10 +200,17 @@ fn is_outside_damage(
   damaged_range : @range.Range,
 ) -> Bool {
   // Node is outside damage if it ends STRICTLY before damage starts
-  // OR starts STRICTLY after damage ends.
-  // Adjacent nodes (node_end == damaged_range.start) are NOT safe because
-  // trailing context may have changed.
-  node_end < damaged_range.start || node_start > damaged_range.end
+  // OR starts at or after the damage end (exclusive range: end is first clean byte).
+  //
+  // Left-adjacent (node_end == damaged_range.start) is intentionally excluded
+  // because trailing context at the damage boundary may have changed.
+  //
+  // Right-adjacent (node_start == damaged_range.end) is safe: damage is
+  // exclusive-end, so damaged_range.end is already the first unmodified byte.
+  // Nodes that include leading whitespace now start at the WS byte (which may
+  // equal damaged_range.end), so >= is required to avoid false exclusions.
+  // The leading-token and trailing-context checks provide further safety.
+  node_end < damaged_range.start || node_start >= damaged_range.end
 }
 
 ///|
