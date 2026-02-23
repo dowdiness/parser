@@ -128,11 +128,12 @@ snapshot:
 | memory pressure - large document | 16.75 µs | 17.32 µs | +3% (noise) |
 
 The tokenizer throughput increase is expected: the 110-token arithmetic source
-`"1 + 2 + ... + 55"` now produces ~163 tokens (109 numeric/plus tokens + 54
-whitespace spans) instead of 110. The incremental tokenizer benchmarks reflect
-this larger token array size. Full-parse and incremental-edit paths remain within
-noise because `flush_trivia` is O(whitespace tokens consumed) and the parser
-walks the same source text as before.
+`"1 + 2 + ... + 55"` now produces ~218 tokens (55 integer + 54 plus +
+108 whitespace + 1 EOF) instead of 110. The 108 whitespace spans come from one
+space before and one space after each of the 54 `+` operators. The incremental
+tokenizer benchmarks reflect this larger token array size. Full-parse and
+incremental-edit paths remain within noise because `flush_trivia` is
+O(whitespace tokens consumed) and the parser walks the same source text as before.
 
 ## 2026-02-23 (token_count caching)
 

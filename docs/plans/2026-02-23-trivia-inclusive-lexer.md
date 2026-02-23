@@ -1,8 +1,11 @@
 # Trivia-Inclusive Lexer Redesign Plan
 
-> **Status:** Future / Not yet scheduled.
-> This plan captures the architectural discussion from 2026-02-23 about
-> aligning the lexer with the rowan model. No implementation has started.
+> **Status:** Completed / Implemented 2026-02-23.
+> Delivered via [PR #5](https://github.com/dowdiness/parser/pull/5) on branch
+> `feature/trivia-inclusive-lexer`. Verified: 354/354 tests passing,
+> 56/56 benchmarks. Additional fixes applied during implementation:
+> `ReuseCursor` updated (see Scope below), `is_outside_damage` boundary
+> corrected from `>` to `>=` to restore reuse of whitespace-prefixed atoms.
 
 **Goal:** Redesign the lexer to emit whitespace (trivia) tokens directly,
 eliminating the gap-synthesis workaround in `GreenParser` and removing the
@@ -37,17 +40,18 @@ trivia tokens from the lexer. This is the canonical fix.
 
 ---
 
-## Scope: 4 files changed
+## Scope: 5 files changed
 
 | File | Change |
 |---|---|
 | `src/token/token.mbt` | Add `Whitespace` variant to `Token` enum |
 | `src/lexer/lexer.mbt` | Emit `Whitespace` tokens instead of skipping whitespace |
-| `src/lexer/token_buffer.mbt` | Verify incremental update handles whitespace entries |
-| `src/parser/green_parser.mbt` | Remove `last_end` + `emit_whitespace_before`; add `flush_trivia` |
+| `src/lexer/token_buffer.mbt` | Verified — offset-based algorithm requires no code changes |
+| `src/parser/green_parser.mbt` | Remove `last_end` + `emit_whitespace_before`; add `flush_trivia`; fix `byte_offset` in `try_reuse` to use WS start |
+| `src/parser/reuse_cursor.mbt` | Add `new_follow_token()` for whitespace-aware follow-token lookup; remove dead `_token_pos`/`_node_token_count` params from `trailing_context_matches`; fix `is_outside_damage` boundary (`>` → `>=`) |
 
 **Unchanged:** `GreenNode`, `GreenToken`, `build_tree`, `build_tree_interned`,
-`ReuseCursor`, `IncrementalParser`, `token_count`, `RawKind`, `SyntaxKind`.
+`IncrementalParser`, `token_count`, `RawKind`, `SyntaxKind`.
 
 ---
 
@@ -348,10 +352,11 @@ happens correctly without changes to the grammar rule functions.
 - `GreenParser.position` after this change steps over ALL tokens including
   whitespace. The `peek()` change ensures grammar rules still see only
   syntactic tokens.
-- `ReuseCursor` passes the whitespace-free `tokens` array to `leading_token_matches`
-  and `trailing_context_matches`. After this change, it must receive the
-  whitespace-inclusive array but filter internally — or a filtered view must
-  be passed. Verify `collect_old_tokens` and `leading_token_matches` still
-  work correctly with whitespace present in `tokens`.
+- `ReuseCursor` now receives the whitespace-inclusive `tokens` array.
+  `leading_token_matches` uses `first_token_kind`/`first_token_text` which skip
+  whitespace internally. `trailing_context_matches` uses `new_follow_token`
+  (added during implementation) which binary-searches by byte offset and skips
+  whitespace, replacing the old index-arithmetic approach. `collect_old_tokens`
+  filters whitespace and error tokens when building `old_tokens`.
 - `IncrementalParser` builds `tokens` via `TokenBuffer::update`. The
   whitespace-inclusive array propagates naturally through to `ReuseCursor`.
