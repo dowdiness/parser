@@ -256,7 +256,11 @@ fn old_follow_token(old_tokens : Array[OldToken], offset : Int) -> OldToken? {
       hi = mid
     }
   }
-  if lo < old_tokens.length() { Some(old_tokens[lo]) } else { None }
+  if lo < old_tokens.length() {
+    Some(old_tokens[lo])
+  } else {
+    None
+  }
 }
 
 ///|

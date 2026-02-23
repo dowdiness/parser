@@ -237,6 +237,7 @@ test "ReuseCursor no reuse when node overlaps damage" {
 }
 
 ///|
+
 ///|
 test "ReuseCursor::try_reuse accepts post-damage node when follow token unchanged" {
   // In "\\x.y", VarRef("y") is emitted with NO leading whitespace: the "."
@@ -277,7 +278,10 @@ test "ReuseCursor::try_reuse rejects post-damage node when follow token changes"
 ///|
 test "ReuseCursor verify kind extraction works" {
   // Sanity: expected kinds are stable and round-trip through RawKind.
-  inspect(@syntax.SyntaxKind::from_raw(@syntax.VarRef.to_raw()), content="VarRef")
+  inspect(
+    @syntax.SyntaxKind::from_raw(@syntax.VarRef.to_raw()),
+    content="VarRef",
+  )
   inspect(
     @syntax.SyntaxKind::from_raw(@syntax.IntLiteral.to_raw()),
     content="IntLiteral",
