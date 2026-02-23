@@ -8,6 +8,7 @@ let lambda_spec : @core.LanguageSpec[@token.Token, @syntax.SyntaxKind] = @core.L
   fn(t) { t == @token.EOF },
   fn(t) { t == @token.Whitespace },
   fn(a, b) { a == b },
+  @token.print_token,
   @syntax.WhitespaceToken,
   @syntax.ErrorToken,
   @syntax.SourceFile,

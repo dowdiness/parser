@@ -42,47 +42,35 @@ fn select_build_tree(
 
 ///|
 /// Strict: raises ParseError on first syntax error (backward compat).
-/// The ParseError token field is recovered from the diagnostic's byte offset
-/// via token_at_offset — it reflects the actual offending token, not EOF.
+/// The ParseError token field comes directly from the diagnostic's got_token.
 /// Prefer parse_green_recover for new code; this function is retained for
 /// callers that depend on the raising contract.
 pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
   let (green, errors) = parse_green_recover(source)
   if errors.length() > 0 {
     let diag = errors[0]
-    raise ParseError(diag.message, token_at_offset(source, diag.start))
+    raise ParseError(diag.message, diag.got_token)
   }
   green
 }
 
 ///|
-/// Return the token at the given byte offset, or EOF if not found.
-/// Only called on the error path; double tokenization cost is acceptable.
-/// Assumes that diagnostic byte offsets align with token start positions as
-/// recorded by @lexer.tokenize. Returns EOF if the offset is past end-of-input
-/// or falls between tokens — both are safe fallbacks for the ParseError caller.
-fn token_at_offset(source : String, offset : Int) -> @token.Token {
-  let tokens = @lexer.tokenize(source) catch {
-    @lexer.TokenizationError(_) => return @token.EOF
-  }
-  for ti in tokens {
-    if ti.start == offset {
-      return ti.token
-    }
-  }
-  @token.EOF
-}
-
-///|
 /// Core parse-and-build sequence shared by all three public entry points.
-/// Accepts pre-converted core tokens, source, and optional interner.
-/// Aborts if the grammar leaves unclosed nodes (programming error).
+/// Accepts a raw @token.TokenInfo array and builds indexed accessors to avoid
+/// allocating a wrapper Array[@core.TokenInfo].
 fn run_parse(
-  core_tokens : Array[@core.TokenInfo[@token.Token]],
+  tokens : Array[@token.TokenInfo],
   source : String,
   interner : @green_tree.Interner?,
-) -> (@green_tree.GreenNode, Array[@core.Diagnostic]) {
-  let ctx = @core.ParserContext::new(core_tokens, source, lambda_spec)
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) {
+  let ctx = @core.ParserContext::new_indexed(
+    tokens.length(),
+    fn(i) { tokens[i].token },
+    fn(i) { tokens[i].start },
+    fn(i) { tokens[i].end },
+    source,
+    lambda_spec,
+  )
   parse_lambda_root(ctx)
   ctx.flush_trivia()
   if ctx.open_nodes != 0 {
@@ -101,11 +89,8 @@ fn run_parse(
 pub fn parse_green_recover(
   source : String,
   interner? : @green_tree.Interner? = None,
-) -> (@green_tree.GreenNode, Array[@core.Diagnostic]) raise @lexer.TokenizationError {
-  let raw_tokens = @lexer.tokenize(source)
-  let tokens = raw_tokens.map(fn(ti) {
-    @core.TokenInfo::new(ti.token, ti.start, ti.end)
-  })
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError {
+  let tokens = @lexer.tokenize(source)
   run_parse(tokens, source, interner)
 }
 
@@ -123,11 +108,8 @@ pub fn parse_green_with_cursor(
   source : String,
   tokens : Array[@token.TokenInfo],
   _cursor : ReuseCursor,
-) -> (@green_tree.GreenNode, Array[@core.Diagnostic], Int) {
-  let core_tokens = tokens.map(fn(ti) {
-    @core.TokenInfo::new(ti.token, ti.start, ti.end)
-  })
-  let (tree, errors) = run_parse(core_tokens, source, None)
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
+  let (tree, errors) = run_parse(tokens, source, None)
   (tree, errors, 0)
 }
 
@@ -143,11 +125,8 @@ pub fn parse_green_recover_with_tokens(
   tokens : Array[@token.TokenInfo],
   _cursor : ReuseCursor?,
   interner? : @green_tree.Interner? = None,
-) -> (@green_tree.GreenNode, Array[@core.Diagnostic], Int) {
-  let core_tokens = tokens.map(fn(ti) {
-    @core.TokenInfo::new(ti.token, ti.start, ti.end)
-  })
-  let (tree, errors) = run_parse(core_tokens, source, interner)
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
+  let (tree, errors) = run_parse(tokens, source, interner)
   (tree, errors, 0)
 }
 

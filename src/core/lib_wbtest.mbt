@@ -78,6 +78,7 @@ let test_spec : LanguageSpec[TestTok, TestKind] = {
   token_is_eof: fn(t) { t == TestTok::TokEof },
   token_is_trivia: fn(t) { t == TestTok::Ws },
   tokens_equal: fn(a, b) { a == b },
+  print_token: fn(t) { t.to_string() },
   whitespace_kind: KWs,
   error_kind: KErr,
   root_kind: KRoot,
