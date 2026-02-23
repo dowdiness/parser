@@ -314,3 +314,170 @@ test "at matches current token" {
   inspect(ctx.at("a"), content="true")
   inspect(ctx.at("b"), content="false")
 }
+
+// ─── parse_with ───────────────────────────────────────────────────────────────
+
+///|
+/// Parse a source string using the given language spec and grammar function.
+/// Returns the immutable green tree and any parse diagnostics.
+///
+/// tokenize — converts source to a flat token array (including trivia tokens)
+/// grammar  — the entry-point parse function; calls ctx methods to build the tree
+pub fn[T, K] parse_with(
+  source   : String,
+  spec     : LanguageSpec[T, K],
+  tokenize : (String) -> Array[TokenInfo[T]],
+  grammar  : (ParserContext[T, K]) -> Unit,
+) -> (@green_tree.GreenNode, Array[Diagnostic]) {
+  let tokens = tokenize(source)
+  let ctx = ParserContext::new(tokens, source, spec)
+  grammar(ctx)
+  ctx.flush_trivia()
+  if ctx.open_nodes != 0 {
+    abort(
+      "parse_with: grammar left " +
+      ctx.open_nodes.to_string() +
+      " unclosed nodes",
+    )
+  }
+  let tree = @green_tree.build_tree(
+    ctx.events.events,
+    (spec.kind_to_raw)(spec.root_kind),
+    trivia_kind=Some((spec.kind_to_raw)(spec.whitespace_kind)),
+  )
+  (tree, ctx.errors)
+}
+
+// ─── Integration test: minimal two-token language ─────────────────────────────
+
+///|
+// Test language: integers and '+' only (with whitespace)
+enum TestTok {
+  Num(Int)
+  Plus
+  Ws
+  TokEof
+} derive(Eq, Show)
+
+///|
+enum TestKind {
+  KNum
+  KPlus
+  KExpr
+  KRoot
+  KWs
+  KErr
+} derive(Show)
+
+///|
+fn test_kind_raw(k : TestKind) -> @green_tree.RawKind {
+  let n = match k {
+    KNum => 0
+    KPlus => 1
+    KExpr => 2
+    KRoot => 3
+    KWs => 4
+    KErr => 5
+  }
+  @green_tree.RawKind(n)
+}
+
+///|
+fn test_tokenize(src : String) -> Array[TokenInfo[TestTok]] {
+  let result : Array[TokenInfo[TestTok]] = []
+  let mut i = 0
+  while i < src.length() {
+    let code = src.code_unit_at(i).to_int()
+    if code == 32 {
+      // space
+      let start = i
+      while i < src.length() && src.code_unit_at(i).to_int() == 32 {
+        i = i + 1
+      }
+      result.push({ token: TestTok::Ws, start, end: i })
+    } else if code >= 48 && code <= 57 {
+      // digit
+      let start = i
+      let mut n = code - 48
+      i = i + 1
+      while i < src.length() {
+        let d = src.code_unit_at(i).to_int()
+        if d >= 48 && d <= 57 {
+          n = n * 10 + d - 48
+          i = i + 1
+        } else {
+          break
+        }
+      }
+      result.push({ token: TestTok::Num(n), start, end: i })
+    } else if code == 43 {
+      // '+'
+      result.push({ token: TestTok::Plus, start: i, end: i + 1 })
+      i = i + 1
+    } else {
+      i = i + 1
+    }
+  }
+  result
+}
+
+///|
+let test_spec : LanguageSpec[TestTok, TestKind] = {
+  kind_to_raw     : test_kind_raw,
+  token_is_eof    : fn(t) { t == TestTok::TokEof },
+  token_is_trivia : fn(t) { t == TestTok::Ws },
+  tokens_equal    : fn(a, b) { a == b },
+  whitespace_kind : KWs,
+  error_kind      : KErr,
+  root_kind       : KRoot,
+  eof_token       : TestTok::TokEof,
+}
+
+///|
+fn test_grammar(ctx : ParserContext[TestTok, TestKind]) -> Unit {
+  let mark = ctx.mark()
+  match ctx.peek() {
+    TestTok::Num(_) => ctx.emit_token(KNum)
+    _ => {
+      ctx.error("expected number")
+      return
+    }
+  }
+  if ctx.at(TestTok::Plus) {
+    ctx.start_at(mark, KExpr)
+    while ctx.at(TestTok::Plus) {
+      ctx.emit_token(KPlus)
+      match ctx.peek() {
+        TestTok::Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected number after +")
+      }
+    }
+    ctx.finish_node()
+  }
+}
+
+///|
+test "parse_with: simple number" {
+  let (tree, errors) = parse_with("42", test_spec, test_tokenize, test_grammar)
+  inspect(errors.length(), content="0")
+  inspect(tree.text_len, content="2")
+}
+
+///|
+test "parse_with: addition expression" {
+  let (tree, errors) = parse_with(
+    "1 + 2 + 3",
+    test_spec,
+    test_tokenize,
+    test_grammar,
+  )
+  inspect(errors.length(), content="0")
+  inspect(tree.text_len, content="9")
+}
+
+///|
+test "parse_with: records errors on bad input" {
+  let (_, errors) = parse_with("+", test_spec, test_tokenize, test_grammar)
+  inspect(errors.length(), content="1")
+  inspect(errors[0].message, content="expected number")
+}
