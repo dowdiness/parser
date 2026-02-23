@@ -9,6 +9,15 @@
 
 ///|
 /// Incremental parser state
+///
+/// **Lifetime:** `IncrementalParser` is designed to be created once per document
+/// and kept alive for the document's editing session. The internal `Interner`
+/// accumulates one entry per distinct `(kind, text)` token pair ever seen; this
+/// is bounded by the document's token vocabulary, not by edit count.
+///
+/// For scenarios where the same `IncrementalParser` instance is reused across
+/// unrelated documents (e.g., a long-lived LSP process that re-uses parser
+/// objects), call `interner_clear()` between documents to release stale entries.
 pub struct IncrementalParser {
   mut source : String // Current source text
   mut tree : @term.TermNode? // Current parse tree
@@ -35,6 +44,17 @@ pub fn IncrementalParser::new(source : String) -> IncrementalParser {
 /// Number of distinct tokens currently interned. For diagnostics and tests.
 pub fn IncrementalParser::interner_size(self : IncrementalParser) -> Int {
   self.interner.size()
+}
+
+///|
+/// Clear the intern table, releasing all cached token entries.
+///
+/// Only needed when reusing the same `IncrementalParser` across unrelated
+/// documents. For normal single-document use this is never required, since the
+/// parser is created once per document and the intern table stays bounded by
+/// that document's token vocabulary.
+pub fn IncrementalParser::interner_clear(self : IncrementalParser) -> Unit {
+  self.interner.clear()
 }
 
 ///|
