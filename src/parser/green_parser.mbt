@@ -58,6 +58,9 @@ pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
 ///|
 /// Return the token at the given byte offset, or EOF if not found.
 /// Only called on the error path; double tokenization cost is acceptable.
+/// Assumes that diagnostic byte offsets align with token start positions as
+/// recorded by @lexer.tokenize. Returns EOF if the offset is past end-of-input
+/// or falls between tokens — both are safe fallbacks for the ParseError caller.
 fn token_at_offset(source : String, offset : Int) -> @token.Token {
   let tokens = @lexer.tokenize(source) catch {
     @lexer.TokenizationError(_) => return @token.EOF
@@ -181,9 +184,7 @@ fn lambda_expect(
     _ => {
       ctx.error("Expected " + @token.print_token(expected))
       // Emit zero-width ErrorToken — do NOT consume current token
-      ctx.events.push(
-        @green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), ""),
-      )
+      ctx.emit_zero_width(@syntax.ErrorToken)
     }
   }
 }
@@ -303,9 +304,7 @@ fn parse_atom(
         _ => {
           ctx.error("Expected parameter after λ")
           // Emit zero-width ErrorToken for missing identifier
-          ctx.events.push(
-            @green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), ""),
-          )
+          ctx.emit_zero_width(@syntax.ErrorToken)
         }
       }
       lambda_expect(ctx, @token.Dot, @syntax.DotToken)
@@ -334,9 +333,7 @@ fn parse_atom(
       if at_stop_token(ctx) {
         // Stop token: emit zero-width ErrorNode (don't consume)
         ctx.start_node(@syntax.ErrorNode)
-        ctx.events.push(
-          @green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), ""),
-        )
+        ctx.emit_zero_width(@syntax.ErrorToken)
         ctx.finish_node()
       } else {
         // Wrap current token in ErrorNode (consume it)

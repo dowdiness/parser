@@ -15,10 +15,11 @@ pub fn parse_with_error_recovery(
     }
   }
   let (green, diagnostics) = result
-  // Map diagnostics to error strings
+  // Map diagnostics to error strings — include token name for readability
   for diag in diagnostics {
+    let tok = token_at_offset(input, diag.start)
     errors.push(
-      "Parse error: " + diag.message + " at offset " + diag.start.to_string(),
+      "Parse error: " + diag.message + " (got " + @token.print_token(tok) + ")",
     )
   }
   let tree = green_to_term_node(green, 0, Ref::new(0))

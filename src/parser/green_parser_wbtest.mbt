@@ -32,7 +32,11 @@ test "parse_green: raises with offending token, not EOF" {
       inspect(token == @token.Dot, content="true")
       return
     }
-    _ => return
+    _ => {
+      // Any error other than ParseError is a test failure
+      inspect(false, content="true")
+      return
+    }
   }
   // Only reached if parse_green didn't raise — should not happen
   inspect(false, content="true")
@@ -47,7 +51,9 @@ test "parse_green_recover_with_tokens: uses supplied tokens, not re-tokenization
   // the function must return normally when given valid tokens.
   let tokens = @lexer.tokenize("x + y")
   let (_, errors, reuse_count) = parse_green_recover_with_tokens(
-    "@invalid", tokens, None,
+    "@invalid",
+    tokens,
+    None,
   )
   inspect(errors.length(), content="0")
   inspect(reuse_count, content="0")
@@ -63,7 +69,9 @@ test "parse_green_with_cursor: uses supplied tokens, not re-tokenization" {
     @range.Range::new(0, 0),
     tokens,
   )
-  let (_, errors, reuse_count) = parse_green_with_cursor("@invalid", tokens, cursor)
+  let (_, errors, reuse_count) = parse_green_with_cursor(
+    "@invalid", tokens, cursor,
+  )
   inspect(errors.length(), content="0")
   inspect(reuse_count, content="0")
 }

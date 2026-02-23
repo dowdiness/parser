@@ -100,7 +100,15 @@ fn test_grammar(ctx : ParserContext[TestTok, TestKind]) -> Unit {
       ctx.emit_token(KPlus)
       match ctx.peek() {
         TestTok::Num(_) => ctx.emit_token(KNum)
-        _ => ctx.error("expected number after +")
+        _ => {
+          ctx.error("expected number after +")
+          // Consume the unexpected token to prevent the loop from spinning
+          // on repeated non-Num tokens. Guard against EOF to avoid emitting
+          // empty error tokens past end of input.
+          if not(ctx.at_eof()) {
+            ctx.bump_error()
+          }
+        }
       }
     }
     ctx.finish_node()

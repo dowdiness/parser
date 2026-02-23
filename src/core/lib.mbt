@@ -153,7 +153,17 @@ pub fn[T, K] ParserContext::token_text(
   self : ParserContext[T, K],
   info : TokenInfo[T],
 ) -> String {
-  let slice : StringView = self.source[info.start:info.end] catch { _ => "" }
+  let slice : StringView = self.source[info.start:info.end] catch {
+      _ =>
+        abort(
+          "token_text: invalid span [" +
+          info.start.to_string() +
+          ":" +
+          info.end.to_string() +
+          "] for source of length " +
+          self.source.length().to_string(),
+        )
+    }
   slice.to_string()
 }
 
@@ -186,6 +196,11 @@ pub fn[T, K] ParserContext::emit_token(
   self : ParserContext[T, K],
   kind : K,
 ) -> Unit {
+  if self.at_eof() {
+    abort(
+      "emit_token: called at EOF — grammar tried to consume past end of input",
+    )
+  }
   self.flush_trivia()
   let info = self.peek_info()
   let text = self.token_text(info)
@@ -258,6 +273,19 @@ pub fn[T, K] ParserContext::bump_error(self : ParserContext[T, K]) -> Unit {
     ),
   )
   self.position = self.position + 1
+}
+
+///|
+/// Emit a zero-width token (no source text consumed, position unchanged).
+/// Use this for synthetic tokens inserted during error recovery when the
+/// grammar needs to represent a missing token without consuming input.
+pub fn[T, K] ParserContext::emit_zero_width(
+  self : ParserContext[T, K],
+  kind : K,
+) -> Unit {
+  self.events.push(
+    @green_tree.ParseEvent::Token((self.spec.kind_to_raw)(kind), ""),
+  )
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

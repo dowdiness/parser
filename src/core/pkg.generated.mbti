@@ -44,6 +44,7 @@ pub fn[T, K] ParserContext::at(Self[T, K], T) -> Bool
 pub fn[T, K] ParserContext::at_eof(Self[T, K]) -> Bool
 pub fn[T, K] ParserContext::bump_error(Self[T, K]) -> Unit
 pub fn[T, K] ParserContext::emit_token(Self[T, K], K) -> Unit
+pub fn[T, K] ParserContext::emit_zero_width(Self[T, K], K) -> Unit
 pub fn[T, K] ParserContext::error(Self[T, K], String) -> Unit
 pub fn[T, K] ParserContext::finish_node(Self[T, K]) -> Unit
 pub fn[T, K] ParserContext::flush_trivia(Self[T, K]) -> Unit
