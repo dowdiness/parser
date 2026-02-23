@@ -22,6 +22,23 @@ test "parse_green_recover: interner populated after parse" {
 }
 
 ///|
+test "parse_green: raises with offending token, not EOF" {
+  // Regression guard: parse_green must preserve the offending token in
+  // ParseError. "λ.x" is missing a parameter; the Dot at offset 1 is the
+  // offending token.
+  let _ = parse_green("λ.x") catch {
+    ParseError(_, token) => {
+      inspect(token == @token.EOF, content="false")
+      inspect(token == @token.Dot, content="true")
+      return
+    }
+    _ => return
+  }
+  // Only reached if parse_green didn't raise — should not happen
+  inspect(false, content="true")
+}
+
+///|
 test "parse_green_recover_with_tokens: with interner matches without" {
   let source = "λx.x"
   let tokens = @lexer.tokenize(source)

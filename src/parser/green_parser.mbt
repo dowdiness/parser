@@ -46,9 +46,24 @@ pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
   let (green, errors) = parse_green_recover(source)
   if errors.length() > 0 {
     let diag = errors[0]
-    raise ParseError(diag.message, @token.EOF)
+    raise ParseError(diag.message, token_at_offset(source, diag.start))
   }
   green
+}
+
+///|
+/// Return the token at the given byte offset, or EOF if not found.
+/// Only called on the error path; double tokenization cost is acceptable.
+fn token_at_offset(source : String, offset : Int) -> @token.Token {
+  let tokens = @lexer.tokenize(source) catch {
+    @lexer.TokenizationError(_) => return @token.EOF
+  }
+  for ti in tokens {
+    if ti.start == offset {
+      return ti.token
+    }
+  }
+  @token.EOF
 }
 
 ///|

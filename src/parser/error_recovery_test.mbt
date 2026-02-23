@@ -212,3 +212,4 @@ test "parse_green still raises on first error" {
   // Should not reach here — parse_green should have raised
   inspect(false, content="true")
 }
+
