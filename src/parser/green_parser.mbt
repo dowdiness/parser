@@ -47,15 +47,22 @@ pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
 /// Only raises for TokenizationError (unrecoverable).
 pub fn parse_green_recover(
   source : String,
+  interner? : @green_tree.Interner? = None,
 ) -> (@green_tree.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError {
   let tokens = @lexer.tokenize(source)
   let parser = GreenParser::new(tokens, source)
   parser.parse_source_file()
   parser.assert_event_balance()
-  let tree = @green_tree.build_tree(
-    parser.events.events,
-    raw(@syntax.SourceFile),
-  )
+  let tree = match interner {
+    Some(i) =>
+      @green_tree.build_tree_interned(
+        parser.events.events,
+        raw(@syntax.SourceFile),
+        i,
+      )
+    None =>
+      @green_tree.build_tree(parser.events.events, raw(@syntax.SourceFile))
+  }
   (tree, parser.errors)
 }
 
@@ -84,6 +91,7 @@ pub fn parse_green_recover_with_tokens(
   source : String,
   tokens : Array[@token.TokenInfo],
   cursor : ReuseCursor?,
+  interner? : @green_tree.Interner? = None,
 ) -> (@green_tree.GreenNode, Array[ParseDiagnostic], Int) {
   let parser = match cursor {
     Some(c) => GreenParser::new_with_cursor(tokens, source, c)
@@ -91,10 +99,16 @@ pub fn parse_green_recover_with_tokens(
   }
   parser.parse_source_file()
   parser.assert_event_balance()
-  let tree = @green_tree.build_tree(
-    parser.events.events,
-    raw(@syntax.SourceFile),
-  )
+  let tree = match interner {
+    Some(i) =>
+      @green_tree.build_tree_interned(
+        parser.events.events,
+        raw(@syntax.SourceFile),
+        i,
+      )
+    None =>
+      @green_tree.build_tree(parser.events.events, raw(@syntax.SourceFile))
+  }
   (tree, parser.errors, parser.reuse_count)
 }
 

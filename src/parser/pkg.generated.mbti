@@ -24,9 +24,9 @@ pub fn parse(String) -> @term.Term raise
 
 pub fn parse_green(String) -> @green-tree.GreenNode raise
 
-pub fn parse_green_recover(String) -> (@green-tree.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError
+pub fn parse_green_recover(String, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError
 
-pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], ReuseCursor?) -> (@green-tree.GreenNode, Array[ParseDiagnostic], Int)
+pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], ReuseCursor?, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[ParseDiagnostic], Int)
 
 pub fn parse_green_to_term_node(String) -> @term.TermNode raise
 
@@ -50,6 +50,8 @@ pub suberror ParseError {
 // Types and methods
 type CursorFrame
 
+type OldToken
+
 pub(all) struct ParseDiagnostic {
   message : String
   token : @token.Token
@@ -63,6 +65,7 @@ pub struct ReuseCursor {
   mut current_offset : Int
   damaged_range : @range.Range
   tokens : Array[@token.TokenInfo]
+  old_tokens : Array[OldToken]
   reuse_globally_disabled : Bool
 }
 pub fn ReuseCursor::advance_past(Self, @green-tree.GreenNode) -> Unit
