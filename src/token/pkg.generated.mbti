@@ -25,6 +25,7 @@ pub(all) enum Token {
   Else
   Identifier(String)
   Integer(Int)
+  Whitespace
   EOF
 }
 pub impl Eq for Token

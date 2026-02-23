@@ -11,6 +11,7 @@ pub(all) enum Token {
   Else // else
   Identifier(String) // variable names
   Integer(Int) // integer literals
+  Whitespace // whitespace (spaces, tabs, newlines)
   EOF // end of input
 } derive(Show, Eq)
 
@@ -60,6 +61,7 @@ pub fn print_token(token : Token) -> String {
     Else => "else"
     Identifier(name) => name
     Integer(n) => n.to_string()
+    Whitespace => "whitespace"
     EOF => "EOF"
   }
 }
