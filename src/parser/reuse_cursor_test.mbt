@@ -322,6 +322,70 @@ test "try_reuse handles Whitespace token at self.position correctly" {
 }
 
 ///|
+/// Post-damage reuse when the edit SHRINKS the source (delta < 0).
+///
+/// Old source: "abc + y" (7 chars)
+/// Edit: replace [0, 3) "abc" with "x" → delta = -2
+/// New source: "x + y" (5 chars)
+///
+/// VarRef("abc") is inside damage [0, 3) → cannot be reused.
+/// VarRef("y") is post-damage: byte 6 in old source, byte 4 in new source.
+/// seek_node_at(4, VarRef) searches the old tree at new position 4;
+/// the old tree has VarRef("y") at position 6, so seek misses and reuse
+/// is skipped (reuse_count == 0 is acceptable).
+///
+/// The critical assertion is correctness: new_tree == full reparse of "x + y".
+test "ReuseCursor: post-damage reuse correctness when delta < 0 (source shrinks)" {
+  let old_source = "abc + y"
+  let new_source = "x + y"
+  let (old_tree, _) = parse_green_recover(old_source)
+  let new_tokens = @lexer.tokenize(new_source)
+  // Damage covers [0, 3): where "abc" was in the old source
+  let damaged_range = @range.Range::new(0, 3)
+  let cursor = make_reuse_cursor(old_tree, damaged_range, new_tokens)
+  let (new_tree, errors, _reuse_count) = parse_green_with_cursor(
+    new_source, new_tokens, cursor,
+  )
+  // No parse errors
+  inspect(errors.length(), content="0")
+  // Result must match a full reparse — no incorrect reuse
+  let (full_tree, _) = parse_green_recover(new_source)
+  inspect(new_tree == full_tree, content="true")
+}
+
+///|
+/// Post-damage reuse when the edit GROWS the source (delta > 0).
+///
+/// Old source: "x + y" (5 chars)
+/// Edit: replace [0, 1) "x" with "abc" → delta = +2
+/// New source: "abc + y" (7 chars)
+///
+/// VarRef("x") is inside damage [0, 1) → cannot be reused.
+/// VarRef("y") is post-damage: byte 4 in old source, byte 6 in new source.
+/// seek_node_at(6, VarRef) searches the old tree at new position 6;
+/// the old tree has VarRef("y") at position 4, so seek misses and reuse
+/// is skipped (reuse_count == 0 is acceptable).
+///
+/// The critical assertion is correctness: new_tree == full reparse of "abc + y".
+test "ReuseCursor: post-damage reuse correctness when delta > 0 (source grows)" {
+  let old_source = "x + y"
+  let new_source = "abc + y"
+  let (old_tree, _) = parse_green_recover(old_source)
+  let new_tokens = @lexer.tokenize(new_source)
+  // Damage covers [0, 1): where "x" was in the old source
+  let damaged_range = @range.Range::new(0, 1)
+  let cursor = make_reuse_cursor(old_tree, damaged_range, new_tokens)
+  let (new_tree, errors, _reuse_count) = parse_green_with_cursor(
+    new_source, new_tokens, cursor,
+  )
+  // No parse errors
+  inspect(errors.length(), content="0")
+  // Result must match a full reparse — no incorrect reuse
+  let (full_tree, _) = parse_green_recover(new_source)
+  inspect(new_tree == full_tree, content="true")
+}
+
+///|
 test "ReuseCursor verify kind extraction works" {
   // Sanity: expected kinds are stable and round-trip through RawKind.
   inspect(

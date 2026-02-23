@@ -5,7 +5,7 @@ Historical snapshots from project benchmark runs (full suite and focused runs).
 ## 2026-02-23 (trivia-inclusive lexer)
 
 - Command: `moon bench --package dowdiness/parser/benchmarks --release`
-- Git ref: `main` (`114d91e`)
+- Git ref: `feature/trivia-inclusive-lexer` (`114d91e`)
 - Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
 - Result: `56/56` benchmarks passed
 - Changes since previous entry:
