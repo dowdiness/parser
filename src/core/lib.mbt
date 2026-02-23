@@ -5,15 +5,15 @@
 pub struct TokenInfo[T] {
   token : T
   start : Int // byte offset, inclusive
-  end   : Int // byte offset, exclusive
+  end : Int // byte offset, exclusive
 } derive(Show)
 
 ///|
 /// A parse diagnostic (error or warning) with source position.
 pub struct Diagnostic {
   message : String
-  start   : Int
-  end     : Int
+  start : Int
+  end : Int
 } derive(Show)
 
 ///|
@@ -29,46 +29,46 @@ pub struct Diagnostic {
 ///   root_kind       — the SyntaxKind for the root node (e.g. SourceFile)
 ///   eof_token       — the T value returned when past end of input
 pub struct LanguageSpec[T, K] {
-  kind_to_raw     : (K) -> @green_tree.RawKind
-  token_is_eof    : (T) -> Bool
-  tokens_equal    : (T, T) -> Bool
+  kind_to_raw : (K) -> @green_tree.RawKind
+  token_is_eof : (T) -> Bool
+  tokens_equal : (T, T) -> Bool
   whitespace_kind : K
-  error_kind      : K
-  root_kind       : K
-  eof_token       : T
+  error_kind : K
+  root_kind : K
+  eof_token : T
 }
 
 ///|
 /// Core parser state. Grammar functions receive this and call methods on it.
 /// T = token type, K = syntax-kind type.
 pub struct ParserContext[T, K] {
-  spec            : LanguageSpec[T, K]
-  tokens          : Array[TokenInfo[T]]
-  source          : String
-  mut position    : Int
-  mut last_end    : Int
-  events          : @green_tree.EventBuffer
-  errors          : Array[Diagnostic]
+  spec : LanguageSpec[T, K]
+  tokens : Array[TokenInfo[T]]
+  source : String
+  mut position : Int
+  mut last_end : Int
+  events : @green_tree.EventBuffer
+  errors : Array[Diagnostic]
   mut error_count : Int
-  mut open_nodes  : Int
+  mut open_nodes : Int
 }
 
 ///|
 pub fn[T, K] ParserContext::new(
   tokens : Array[TokenInfo[T]],
   source : String,
-  spec   : LanguageSpec[T, K],
+  spec : LanguageSpec[T, K],
 ) -> ParserContext[T, K] {
   {
     spec,
     tokens,
     source,
-    position    : 0,
-    last_end    : 0,
-    events      : @green_tree.EventBuffer::new(),
-    errors      : [],
-    error_count : 0,
-    open_nodes  : 0,
+    position: 0,
+    last_end: 0,
+    events: @green_tree.EventBuffer::new(),
+    errors: [],
+    error_count: 0,
+    open_nodes: 0,
   }
 }
 
@@ -124,8 +124,8 @@ fn[T, K] ParserContext::emit_whitespace_before(
 ) -> Unit {
   if info.start > self.last_end {
     let ws_text : StringView = self.source[self.last_end:info.start] catch {
-      _ => ""
-    }
+        _ => ""
+      }
     self.events.push(
       @green_tree.ParseEvent::Token(
         (self.spec.kind_to_raw)(self.spec.whitespace_kind),
@@ -193,7 +193,7 @@ pub fn[T, K] ParserContext::start_at(
 /// Record a diagnostic at the current position. Does not consume a token.
 pub fn[T, K] ParserContext::error(
   self : ParserContext[T, K],
-  msg  : String,
+  msg : String,
 ) -> Unit {
   let info = self.peek_info()
   self.errors.push({ message: msg, start: info.start, end: info.end })
@@ -235,13 +235,13 @@ test "Diagnostic stores message and position" {
 ///|
 fn make_test_fixtures() -> (LanguageSpec[String, Int], Array[TokenInfo[String]]) {
   let spec : LanguageSpec[String, Int] = {
-    kind_to_raw     : fn(k) { @green_tree.RawKind(k) },
-    token_is_eof    : fn(t) { t == "EOF" },
-    tokens_equal    : fn(a, b) { a == b },
-    whitespace_kind : 0,
-    error_kind      : 1,
-    root_kind       : 2,
-    eof_token       : "EOF",
+    kind_to_raw: fn(k) { @green_tree.RawKind(k) },
+    token_is_eof: fn(t) { t == "EOF" },
+    tokens_equal: fn(a, b) { a == b },
+    whitespace_kind: 0,
+    error_kind: 1,
+    root_kind: 2,
+    eof_token: "EOF",
   }
   let tokens = [
     { token: "a", start: 0, end: 1 },
