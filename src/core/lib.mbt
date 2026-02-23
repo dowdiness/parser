@@ -354,10 +354,10 @@ test "at matches current token" {
 /// tokenize — converts source to a flat token array (including trivia tokens)
 /// grammar  — the entry-point parse function; calls ctx methods to build the tree
 pub fn[T, K] parse_with(
-  source   : String,
-  spec     : LanguageSpec[T, K],
+  source : String,
+  spec : LanguageSpec[T, K],
   tokenize : (String) -> Array[TokenInfo[T]],
-  grammar  : (ParserContext[T, K]) -> Unit,
+  grammar : (ParserContext[T, K]) -> Unit,
 ) -> (@green_tree.GreenNode, Array[Diagnostic]) {
   let tokens = tokenize(source)
   let ctx = ParserContext::new(tokens, source, spec)
@@ -453,14 +453,14 @@ fn test_tokenize(src : String) -> Array[TokenInfo[TestTok]] {
 
 ///|
 let test_spec : LanguageSpec[TestTok, TestKind] = {
-  kind_to_raw     : test_kind_raw,
-  token_is_eof    : fn(t) { t == TestTok::TokEof },
-  token_is_trivia : fn(t) { t == TestTok::Ws },
-  tokens_equal    : fn(a, b) { a == b },
-  whitespace_kind : KWs,
-  error_kind      : KErr,
-  root_kind       : KRoot,
-  eof_token       : TestTok::TokEof,
+  kind_to_raw: test_kind_raw,
+  token_is_eof: fn(t) { t == TestTok::TokEof },
+  token_is_trivia: fn(t) { t == TestTok::Ws },
+  tokens_equal: fn(a, b) { a == b },
+  whitespace_kind: KWs,
+  error_kind: KErr,
+  root_kind: KRoot,
+  eof_token: TestTok::TokEof,
 }
 
 ///|
@@ -496,10 +496,7 @@ test "parse_with: simple number" {
 ///|
 test "parse_with: addition expression" {
   let (tree, errors) = parse_with(
-    "1 + 2 + 3",
-    test_spec,
-    test_tokenize,
-    test_grammar,
+    "1 + 2 + 3", test_spec, test_tokenize, test_grammar,
   )
   inspect(errors.length(), content="0")
   inspect(tree.text_len, content="9")
