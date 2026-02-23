@@ -41,7 +41,11 @@ fn select_build_tree(
 }
 
 ///|
-/// Strict: raises ParseError on first syntax error (backward compat)
+/// Strict: raises ParseError on first syntax error (backward compat).
+/// The ParseError token field is recovered from the diagnostic's byte offset
+/// via token_at_offset — it reflects the actual offending token, not EOF.
+/// Prefer parse_green_recover for new code; this function is retained for
+/// callers that depend on the raising contract.
 pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
   let (green, errors) = parse_green_recover(source)
   if errors.length() > 0 {
@@ -93,7 +97,10 @@ pub fn parse_green_recover(
 
 ///|
 /// Parse with reuse cursor for incremental parsing with subtree reuse.
-/// Cursor support is temporarily deferred; delegates to parse_green_recover.
+///
+/// DEFERRED: cursor support is not yet implemented. The cursor and tokens
+/// parameters are ignored; the function delegates to parse_green_recover.
+/// reuse_count is always 0 until cursor support is restored.
 ///
 /// Note: this function does not accept an Interner. For incremental use with
 /// token deduplication, prefer parse_green_recover_with_tokens which supports
@@ -112,7 +119,11 @@ pub fn parse_green_with_cursor(
 
 ///|
 /// Parse with pre-tokenized input and optional reuse cursor.
-/// Cursor support is temporarily deferred; delegates to parse_green_recover.
+///
+/// DEFERRED: cursor support is not yet implemented. The tokens and cursor
+/// parameters are ignored; the function re-tokenizes from source via
+/// parse_green_recover. reuse_count is always 0 until cursor support is
+/// restored.
 pub fn parse_green_recover_with_tokens(
   source : String,
   _tokens : Array[@token.TokenInfo],
