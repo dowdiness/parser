@@ -1,7 +1,7 @@
 ///|
-test "panic GreenParser::finish_node without matching start_node" {
-  let parser = GreenParser::new([], "")
-  parser.finish_node()
+test "panic finish_node without matching start_node" {
+  let ctx = @core.ParserContext::new([], "", lambda_spec)
+  ctx.finish_node()
 }
 
 ///|
