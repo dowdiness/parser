@@ -104,11 +104,9 @@ pub fn parse_green_recover_with_tokens(
   _cursor : ReuseCursor?,
   interner? : @green_tree.Interner? = None,
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic], Int) {
-  let (tree, errors) = parse_green_recover(source, interner=interner) catch {
+  let (tree, errors) = parse_green_recover(source, interner~) catch {
     @lexer.TokenizationError(msg) =>
-      abort(
-        "parse_green_recover_with_tokens: tokenization error: " + msg,
-      )
+      abort("parse_green_recover_with_tokens: tokenization error: " + msg)
   }
   (tree, errors, 0)
 }

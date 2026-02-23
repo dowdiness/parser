@@ -17,7 +17,9 @@ pub fn parse_with_error_recovery(
   let (green, diagnostics) = result
   // Map diagnostics to error strings
   for diag in diagnostics {
-    errors.push("Parse error: " + diag.message + " at offset " + diag.start.to_string())
+    errors.push(
+      "Parse error: " + diag.message + " at offset " + diag.start.to_string(),
+    )
   }
   let tree = green_to_term_node(green, 0, Ref::new(0))
   (tree, errors)
