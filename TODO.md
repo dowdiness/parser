@@ -67,9 +67,28 @@
 - `EofToken` in `SyntaxKind` is unused — placeholder for future use
 - 80% reuse rate requires Phase 5 let bindings (lambda trees are left-leaning)
 
+### Phase 5 (Generic Parser Framework) — Complete ✅
+
+**Goal:** Extract a reusable `ParserContext[T, K]` API so any MoonBit project can define a parser against the green tree / error recovery / incremental infrastructure.
+
+- ✅ `src/core/` package with `TokenInfo[T]`, `Diagnostic[T]`, `LanguageSpec[T, K]`, `ParserContext[T, K]`
+- ✅ `ParserContext::new` (array-based) and `ParserContext::new_indexed` (closure-based, zero-copy)
+- ✅ Full method surface: `peek`, `at`, `at_eof`, `emit_token`, `start_node`, `finish_node`, `mark`, `start_at`, `error`, `bump_error`, `emit_zero_width`, `emit_error_placeholder`, `flush_trivia`
+- ✅ `parse_with` top-level entry point
+- ✅ `Diagnostic[T]` generic with `got_token : T` (captures offending token at parse time)
+- ✅ `LanguageSpec` includes `token_is_trivia` and `print_token`
+- ✅ Lambda parser migrated to `ParserContext` as reference implementation (`lambda_spec.mbt`, `green_parser.mbt`)
+- ✅ `run_parse` private helper eliminates duplicated parse-and-build sequence
+- ✅ Trivia-inclusive lexer integration: whitespace in token stream, `flush_trivia()` before grammar return
+- ✅ 367 total tests passing; 56 benchmarks passing
+- ✅ Design: `docs/plans/2026-02-23-generic-parser-design.md`
+- ✅ Implementation plan: `docs/plans/2026-02-23-generic-parser-impl.md`
+- ✅ Benchmark snapshot: `docs/benchmark_history.md` (2026-02-24 entry)
+
 ## Optional / On-Demand
 
 ### Priority 4: Future Enhancements
 - [ ] Position-based fragment finding (only if profiling shows need)
 - [ ] Consider tree-sitter migration (only if requirements change)
 - [ ] Semantics-aware reuse checks (follow-set/context-sensitive) for projectional/live editing
+- [ ] Generic `ReuseCursor[T]` — move cursor into `src/core/` so `parse_with_cursor` is fully generic (Phase 2)

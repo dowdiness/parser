@@ -1,7 +1,7 @@
 # Generic Parser Framework Design
 
 **Date:** 2026-02-23
-**Status:** Approved
+**Status:** Completed — implemented as `src/core/` inside `dowdiness/parser` (Phase 1). See implementation notes at the bottom for final design deviations.
 **Goal:** Extract a reusable `parser-core` library so other MoonBit projects can define their own language parsers with minimum effort, reusing the green tree, incremental parsing, and error recovery infrastructure.
 
 ---
@@ -250,3 +250,27 @@ For the arena/static memory scheme: combinator objects defined at module level (
 - **Tokenizer is a function parameter, not part of `LanguageSpec`**: keeps tokenization orthogonal and allows pre-tokenized input (incremental path)
 - **`green-tree/` stays language-agnostic**: no changes needed, it already uses `RawKind`
 - **Lambda parser becomes the reference implementation**: proves the API is sufficient and gives new language authors a concrete model to follow
+
+---
+
+## Final Implementation Notes (deviations from this design)
+
+### `Diagnostic[T]` with `got_token`
+The design had `Diagnostic` as a non-generic struct. The final type is `Diagnostic[T] { message, start, end, got_token : T }`. Capturing the token at `ctx.error()` call time eliminates any second-tokenize pass for error reporting.
+
+### `LanguageSpec[T, K]` additions
+Two fields were added beyond the design:
+- `token_is_trivia : (T) -> Bool` — required so `peek()` can skip whitespace tokens
+- `print_token : (T) -> String` — needed for human-readable diagnostic messages
+
+### Closure-based token storage + `new_indexed`
+Design showed `tokens : Array[TokenInfo[T]]` on `ParserContext`. Final uses four closure fields (`token_count`, `get_token`, `get_start`, `get_end`). `ParserContext::new` wraps an array into closures; `ParserContext::new_indexed` takes closures directly for zero-copy construction from foreign token layouts.
+
+### Trivia-inclusive lexer replaces `emit_whitespace_before`
+Design implied whitespace was injected by comparing `last_end` to the next token's `start`. The lexer is now trivia-inclusive — whitespace tokens are in the token stream. `peek()` skips them via `token_is_trivia`; `flush_trivia()` drains them to the event buffer. The `last_end` field was removed entirely.
+
+### `emit_zero_width` / `emit_error_placeholder`
+Not in the original design. Added to encapsulate zero-width token emission — grammar code never touches `ctx.events` directly.
+
+### `cursor` field deferred
+`ParserContext` in this design showed `cursor : ReuseCursor?`. This was deferred to Phase 2. The `ReuseCursor` remains in `src/parser/` and the incremental public API is a thin wrapper over `run_parse`.

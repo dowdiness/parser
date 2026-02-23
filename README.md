@@ -22,6 +22,8 @@ This module provides a complete parsing pipeline for a Lambda Calculus-based lan
 - [docs/README.md](docs/README.md) — Documentation index
 - [docs/CORRECTNESS.md](docs/CORRECTNESS.md) — Correctness goals and verification
 - [ROADMAP.md](ROADMAP.md) — Architecture and phased plan
+- [docs/plans/2026-02-23-generic-parser-design.md](docs/plans/2026-02-23-generic-parser-design.md) — Generic parser framework design
+- [docs/plans/2026-02-23-generic-parser-impl.md](docs/plans/2026-02-23-generic-parser-impl.md) — Generic parser framework implementation plan
 
 ## Benchmarks
 
@@ -196,6 +198,62 @@ let green = parse_green("λx.x + 1")
 let red = RedNode::from_green(green)
 let term_node = red_to_term_node(red, Ref::new(0))
 ```
+
+### Generic Parser Core (`src/core/`)
+
+The `dowdiness/parser/core` package exposes a language-agnostic parsing infrastructure. Any MoonBit project can define a new parser by providing token and syntax-kind types — no need to reimplement the green tree, error recovery, or incremental subtree-reuse logic.
+
+**Three types:**
+
+```moonbit
+// Generic token with source position.
+pub struct TokenInfo[T] { token : T; start : Int; end : Int }
+
+// Describes one language. Create once at module init, reuse across all parses.
+pub struct LanguageSpec[T, K] {
+  kind_to_raw     : (K) -> RawKind
+  token_is_eof    : (T) -> Bool
+  token_is_trivia : (T) -> Bool
+  tokens_equal    : (T, T) -> Bool
+  print_token     : (T) -> String
+  whitespace_kind : K
+  error_kind      : K
+  root_kind       : K
+  eof_token       : T
+}
+
+// Core parser state — grammar functions receive this and call methods on it.
+pub struct ParserContext[T, K] { ... }
+```
+
+**Methods grammar code uses:**
+
+```moonbit
+ctx.peek()                 // next non-trivia token
+ctx.at(token)              // test current token
+ctx.at_eof()               // test end of input
+ctx.emit_token(kind)       // consume current token, emit as leaf
+ctx.start_node(kind)       // open a node
+ctx.finish_node()          // close the most recent node
+ctx.mark()                 // reserve a retroactive-wrap position
+ctx.start_at(mark, kind)   // wrap previously emitted children
+ctx.error(msg)             // record a diagnostic (does not consume)
+ctx.bump_error()           // consume current token as an error token
+ctx.emit_error_placeholder() // zero-width error token (for missing tokens)
+```
+
+**Entry point:**
+
+```moonbit
+pub fn parse_with[T, K](
+  source   : String,
+  spec     : LanguageSpec[T, K],
+  tokenize : (String) -> Array[TokenInfo[T]],
+  grammar  : (ParserContext[T, K]) -> Unit,
+) -> (GreenNode, Array[Diagnostic[T]])
+```
+
+The Lambda Calculus parser in `src/parser/` serves as the reference implementation (`lambda_spec.mbt`, `green_parser.mbt`). See [docs/plans/2026-02-23-generic-parser-design.md](docs/plans/2026-02-23-generic-parser-design.md) for the full design.
 
 ### Pretty Printing
 
