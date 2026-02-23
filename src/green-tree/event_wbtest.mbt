@@ -83,3 +83,39 @@ test "panic build_tree: extra FinishNode aborts" {
     ),
   )
 }
+
+///|
+test "build_tree_interned: structurally equal to build_tree" {
+  let root_kind = RawKind(0)
+  let node_kind = RawKind(1)
+  let tok_kind = RawKind(2)
+  let events1 = [
+    ParseEvent::StartNode(node_kind),
+    ParseEvent::Token(tok_kind, "x"),
+    ParseEvent::Token(tok_kind, "x"),
+    ParseEvent::FinishNode,
+  ]
+  let events2 = [
+    ParseEvent::StartNode(node_kind),
+    ParseEvent::Token(tok_kind, "x"),
+    ParseEvent::Token(tok_kind, "x"),
+    ParseEvent::FinishNode,
+  ]
+  let plain = build_tree(events1, root_kind)
+  let interner = Interner::new()
+  let interned = build_tree_interned(events2, root_kind, interner)
+  inspect(plain == interned, content="true")
+}
+
+///|
+test "build_tree_interned: interner size bounded by vocabulary" {
+  let root_kind = RawKind(0)
+  let tok_kind = RawKind(1)
+  let interner = Interner::new()
+  let events : Array[ParseEvent] = []
+  for _ in 0..<100 {
+    events.push(ParseEvent::Token(tok_kind, "x"))
+  }
+  let _ = build_tree_interned(events, root_kind, interner)
+  inspect(interner.size(), content="1")
+}

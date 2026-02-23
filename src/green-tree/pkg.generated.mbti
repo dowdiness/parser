@@ -4,6 +4,8 @@ package "dowdiness/parser/green-tree"
 // Values
 pub fn build_tree(Array[ParseEvent], RawKind) -> GreenNode
 
+pub fn build_tree_interned(Array[ParseEvent], RawKind, Interner) -> GreenNode
+
 pub fn combine_hash(Int, Int) -> Int
 
 pub fn string_hash(String) -> Int

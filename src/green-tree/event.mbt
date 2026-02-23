@@ -60,6 +60,65 @@ pub fn EventBuffer::start_at(
 }
 
 ///|
+/// Build a green tree from a flat event stream, interning all tokens through
+/// the provided Interner. Structurally identical to build_tree; differs only
+/// in that Token events are deduplicated via intern_token.
+///
+/// Use this variant when tokens will be reused across multiple parses of the
+/// same document (e.g. in IncrementalParser).
+pub fn build_tree_interned(
+  events : Array[ParseEvent],
+  root_kind : RawKind,
+  interner : Interner,
+) -> GreenNode {
+  let stack : Array[Array[GreenElement]] = [[]]
+  let kinds : Array[RawKind] = [root_kind]
+  for event in events {
+    match event {
+      StartNode(kind) => {
+        stack.push([])
+        kinds.push(kind)
+      }
+      FinishNode => {
+        let children = match stack.pop() {
+          Some(c) => c
+          None =>
+            abort(
+              "build_tree_interned: unbalanced FinishNode — no matching StartNode",
+            )
+        }
+        let kind = match kinds.pop() {
+          Some(k) => k
+          None =>
+            abort("build_tree_interned: kind stack underflow on FinishNode")
+        }
+        let node = GreenNode::new(kind, children)
+        match stack.last() {
+          Some(parent) => parent.push(Node(node))
+          None =>
+            abort("build_tree_interned: parent stack empty when attaching node")
+        }
+      }
+      Token(kind, text) => {
+        let token = interner.intern_token(kind, text)
+        match stack.last() {
+          Some(top) => top.push(GreenElement::Token(token))
+          None => abort("build_tree_interned: stack empty when adding token")
+        }
+      }
+      Tombstone => ()
+    }
+  }
+  if stack.length() != 1 {
+    abort(
+      "build_tree_interned: unbalanced StartNode — missing FinishNode(s), stack=" +
+      stack.length().to_string(),
+    )
+  }
+  GreenNode::new(root_kind, stack[0])
+}
+
+///|
 /// Build a green tree from a flat event stream.
 /// root_kind is the kind of the implicit root node (e.g., SourceFile).
 pub fn build_tree(events : Array[ParseEvent], root_kind : RawKind) -> GreenNode {
