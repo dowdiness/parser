@@ -70,8 +70,21 @@ fn tokenize_helper(
   } else {
     let c = input.code_unit_at(pos).to_char()
     match c {
-      Some(' ') | Some('\t') | Some('\n') | Some('\r') =>
-        tokenize_helper(input, pos + 1, acc)
+      Some(' ') | Some('\t') | Some('\n') | Some('\r') => {
+        // Consume the full whitespace run and emit a single Whitespace token
+        let ws_start = pos
+        let mut ws_end = pos + 1
+        while ws_end < input.length() {
+          let next = input.code_unit_at(ws_end).to_char()
+          match next {
+            Some(' ') | Some('\t') | Some('\n') | Some('\r') =>
+              ws_end = ws_end + 1
+            _ => break
+          }
+        }
+        acc.push(@token.TokenInfo::new(@token.Whitespace, ws_start, ws_end))
+        tokenize_helper(input, ws_end, acc)
+      }
       Some('λ') | Some('\\') => {
         acc.push(@token.TokenInfo::new(@token.Lambda, pos, pos + 1))
         tokenize_helper(input, pos + 1, acc)

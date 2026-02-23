@@ -160,3 +160,29 @@ test "token_buffer update insertion creates keyword" {
     content=@token.print_token_infos(full),
   )
 }
+
+///|
+test "tokenize includes whitespace tokens" {
+  // "x + 1" has whitespace runs between syntactic tokens
+  let tokens = tokenize("x + 1")
+  let has_whitespace = tokens.iter().any(fn(t) { t.token == @token.Whitespace })
+  inspect(has_whitespace, content="true")
+}
+
+///|
+test "tokenize leading whitespace produces whitespace token" {
+  // "  x" has leading whitespace that must become a Whitespace token
+  let tokens = tokenize("  x")
+  let first = tokens[0]
+  inspect(first.token == @token.Whitespace, content="true")
+  inspect(first.start, content="0")
+  inspect(first.end, content="2")
+}
+
+///|
+test "tokenize whitespace positions are correct" {
+  // "x + 1": x@0-1, ws@1-2, +@2-3, ws@3-4, 1@4-5, EOF@5-5
+  let tokens = tokenize("x + 1")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length(), content="2")
+}
