@@ -185,4 +185,42 @@ test "tokenize whitespace positions are correct" {
   let tokens = tokenize("x + 1")
   let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
   inspect(ws_tokens.length(), content="2")
+  let ws0 = ws_tokens[0]
+  inspect(ws0.start, content="1")
+  inspect(ws0.end, content="2")
+  let ws1 = ws_tokens[1]
+  inspect(ws1.start, content="3")
+  inspect(ws1.end, content="4")
+}
+
+///|
+test "tokenize whitespace-only input" {
+  // "   " should produce a single Whitespace token covering the whole input, then EOF
+  let tokens = tokenize("   ")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length(), content="1")
+  let ws0 = ws_tokens[0]
+  inspect(ws0.start, content="0")
+  inspect(ws0.end, content="3")
+  let has_eof = tokens.iter().any(fn(t) { t.token == @token.EOF })
+  inspect(has_eof, content="true")
+}
+
+///|
+test "tokenize mixed whitespace characters fold into one token" {
+  // " \t\n" should produce a single Whitespace token, not three separate ones
+  let tokens = tokenize(" \t\n")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length(), content="1")
+}
+
+///|
+test "tokenize trailing whitespace produces whitespace token before EOF" {
+  // "x  " should include a Whitespace token after the identifier and before EOF
+  let tokens = tokenize("x  ")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length() > 0, content="true")
+  let last_ws = ws_tokens[ws_tokens.length() - 1]
+  inspect(last_ws.start, content="1")
+  inspect(last_ws.end, content="3")
 }
