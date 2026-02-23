@@ -26,14 +26,6 @@ test "Interner: edit result unchanged with interner" {
 }
 
 ///|
-/// Verify interner size is non-negative after initial parse.
-test "Interner: size is non-negative after parse" {
-  let parser = IncrementalParser::new("a + b")
-  let _ = parser.parse()
-  inspect(parser.interner_size() >= 0, content="true")
-}
-
-///|
 /// Verify interner size is bounded by vocabulary, not proportional to token
 /// count. Parsing "x + x + x + x + x" has many tokens but only a small
 /// vocabulary {x, +}, so the interner should not grow unboundedly.

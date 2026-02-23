@@ -15,7 +15,7 @@ pub struct IncrementalParser {
   mut green_tree : @green_tree.GreenNode? // Current green tree (for subtree reuse)
   mut token_buffer : @lexer.TokenBuffer? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
-  interner : @green_tree.Interner // session-scoped token intern table
+  priv interner : @green_tree.Interner // session-scoped token intern table
 }
 
 ///|

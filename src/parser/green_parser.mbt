@@ -72,6 +72,10 @@ pub fn parse_green_recover(
 ///|
 /// Parse with reuse cursor for incremental parsing with subtree reuse.
 /// Returns (green_tree, diagnostics, reuse_count).
+///
+/// Note: this function does not accept an Interner. For incremental use with
+/// token deduplication, prefer parse_green_recover_with_tokens which supports
+/// the interner? parameter.
 pub fn parse_green_with_cursor(
   source : String,
   tokens : Array[@token.TokenInfo],

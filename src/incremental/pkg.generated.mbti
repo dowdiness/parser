@@ -44,7 +44,7 @@ pub struct IncrementalParser {
   mut green_tree : @green-tree.GreenNode?
   mut token_buffer : @lexer.TokenBuffer?
   mut last_reuse_count : Int
-  interner : @green-tree.Interner
+  // private fields
 }
 pub fn IncrementalParser::adjust_tree_positions(Self, @term.TermNode, @edit.Edit) -> @term.TermNode
 pub fn IncrementalParser::edit(Self, @edit.Edit, String) -> @term.TermNode
