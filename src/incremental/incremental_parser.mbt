@@ -15,6 +15,7 @@ pub struct IncrementalParser {
   mut green_tree : @green_tree.GreenNode? // Current green tree (for subtree reuse)
   mut token_buffer : @lexer.TokenBuffer? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
+  interner : @green_tree.Interner // session-scoped token intern table
 }
 
 ///|
@@ -26,7 +27,14 @@ pub fn IncrementalParser::new(source : String) -> IncrementalParser {
     green_tree: None,
     token_buffer: None,
     last_reuse_count: 0,
+    interner: @green_tree.Interner::new(),
   }
+}
+
+///|
+/// Number of distinct tokens currently interned. For diagnostics and tests.
+pub fn IncrementalParser::interner_size(self : IncrementalParser) -> Int {
+  self.interner.size()
 }
 
 ///|
@@ -36,7 +44,10 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @term.TermNode {
     let buffer = @lexer.TokenBuffer::new(self.source)
     self.token_buffer = Some(buffer)
     // Parse through green tree for subtree reuse support
-    let (green, _diagnostics) = @parse.parse_green_recover(self.source)
+    let (green, _diagnostics) = @parse.parse_green_recover(
+      self.source,
+      interner=Some(self.interner),
+    )
     self.green_tree = Some(green)
     self.last_reuse_count = 0
     let parsed_tree = @parse.green_to_term_node(green, 0, Ref::new(0))
@@ -159,7 +170,10 @@ fn IncrementalParser::incremental_reparse(
 
   // Parse with cursor-based reuse
   let (new_green, _diagnostics, reuse_count) = @parse.parse_green_recover_with_tokens(
-    source, tokens, cursor,
+    source,
+    tokens,
+    cursor,
+    interner=Some(self.interner),
   )
 
   // Update stored green tree and reuse stats
