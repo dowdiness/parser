@@ -79,6 +79,31 @@ Concrete, actionable tasks for the `incr` library.
 - [ ] Add subscriber (reverse) links for push-based invalidation
 - [ ] Add `Runtime::dependents(CellId) -> Array[CellId]` (requires subscriber links)
 
+## Tracked Struct Support
+
+- [x] Add `TrackedCell[T]` wrapping `Signal[T]` for field-level dependency isolation (`internal/tracked_cell.mbt`)
+- [x] Add full `TrackedCell` API: `new`, `get`, `get_result`, `set`, `set_unconditional`, `id`, `durability`, `on_change`, `clear_on_change`, `is_up_to_date`, `as_signal`
+- [x] Add `Trackable` trait with `cell_ids(Self) -> Array[CellId]`
+- [x] Add `Readable` impl for `TrackedCell[T]`
+- [x] Add `create_tracked_cell` helper function (mirrors `create_signal` pattern)
+- [x] Add `gc_tracked[T : Trackable](rt, tracked)` no-op stub (call site established for Phase 4 migration)
+- [x] Re-export `TrackedCell` from root facade (`incr.mbt`)
+- [x] Whitebox tests in `internal/tracked_cell_wbtest.mbt`
+- [x] Integration tests in `tests/tracked_struct_test.mbt`
+
+## Internal Refactoring
+
+- [x] Extract `Runtime::advance_revision(durability)` to consolidate duplicated revision-bump logic
+- [x] Extract `Runtime::mark_input_changed(id)` helper to consolidate duplicated signal-commit logic
+- [x] Replace silent `None => Ok(true)` fallback in `finish_frame_changed` with `abort(...)` assertion
+- [x] Replace silent `None` skip in `commit_batch` with `abort(...)` assertion
+- [x] Add runtime ownership check (`id.runtime_id != self.runtime_id`) in `Runtime::get_cell`
+- [x] Simplify `Signal::get_result` to delegate to `Ok(self.get())`
+- [x] Improve `Memo::get` abort message to use `CycleError::format_path`
+- [x] Centralize cycle-path construction with `CycleError::from_path(path, closing_id)`
+- [x] Move pipeline traits to `pipeline/pipeline_traits.mbt`; mark experimental in docs
+- [x] Convert safe C-style loops to idiomatic `for .. in` syntax in `memo.mbt` and `runtime.mbt`
+
 ## Testing
 
 - [x] Stress test: deep dependency chain (250 levels) to verify iterative verification

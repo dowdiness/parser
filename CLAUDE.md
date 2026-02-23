@@ -50,7 +50,8 @@ dowdiness/incr/
     ├── moon.pkg                (imports dowdiness/incr and dowdiness/incr/pipeline for test)
     ├── integration_test.mbt    (end-to-end graph scenarios)
     ├── fanout_test.mbt         (wide fanout stress tests)
-    └── traits_test.mbt         (IncrDb, Readable, and pipeline trait tests)
+    ├── traits_test.mbt         (IncrDb, Readable, and pipeline trait tests)
+    └── tracked_struct_test.mbt (TrackedCell, Trackable, and gc_tracked tests)
 ```
 
 The root package re-exports all public types via `pub type` transparent aliases in `incr.mbt`, so downstream users see a unified `@incr` API with no awareness of the internal package structure.
@@ -98,7 +99,7 @@ The library implements Salsa's incremental computation pattern with three key ty
 ### For Users
 - **README.md** — Entry point: features, quick start, documentation index
 - **docs/getting-started.md** — Step-by-step tutorial for new users (shows both Runtime and IncrDb patterns)
-- **docs/concepts.md** — Core concepts explained simply (Signals, Memos, Revisions, Durability)
+- **docs/concepts.md** — Core concepts explained simply (Signals, Memos, Revisions, Durability, TrackedCell/Field-Level Tracking)
 - **docs/api-reference.md** — Complete reference for all public types and methods
 - **docs/cookbook.md** — Common patterns and recipes
 - **docs/api-design-guidelines.md** — Design philosophy, best practices, planned improvements

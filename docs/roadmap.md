@@ -54,6 +54,22 @@ High-level future direction for the `incr` library, organized by phase. Each pha
   - `dowdiness/incr/pipeline` — experimental pipeline traits, standalone with zero dependencies
   - Root facade re-exports all public types via `pub type` transparent aliases — zero breaking changes
 
+### Phase 3C: Tracked Struct Support ✓
+
+- ~~**`TrackedCell[T]`**: Field-level input cell wrapping `Signal[T]`~~ ✓ Implemented
+  - Full Signal-equivalent API: `get`, `set`, `set_unconditional`, `id`, `durability`, `on_change`, `clear_on_change`, `is_up_to_date`, `as_signal`
+  - Implements `Readable` trait; runtime sees only the inner Signal — zero changes to verification algorithm
+- ~~**`Trackable` trait**: `cell_ids(Self) -> Array[CellId]` contract for structs with TrackedCell fields~~ ✓ Implemented
+- ~~**`create_tracked_cell` helper**: Mirrors `create_signal` for IncrDb-pattern usage~~ ✓ Implemented
+- ~~**`gc_tracked` stub**: No-op call site for future Phase 4 GC integration~~ ✓ Implemented
+
+### Phase 3D: Internal Quality Refactoring ✓
+
+- ~~**Consolidate revision-bump logic**: `Runtime::advance_revision` and `Runtime::mark_input_changed` extracted~~ ✓ Implemented
+- ~~**Invariant assertions**: Silent fallbacks in `finish_frame_changed` and `commit_batch` replaced with `abort`~~ ✓ Implemented
+- ~~**Centralize cycle-path construction**: `CycleError::from_path(path, closing_id)` added~~ ✓ Implemented
+- ~~**Idiomatic loops**: C-style index loops converted to `for .. in` where semantics allow~~ ✓ Implemented
+
 ## Phase 4 — Advanced Features
 
 - **Subscriber (reverse) links**: Add bidirectional edges so cells know their dependents. This is a prerequisite for push-based invalidation, automatic cleanup, and the effect system. Inspired by [alien-signals](https://github.com/nicepkg/alien-signals) which uses subscriber links for efficient propagation.

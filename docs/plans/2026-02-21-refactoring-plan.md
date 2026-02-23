@@ -1,5 +1,7 @@
 # Refactoring Plan
 
+> **Status: ✅ Complete.** All 8 items implemented as of 2026-02-23. 162 tests passing.
+
 Internal quality improvements for existing code. No new features — all items tighten invariants, reduce duplication, or improve consistency. All tests pass at time of writing; run `moon test` after every change.
 
 ## 1. Consolidate duplicated revision-bump logic

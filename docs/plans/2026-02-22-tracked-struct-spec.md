@@ -1,5 +1,7 @@
 # Tracked Struct Support for incr — Implementation Specification
 
+> **Status: ✅ Complete.** Phases 1 and 2 implemented as of 2026-02-23. Phase 3 documentation already updated. Phase 4 (GC integration) deferred to roadmap Phase 4. 162 tests passing.
+
 > **Target audience**: Coding agents (Claude Code) and human developers.
 > Self-contained: no prior context required.
 > Verified against the incr codebase at commit HEAD on 2026-02-22.
