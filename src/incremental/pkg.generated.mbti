@@ -51,6 +51,7 @@ pub fn IncrementalParser::edit(Self, @edit.Edit, String) -> @term.TermNode
 pub fn IncrementalParser::get_last_reuse_count(Self) -> Int
 pub fn IncrementalParser::get_source(Self) -> String
 pub fn IncrementalParser::get_tree(Self) -> @term.TermNode?
+pub fn IncrementalParser::interner_clear(Self) -> Unit
 pub fn IncrementalParser::interner_size(Self) -> Int
 pub fn IncrementalParser::new(String) -> Self
 pub fn IncrementalParser::parse(Self) -> @term.TermNode
