@@ -2,6 +2,130 @@
 
 Historical snapshots from project benchmark runs (full suite and focused runs).
 
+## 2026-02-23 (token_count caching)
+
+- Command: `moon bench --package dowdiness/parser/benchmarks --release`
+- Git ref: `main` (`cda3ed9`)
+- Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
+- Result: `56/56` benchmarks passed
+- Changes since previous entry:
+  - Added `token_count : Int` field to `GreenNode`, computed in `GreenNode::new`'s
+    existing children loop (same pass as `text_len` and `hash`)
+  - Optional `trivia_kind?` parameter on `GreenNode::new`, `build_tree`,
+    `build_tree_interned`; parser passes `Some(WhitespaceToken)` so every
+    incremental-parsed tree carries the non-whitespace count
+  - Removed `count_tokens_in_node` (reuse_cursor) and `count_tokens_in_green`
+    (green_parser) — both O(subtree) recursive traversals; replaced with
+    `node.token_count` (O(1)) at all call sites
+
+### Core Parse Scaling
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| parse scaling - small (5 tokens) | 0.87 µs | Full parse baseline (small) |
+| parse scaling - medium (15 tokens) | 3.76 µs | Full parse baseline (medium) |
+| parse scaling - large (30+ tokens) | 6.36 µs | Full parse baseline (large) |
+
+### Incremental Parser
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| incremental - initial parse | 0.52 µs | Parser creation + first parse |
+| incremental - small edit | 1.96 µs | `x` → `x + 1` |
+| incremental - multiple edits | 3.26 µs | 2 sequential edits |
+| incremental - replacement | 2.22 µs | `λx.x` → `\x.x` |
+| incremental vs full - edit at start | 10.13 µs | Boundary edit, medium expression |
+| incremental vs full - edit at end | 10.03 µs | Boundary edit, medium expression |
+| incremental vs full - edit in middle | 10.49 µs | Boundary edit, medium expression |
+| sequential edits - typing simulation | 1.97 µs | Single-char insert |
+| sequential edits - backspace simulation | 1.97 µs | Single-char delete |
+| incremental state baseline - repeated parsing | 4.43 µs | Edit + undo |
+| best case - cosmetic change | 2.57 µs | Localized edit path |
+| worst case - full invalidation | 10.11 µs | Full rebuild + incremental overhead |
+| memory pressure - large document | 16.75 µs | Larger input incremental edit |
+
+### Damage Tracking & Position Adjustment
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| damage tracking | 0.80 µs | Wagner-Graham damage expand |
+| damage tracking - localized damage | 1.09 µs | Small edit region |
+| damage tracking - widespread damage | 4.25 µs | Edit at start of medium expression |
+| position adjustment after edit | 2.12 µs | Tree position shift after edit |
+
+### CRDT Integration
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| tokenization | 0.30 µs | Lexer baseline |
+| ast to crdt | 2.06 µs | AST → CRDT conversion |
+| crdt to source | 2.24 µs | CRDT → source reconstruction |
+| crdt operations - nested structure | 5.55 µs | Nested structure round-trip |
+| crdt operations - round trip | 5.44 µs | Parse → CRDT → source → parse |
+
+### Error Recovery & High-level API
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| error recovery - valid | 0.78 µs | `parse_with_error_recovery`, valid input |
+| error recovery - error | 0.85 µs | `parse_with_error_recovery`, invalid input |
+| parsed document - parse | 0.67 µs | `ParsedDocument::parse` |
+| parsed document - edit | 2.51 µs | `ParsedDocument::edit` |
+
+### Phase 1: Incremental Tokenizer (110-token input)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| phase1: full tokenize - 110 tokens | 1.16 µs | Full tokenization baseline |
+| phase1: incremental tokenize - edit at start | 2.11 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit in middle | 2.02 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit at end | 1.97 µs | Includes `TokenBuffer::new()` setup |
+| phase1: full re-tokenize after edit | 1.23 µs | Comparison baseline |
+
+### Green-Tree Microbenchmarks
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| green-tree - token constructor | 0.02 µs | `GreenToken::new` hash compute path |
+| green-tree - node constructor from 32 children | 0.08 µs | `GreenNode::new` fold/hash/token_count path |
+| green-tree - equality identical 32 children | 0.18 µs | Hash check + deep equality walk |
+| green-tree - equality mismatch hash fast path | 0.01 µs | Expected early hash mismatch exit |
+
+### Token Interning
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| interner - intern_token cold miss | 0.10 µs | First call: two-level map miss + `GreenToken::new` |
+| interner - intern_token warm hit | 0.08 µs | Subsequent call: two-level map hit, allocation-free |
+| build_tree - x + 1 | 0.18 µs | No interning baseline (7 token events) |
+| build_tree_interned - x + 1, cold interner | 0.41 µs | First parse (all misses) |
+| build_tree_interned - x + 1, warm interner | 0.26 µs | Subsequent parses (all hits); 1.4× vs `build_tree` |
+| build_tree - 100 identical ident tokens | 1.15 µs | No interning, 100 `GreenToken::new` calls |
+| build_tree_interned - 100 identical tokens, warm | 1.83 µs | 1 miss + 99 hits; 1.6× vs `build_tree` |
+| parse_green_recover - no interner, small | 0.64 µs | `x + 1`, no interning |
+| parse_green_recover - cold interner, small | 0.89 µs | `x + 1`, first parse |
+| parse_green_recover - warm interner, small | 0.72 µs | `x + 1`, subsequent; 1.13× overhead |
+| parse_green_recover - no interner, large | 4.88 µs | `λf.λx.if…`, no interning |
+| parse_green_recover - warm interner, large | 5.58 µs | `λf.λx.if…`, subsequent; 1.14× overhead |
+
+### Notable Changes vs 2026-02-23 (interner key fix)
+
+`token_count` computation adds one `match` per child in `GreenNode::new`. This
+is measurable only in the construction microbenchmark; all reuse and incremental
+paths are within run-to-run noise:
+
+| Metric | prev | today | Change |
+|---|---:|---:|---|
+| green-tree - node constructor (32 children) | 0.06 µs | 0.08 µs | +33% (token_count loop) |
+| build_tree - x + 1 | 0.17 µs | 0.18 µs | +6% |
+| best case - cosmetic change | 2.53 µs | 2.57 µs | +2% (noise) |
+| incremental vs full - edit at start | 10.15 µs | 10.13 µs | -0% (noise) |
+| memory pressure - large document | 16.53 µs | 16.75 µs | +1% (noise) |
+
+The asymptotic benefit (O(1) instead of O(subtree) on every successful reuse)
+does not surface at these expression sizes. It becomes material when reusing
+large subtrees (hundreds of tokens) in a language server scenario.
+
 ## 2026-02-23
 
 - Command: `moon bench --package dowdiness/parser/benchmarks --release`
