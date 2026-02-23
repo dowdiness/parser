@@ -28,6 +28,7 @@ pub struct LanguageSpec[T, K] {
   root_kind : K
   eof_token : T
 }
+pub fn[T, K] LanguageSpec::new((K) -> @green-tree.RawKind, (T) -> Bool, (T) -> Bool, (T, T) -> Bool, K, K, K, T) -> Self[T, K]
 
 pub struct ParserContext[T, K] {
   spec : LanguageSpec[T, K]
@@ -66,6 +67,7 @@ pub struct TokenInfo[T] {
   start : Int
   end : Int
 }
+pub fn[T] TokenInfo::new(T, Int, Int) -> Self[T]
 pub impl[T : Show] Show for TokenInfo[T]
 
 // Type aliases

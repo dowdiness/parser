@@ -41,6 +41,36 @@ pub struct LanguageSpec[T, K] {
 }
 
 ///|
+/// Construct a TokenInfo. Use this from outside the core package.
+pub fn[T] TokenInfo::new(token : T, start : Int, end : Int) -> TokenInfo[T] {
+  { token, start, end }
+}
+
+///|
+/// Construct a LanguageSpec. Use this from outside the core package.
+pub fn[T, K] LanguageSpec::new(
+  kind_to_raw : (K) -> @green_tree.RawKind,
+  token_is_eof : (T) -> Bool,
+  token_is_trivia : (T) -> Bool,
+  tokens_equal : (T, T) -> Bool,
+  whitespace_kind : K,
+  error_kind : K,
+  root_kind : K,
+  eof_token : T,
+) -> LanguageSpec[T, K] {
+  {
+    kind_to_raw,
+    token_is_eof,
+    token_is_trivia,
+    tokens_equal,
+    whitespace_kind,
+    error_kind,
+    root_kind,
+    eof_token,
+  }
+}
+
+///|
 /// Core parser state. Grammar functions receive this and call methods on it.
 /// T = token type, K = syntax-kind type.
 pub struct ParserContext[T, K] {
