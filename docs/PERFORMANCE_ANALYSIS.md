@@ -1,5 +1,12 @@
 # Performance Analysis
 
+> **Historical document.** Numbers below are from 2025-12-27, an early
+> implementation phase before green-tree extraction, incremental tokenization,
+> subtree reuse, and token interning were added. They are kept for reference
+> but do not reflect current performance.
+>
+> **Current benchmark snapshots:** [`docs/benchmark_history.md`](benchmark_history.md)
+
 Benchmark results for the incremental parser implementation (Release mode).
 
 ## Benchmark Results Summary
