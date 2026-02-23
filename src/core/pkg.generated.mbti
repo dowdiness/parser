@@ -1,0 +1,77 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser/core"
+
+import {
+  "dowdiness/parser/green-tree",
+}
+
+// Values
+pub fn[T, K] parse_with(String, LanguageSpec[T, K], (String) -> Array[TokenInfo[T]], (ParserContext[T, K]) -> Unit) -> (@green-tree.GreenNode, Array[Diagnostic[T]])
+
+// Errors
+
+// Types and methods
+pub struct Diagnostic[T] {
+  message : String
+  start : Int
+  end : Int
+  got_token : T
+}
+pub impl[T : Show] Show for Diagnostic[T]
+
+pub struct LanguageSpec[T, K] {
+  kind_to_raw : (K) -> @green-tree.RawKind
+  token_is_eof : (T) -> Bool
+  token_is_trivia : (T) -> Bool
+  tokens_equal : (T, T) -> Bool
+  print_token : (T) -> String
+  whitespace_kind : K
+  error_kind : K
+  root_kind : K
+  eof_token : T
+}
+pub fn[T, K] LanguageSpec::new((K) -> @green-tree.RawKind, (T) -> Bool, (T) -> Bool, (T, T) -> Bool, (T) -> String, K, K, K, T) -> Self[T, K]
+
+pub struct ParserContext[T, K] {
+  spec : LanguageSpec[T, K]
+  token_count : Int
+  get_token : (Int) -> T
+  get_start : (Int) -> Int
+  get_end : (Int) -> Int
+  source : String
+  mut position : Int
+  events : @green-tree.EventBuffer
+  errors : Array[Diagnostic[T]]
+  mut error_count : Int
+  mut open_nodes : Int
+}
+pub fn[T, K] ParserContext::at(Self[T, K], T) -> Bool
+pub fn[T, K] ParserContext::at_eof(Self[T, K]) -> Bool
+pub fn[T, K] ParserContext::bump_error(Self[T, K]) -> Unit
+pub fn[T, K] ParserContext::emit_error_placeholder(Self[T, K]) -> Unit
+pub fn[T, K] ParserContext::emit_token(Self[T, K], K) -> Unit
+pub fn[T, K] ParserContext::emit_zero_width(Self[T, K], K) -> Unit
+pub fn[T, K] ParserContext::error(Self[T, K], String) -> Unit
+pub fn[T, K] ParserContext::finish_node(Self[T, K]) -> Unit
+pub fn[T, K] ParserContext::flush_trivia(Self[T, K]) -> Unit
+pub fn[T, K] ParserContext::mark(Self[T, K]) -> Int
+pub fn[T, K] ParserContext::new(Array[TokenInfo[T]], String, LanguageSpec[T, K]) -> Self[T, K]
+pub fn[T, K] ParserContext::new_indexed(Int, (Int) -> T, (Int) -> Int, (Int) -> Int, String, LanguageSpec[T, K]) -> Self[T, K]
+pub fn[T, K] ParserContext::peek(Self[T, K]) -> T
+pub fn[T, K] ParserContext::peek_info(Self[T, K]) -> TokenInfo[T]
+pub fn[T, K] ParserContext::start_at(Self[T, K], Int, K) -> Unit
+pub fn[T, K] ParserContext::start_node(Self[T, K], K) -> Unit
+pub fn[T, K] ParserContext::token_text(Self[T, K], TokenInfo[T]) -> String
+
+pub struct TokenInfo[T] {
+  token : T
+  start : Int
+  end : Int
+}
+pub fn[T] TokenInfo::new(T, Int, Int) -> Self[T]
+pub impl[T : Show] Show for TokenInfo[T]
+
+// Type aliases
+
+// Traits
+

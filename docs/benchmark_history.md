@@ -2,6 +2,137 @@
 
 Historical snapshots from project benchmark runs (full suite and focused runs).
 
+## 2026-02-24 (generic ParserContext — closure-based token storage)
+
+- Command: `moon bench --release`
+- Git ref: `feature/generic-parser-core` (`2f19c82`)
+- Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
+- Result: `56/56` benchmarks passed
+- Changes since previous entry:
+  - `ParserContext[T, K]` storage changed from `tokens : Array[TokenInfo[T]]`
+    to closure-based indexed accessors (`token_count`, `get_token`, `get_start`,
+    `get_end`); `new_indexed` constructor avoids allocating a wrapper array
+  - `run_parse` now passes `@token.TokenInfo` directly via `new_indexed`,
+    eliminating the O(n) `Array[@core.TokenInfo]` allocation on every parse call
+  - `Diagnostic[T]` gains `got_token : T`; `token_at_offset` (second full
+    tokenize pass on the error path) deleted
+  - `LanguageSpec` gains `print_token : (T) -> String`
+  - `emit_error_placeholder()` added to `ParserContext` (no-arg convenience
+    around `emit_zero_width(spec.error_kind)`)
+
+### Core Parse Scaling
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| parse scaling - small (5 tokens) | 1.01 µs | Full parse baseline (small) |
+| parse scaling - medium (15 tokens) | 4.66 µs | Full parse baseline (medium) |
+| parse scaling - large (30+ tokens) | 7.67 µs | Full parse baseline (large) |
+
+### Incremental Parser
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| incremental - initial parse | 0.56 µs | Parser creation + first parse |
+| incremental - small edit | 1.98 µs | `x` → `x + 1` |
+| incremental - multiple edits | 3.43 µs | 2 sequential edits |
+| incremental - replacement | 2.35 µs | `λx.x` → `\x.x` |
+| incremental vs full - edit at start | 11.59 µs | Boundary edit, medium expression |
+| incremental vs full - edit at end | 11.56 µs | Boundary edit, medium expression |
+| incremental vs full - edit in middle | 11.65 µs | Boundary edit, medium expression |
+| sequential edits - typing simulation | 2.00 µs | Single-char insert |
+| sequential edits - backspace simulation | 2.14 µs | Single-char delete |
+| incremental state baseline - repeated parsing | 4.52 µs | Edit + undo |
+| incremental state baseline - similar expressions | 2.81 µs | Repeated similar parses |
+| best case - cosmetic change | 2.79 µs | Localized edit path |
+| worst case - full invalidation | 11.46 µs | Full rebuild + incremental overhead |
+| memory pressure - large document | 18.73 µs | Larger input incremental edit |
+
+### Damage Tracking & Position Adjustment
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| damage tracking | 0.86 µs | Wagner-Graham damage expand |
+| damage tracking - localized damage | 1.22 µs | Small edit region |
+| damage tracking - widespread damage | 4.96 µs | Edit at start of medium expression |
+| position adjustment after edit | 2.38 µs | Tree position shift after edit |
+
+### CRDT Integration
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| tokenization | 0.29 µs | Lexer baseline |
+| ast to crdt | 2.26 µs | AST → CRDT conversion |
+| crdt to source | 2.45 µs | CRDT → source reconstruction |
+| crdt operations - nested structure | 6.29 µs | Nested structure round-trip |
+| crdt operations - round trip | 6.08 µs | Parse → CRDT → source → parse |
+
+### Error Recovery & High-level API
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| error recovery - valid | 0.84 µs | `parse_with_error_recovery`, valid input |
+| error recovery - error | 0.89 µs | `parse_with_error_recovery`, invalid input |
+| parsed document - parse | 0.73 µs | `ParsedDocument::parse` |
+| parsed document - edit | 2.47 µs | `ParsedDocument::edit` |
+
+### Phase 1: Incremental Tokenizer (110-token input)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| phase1: full tokenize - 110 tokens | 1.79 µs | Full tokenization baseline |
+| phase1: incremental tokenize - edit at start | 3.50 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit in middle | 3.33 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit at end | 3.17 µs | Includes `TokenBuffer::new()` setup |
+| phase1: full re-tokenize after edit | 1.80 µs | Comparison baseline |
+
+### Green-Tree Microbenchmarks
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| green-tree - token constructor | 0.02 µs | `GreenToken::new` hash compute path |
+| green-tree - node constructor from 32 children | 0.08 µs | `GreenNode::new` fold/hash/token_count path |
+| green-tree - equality identical 32 children | 0.18 µs | Hash check + deep equality walk |
+| green-tree - equality mismatch hash fast path | 0.01 µs | Expected early hash mismatch exit |
+
+### Token Interning
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| interner - intern_token cold miss | 0.10 µs | First call: two-level map miss + `GreenToken::new` |
+| interner - intern_token warm hit | 0.08 µs | Subsequent call: two-level map hit, allocation-free |
+| build_tree - x + 1 | 0.18 µs | No interning baseline (11 token events incl. whitespace) |
+| build_tree_interned - x + 1, cold interner | 0.42 µs | First parse (all misses) |
+| build_tree_interned - x + 1, warm interner | 0.24 µs | Subsequent parses (all hits); 1.3× vs `build_tree` |
+| build_tree - 100 identical ident tokens | 1.16 µs | No interning, 100 `GreenToken::new` calls |
+| build_tree_interned - 100 identical tokens, warm | 1.87 µs | 1 miss + 99 hits; 1.6× vs `build_tree` |
+| parse_green_recover - no interner, small | 0.73 µs | `x + 1`, no interning |
+| parse_green_recover - cold interner, small | 0.97 µs | `x + 1`, first parse |
+| parse_green_recover - warm interner, small | 0.81 µs | `x + 1`, subsequent; 1.11× overhead |
+| parse_green_recover - no interner, large | 6.06 µs | `λf.λx.if…`, no interning |
+| parse_green_recover - warm interner, large | 7.02 µs | `λf.λx.if…`, subsequent; 1.16× overhead |
+
+### Notable Changes vs 2026-02-23 (trivia-inclusive lexer)
+
+The closure-based `ParserContext` replaces direct array indexing with indirect
+function calls (`(self.get_token)(pos)` etc.), adding a measurable dispatch
+overhead on every token access. The eliminated O(n) wrapper-array allocation
+does not compensate at these expression sizes, where the token count is low and
+allocation is cheap. The trade-off is intentional: `new_indexed` enables
+zero-copy construction for callers with a different token layout (e.g. LSP
+incremental editing), and the absolute numbers remain well within the 16 ms
+real-time budget.
+
+| Metric | prev | today | Change |
+|---|---:|---:|---|
+| parse scaling - small (5 tokens) | 0.92 µs | 1.01 µs | +10% (closure dispatch) |
+| parse scaling - medium (15 tokens) | 3.90 µs | 4.66 µs | +20% (closure dispatch) |
+| parse scaling - large (30+ tokens) | 6.50 µs | 7.67 µs | +18% (closure dispatch) |
+| parse_green_recover - no interner, small | 0.65 µs | 0.73 µs | +12% |
+| parse_green_recover - no interner, large | 5.04 µs | 6.06 µs | +20% |
+| incremental vs full - edit at start | 10.64 µs | 11.59 µs | +9% |
+| memory pressure - large document | 17.32 µs | 18.73 µs | +8% |
+| worst case - full invalidation | 10.62 µs | 11.46 µs | +8% |
+
 ## 2026-02-23 (trivia-inclusive lexer)
 
 - Command: `moon bench --package dowdiness/parser/benchmarks --release`

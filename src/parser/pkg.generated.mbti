@@ -2,6 +2,7 @@
 package "dowdiness/parser/parser"
 
 import {
+  "dowdiness/parser/core",
   "dowdiness/parser/green-tree",
   "dowdiness/parser/lexer",
   "dowdiness/parser/range",
@@ -24,13 +25,13 @@ pub fn parse(String) -> @term.Term raise
 
 pub fn parse_green(String) -> @green-tree.GreenNode raise
 
-pub fn parse_green_recover(String, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError
+pub fn parse_green_recover(String, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError
 
-pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], ReuseCursor?, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[ParseDiagnostic], Int)
+pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], ReuseCursor?, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
 
 pub fn parse_green_to_term_node(String) -> @term.TermNode raise
 
-pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], ReuseCursor) -> (@green-tree.GreenNode, Array[ParseDiagnostic], Int)
+pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], ReuseCursor) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
 
 pub fn parse_tree(String) -> @term.TermNode raise
 
@@ -51,14 +52,6 @@ pub suberror ParseError {
 type CursorFrame
 
 type OldToken
-
-pub(all) struct ParseDiagnostic {
-  message : String
-  token : @token.Token
-  start : Int
-  end : Int
-}
-pub impl Show for ParseDiagnostic
 
 pub struct ReuseCursor {
   stack : Array[CursorFrame]

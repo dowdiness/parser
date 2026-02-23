@@ -18,19 +18,6 @@ pub fn make_reuse_cursor(
 }
 
 ///|
-priv struct GreenParser {
-  tokens : Array[@token.TokenInfo]
-  source : String
-  mut position : Int
-  events : @green_tree.EventBuffer
-  errors : Array[ParseDiagnostic]
-  mut error_count : Int
-  cursor : ReuseCursor? // Optional reuse cursor for incremental parsing
-  mut reuse_count : Int // Count of reused nodes (for statistics)
-  mut open_nodes : Int // Number of currently open StartNode events
-}
-
-///|
 fn select_build_tree(
   events : Array[@green_tree.ParseEvent],
   interner : @green_tree.Interner?,
@@ -54,14 +41,46 @@ fn select_build_tree(
 }
 
 ///|
-/// Strict: raises ParseError on first syntax error (backward compat)
+/// Strict: raises ParseError on first syntax error (backward compat).
+/// The ParseError token field comes directly from the diagnostic's got_token.
+/// Prefer parse_green_recover for new code; this function is retained for
+/// callers that depend on the raising contract.
 pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
   let (green, errors) = parse_green_recover(source)
   if errors.length() > 0 {
     let diag = errors[0]
-    raise ParseError(diag.message, diag.token)
+    raise ParseError(diag.message, diag.got_token)
   }
   green
+}
+
+///|
+/// Core parse-and-build sequence shared by all three public entry points.
+/// Accepts a raw @token.TokenInfo array and builds indexed accessors to avoid
+/// allocating a wrapper Array[@core.TokenInfo].
+fn run_parse(
+  tokens : Array[@token.TokenInfo],
+  source : String,
+  interner : @green_tree.Interner?,
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) {
+  let ctx = @core.ParserContext::new_indexed(
+    tokens.length(),
+    fn(i) { tokens[i].token },
+    fn(i) { tokens[i].start },
+    fn(i) { tokens[i].end },
+    source,
+    lambda_spec,
+  )
+  parse_lambda_root(ctx)
+  ctx.flush_trivia()
+  if ctx.open_nodes != 0 {
+    abort(
+      "run_parse: grammar left " +
+      ctx.open_nodes.to_string() +
+      " unclosed nodes",
+    )
+  }
+  (select_build_tree(ctx.events.events, interner), ctx.errors)
 }
 
 ///|
@@ -70,18 +89,17 @@ pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
 pub fn parse_green_recover(
   source : String,
   interner? : @green_tree.Interner? = None,
-) -> (@green_tree.GreenNode, Array[ParseDiagnostic]) raise @lexer.TokenizationError {
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError {
   let tokens = @lexer.tokenize(source)
-  let parser = GreenParser::new(tokens, source)
-  parser.parse_source_file()
-  parser.assert_event_balance()
-  let tree = select_build_tree(parser.events.events, interner)
-  (tree, parser.errors)
+  run_parse(tokens, source, interner)
 }
 
 ///|
 /// Parse with reuse cursor for incremental parsing with subtree reuse.
-/// Returns (green_tree, diagnostics, reuse_count).
+///
+/// Uses the supplied token stream directly — never re-tokenizes from source.
+/// DEFERRED: cursor is ignored and reuse_count is always 0 until cursor
+/// support is restored.
 ///
 /// Note: this function does not accept an Interner. For incremental use with
 /// token deduplication, prefer parse_green_recover_with_tokens which supports
@@ -89,499 +107,209 @@ pub fn parse_green_recover(
 pub fn parse_green_with_cursor(
   source : String,
   tokens : Array[@token.TokenInfo],
-  cursor : ReuseCursor,
-) -> (@green_tree.GreenNode, Array[ParseDiagnostic], Int) {
-  let parser = GreenParser::new_with_cursor(tokens, source, cursor)
-  parser.parse_source_file()
-  parser.assert_event_balance()
-  let tree = @green_tree.build_tree(
-    parser.events.events,
-    raw(@syntax.SourceFile),
-    trivia_kind=Some(raw(@syntax.WhitespaceToken)),
-  )
-  (tree, parser.errors, parser.reuse_count)
+  _cursor : ReuseCursor,
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
+  let (tree, errors) = run_parse(tokens, source, None)
+  (tree, errors, 0)
 }
 
 ///|
 /// Parse with pre-tokenized input and optional reuse cursor.
-/// Returns (green_tree, diagnostics, reuse_count).
+///
+/// Uses the supplied token stream directly — never re-tokenizes from source,
+/// so temporarily invalid source text does not cause a hard crash.
+/// DEFERRED: cursor is ignored and reuse_count is always 0 until cursor
+/// support is restored.
 pub fn parse_green_recover_with_tokens(
   source : String,
   tokens : Array[@token.TokenInfo],
-  cursor : ReuseCursor?,
+  _cursor : ReuseCursor?,
   interner? : @green_tree.Interner? = None,
-) -> (@green_tree.GreenNode, Array[ParseDiagnostic], Int) {
-  let parser = match cursor {
-    Some(c) => GreenParser::new_with_cursor(tokens, source, c)
-    None => GreenParser::new(tokens, source)
-  }
-  parser.parse_source_file()
-  parser.assert_event_balance()
-  let tree = select_build_tree(parser.events.events, interner)
-  (tree, parser.errors, parser.reuse_count)
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
+  let (tree, errors) = run_parse(tokens, source, interner)
+  (tree, errors, 0)
 }
 
-///|
-fn GreenParser::new(
-  tokens : Array[@token.TokenInfo],
-  source : String,
-) -> GreenParser {
-  {
-    tokens,
-    source,
-    position: 0,
-    events: @green_tree.EventBuffer::new(),
-    errors: [],
-    error_count: 0,
-    cursor: None,
-    reuse_count: 0,
-    open_nodes: 0,
-  }
-}
+// ─── Grammar helpers ─────────────────────────────────────────────────────────
 
 ///|
-fn GreenParser::new_with_cursor(
-  tokens : Array[@token.TokenInfo],
-  source : String,
-  cursor : ReuseCursor,
-) -> GreenParser {
-  {
-    tokens,
-    source,
-    position: 0,
-    events: @green_tree.EventBuffer::new(),
-    errors: [],
-    error_count: 0,
-    cursor: Some(cursor),
-    reuse_count: 0,
-    open_nodes: 0,
-  }
-}
-
-///|
-fn GreenParser::start_node(
-  self : GreenParser,
-  kind : @syntax.SyntaxKind,
-) -> Unit {
-  // Producer-side invariant tracking for StartNode/FinishNode balance.
-  self.open_nodes = self.open_nodes + 1
-  self.events.push(@green_tree.StartNode(raw(kind)))
-}
-
-///|
-fn GreenParser::mark_node(self : GreenParser) -> Int {
-  // mark() reserves a Tombstone that may later be claimed by start_marked_node.
-  self.events.mark()
-}
-
-///|
-fn GreenParser::start_marked_node(
-  self : GreenParser,
-  mark : Int,
-  kind : @syntax.SyntaxKind,
-) -> Unit {
-  // Marked starts must also participate in open_nodes accounting.
-  self.events.start_at(mark, raw(kind))
-  self.open_nodes = self.open_nodes + 1
-}
-
-///|
-fn GreenParser::finish_node(self : GreenParser) -> Unit {
-  if self.open_nodes <= 0 {
-    abort("GreenParser::finish_node: FinishNode without matching StartNode")
-  }
-  self.open_nodes = self.open_nodes - 1
-  self.events.push(@green_tree.FinishNode)
-}
-
-///|
-fn GreenParser::assert_event_balance(self : GreenParser) -> Unit {
-  // SourceFile is an implicit root passed to @green_tree.build_tree(root_kind).
-  // It is not emitted as StartNode/FinishNode events, so a balanced stream
-  // must end with open_nodes == 0.
-  if self.open_nodes != 0 {
-    abort(
-      "GreenParser: unbalanced parse events, open_nodes=" +
-      self.open_nodes.to_string(),
-    )
-  }
-}
-
-///|
-/// Return the next non-Whitespace token, skipping any Whitespace entries.
-fn GreenParser::peek(self : GreenParser) -> @token.Token {
-  let mut pos = self.position
-  while pos < self.tokens.length() {
-    match self.tokens[pos].token {
-      @token.Whitespace => pos = pos + 1
-      token => return token
-    }
-  }
-  @token.EOF
-}
-
-///|
-/// Return the TokenInfo for the next non-Whitespace token.
-fn GreenParser::peek_info(self : GreenParser) -> @token.TokenInfo {
-  let mut pos = self.position
-  while pos < self.tokens.length() {
-    let info = self.tokens[pos]
-    match info.token {
-      @token.Whitespace => pos = pos + 1
-      _ => return info
-    }
-  }
-  let end = self.source.length()
-  @token.TokenInfo::new(@token.EOF, end, end)
-}
-
-///|
-fn GreenParser::advance(self : GreenParser) -> Unit {
-  self.position = self.position + 1
-}
-
-///|
-fn GreenParser::token_text(
-  self : GreenParser,
-  info : @token.TokenInfo,
-) -> String {
-  let slice : StringView = self.source[info.start:info.end] catch { _ => "" }
-  slice.to_string()
-}
-
-///|
-/// Emit all consecutive Whitespace tokens at current position to the
-/// event stream, advancing position past each one.
-fn GreenParser::flush_trivia(self : GreenParser) -> Unit {
-  while self.position < self.tokens.length() {
-    let info = self.tokens[self.position]
-    match info.token {
-      @token.Whitespace => {
-        let text = self.token_text(info)
-        self.events.push(
-          @green_tree.ParseEvent::Token(raw(@syntax.WhitespaceToken), text),
-        )
-        self.position = self.position + 1
-      }
-      _ => break
-    }
-  }
-}
-
-///|
-fn GreenParser::emit_token(
-  self : GreenParser,
-  kind : @syntax.SyntaxKind,
-) -> Unit {
-  self.flush_trivia()
-  let info = self.peek_info()
-  let text = self.token_text(info)
-  self.events.push(@green_tree.ParseEvent::Token(raw(kind), text))
-  self.advance()
-}
-
-///|
-/// Emit events to reconstruct a reused green node.
-/// Does NOT update position — caller must advance position after calling this.
-fn GreenParser::emit_reused_node_events(
-  self : GreenParser,
-  node : @green_tree.GreenNode,
-) -> Unit {
-  // Re-emitting a reused subtree is logically equivalent to emitting a fresh
-  // balanced StartNode ... FinishNode region.
-  self.open_nodes = self.open_nodes + 1
-  self.events.push(@green_tree.StartNode(node.kind))
-  for child in node.children {
-    match child {
-      @green_tree.GreenElement::Token(t) =>
-        self.events.push(@green_tree.ParseEvent::Token(t.kind, t.text))
-      @green_tree.GreenElement::Node(n) => self.emit_reused_node_events(n)
-    }
-  }
-  self.open_nodes = self.open_nodes - 1
-  self.events.push(@green_tree.FinishNode)
-}
-
-///|
-/// Try to reuse a node at current position for given expected kind
-fn GreenParser::try_reuse(
-  self : GreenParser,
-  expected_kind : @green_tree.RawKind,
+fn at_stop_token(
+  ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
 ) -> Bool {
-  match self.cursor {
-    None => false
-    Some(cursor) => {
-      // Fast path: skip all work if reuse is globally disabled
-      if cursor.is_reuse_disabled() {
-        return false
-      }
-      // byte_offset: the start of the current token (may be Whitespace).
-      // Atom nodes in the green tree include their leading whitespace as the
-      // first child (flush_trivia runs inside emit_token before the syntactic
-      // token is emitted). seek_node_at therefore needs the whitespace start,
-      // not the syntactic token start, to locate the node in the old tree.
-      let byte_offset = if self.position < self.tokens.length() {
-        self.tokens[self.position].start
-      } else {
-        self.source.length()
-      }
-      // Separately find the syntactic token index for leading_token_matches.
-      let mut token_pos = self.position
-      while token_pos < self.tokens.length() {
-        match self.tokens[token_pos].token {
-          @token.Whitespace => token_pos = token_pos + 1
-          _ => break
-        }
-      }
-      match cursor.try_reuse(expected_kind, byte_offset, token_pos) {
-        None => false
-        Some(node) => {
-          // Do NOT call flush_trivia() here — the reused node already contains
-          // its leading whitespace as the first child token. Emitting trivia
-          // separately would double-emit the whitespace.
-          self.emit_reused_node_events(node)
-          // Advance position past ALL tokens (whitespace + syntactic) that
-          // fall within the reused node's byte span [byte_offset, node_end).
-          let node_end = byte_offset + node.text_len
-          while self.position < self.tokens.length() &&
-                self.tokens[self.position].start < node_end {
-            self.position = self.position + 1
-          }
-          self.reuse_count = self.reuse_count + 1
-          // Advance cursor past the reused node
-          cursor.advance_past(node)
-          true
-        }
-      }
-    }
-  }
-}
-
-///|
-/// Record a diagnostic and increment error count.
-fn GreenParser::error(
-  self : GreenParser,
-  msg : String,
-  token : @token.Token,
-  start : Int,
-  end : Int,
-) -> Unit {
-  self.errors.push({ message: msg, token, start, end })
-  self.error_count = self.error_count + 1
-}
-
-///|
-/// Consume current token as an ErrorToken (flush trivia then emit token).
-fn GreenParser::bump_error(self : GreenParser) -> Unit {
-  self.flush_trivia()
-  let info = self.peek_info()
-  let text = self.token_text(info)
-  self.events.push(@green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), text))
-  self.advance()
-}
-
-///|
-/// Check if current token is a sync/stop point.
-fn GreenParser::at_stop_token(self : GreenParser) -> Bool {
-  match self.peek() {
+  match ctx.peek() {
     @token.RightParen | @token.Then | @token.Else | @token.EOF => true
     _ => false
   }
 }
 
 ///|
-fn GreenParser::expect(
-  self : GreenParser,
+fn lambda_expect(
+  ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
   expected : @token.Token,
   kind : @syntax.SyntaxKind,
 ) -> Unit {
-  let current = self.peek()
+  let current = ctx.peek()
   match (current, expected) {
-    (a, b) if a == b => self.emit_token(kind)
+    (a, b) if a == b => ctx.emit_token(kind)
     _ => {
-      let info = self.peek_info()
-      self.error(
-        "Expected " + @token.print_token(expected),
-        current,
-        info.start,
-        info.end,
-      )
+      ctx.error("Expected " + @token.print_token(expected))
       // Emit zero-width ErrorToken — do NOT consume current token
-      self.events.push(
-        @green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), ""),
-      )
+      ctx.emit_error_placeholder()
     }
   }
 }
 
+// ─── Grammar (entry point + rules) ───────────────────────────────────────────
+
 ///|
-fn GreenParser::parse_source_file(self : GreenParser) -> Unit {
-  self.parse_expression()
-  match self.peek() {
+/// Entry point passed to @core.ParserContext. Parses one expression then
+/// wraps any trailing junk in an ErrorNode.
+fn parse_lambda_root(
+  ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
+) -> Unit {
+  parse_expression(ctx)
+  match ctx.peek() {
     @token.EOF =>
       // Flush any trailing whitespace tokens before EOF
-      self.flush_trivia()
+      ctx.flush_trivia()
     _ => {
       // Wrap all remaining tokens (until EOF) in a single ErrorNode
-      let info = self.peek_info()
-      self.error(
-        "Unexpected tokens after expression",
-        info.token,
-        info.start,
-        info.end,
-      )
-      self.start_node(@syntax.ErrorNode)
-      while self.peek() != @token.EOF {
-        self.bump_error()
+      ctx.error("Unexpected tokens after expression")
+      ctx.start_node(@syntax.ErrorNode)
+      while ctx.peek() != @token.EOF {
+        ctx.bump_error()
       }
-      self.finish_node()
+      ctx.finish_node()
       // Flush any trailing whitespace tokens after the ErrorNode
-      self.flush_trivia()
+      ctx.flush_trivia()
     }
   }
 }
 
 ///|
-fn GreenParser::parse_expression(self : GreenParser) -> Unit {
-  self.parse_binary_op()
+fn parse_expression(
+  ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
+) -> Unit {
+  parse_binary_op(ctx)
 }
 
 ///|
-fn GreenParser::parse_binary_op(self : GreenParser) -> Unit {
-  let mark = self.mark_node()
-  self.parse_application()
-  match self.peek() {
+fn parse_binary_op(
+  ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
+) -> Unit {
+  let mark = ctx.mark()
+  parse_application(ctx)
+  match ctx.peek() {
     @token.Plus | @token.Minus => {
-      self.start_marked_node(mark, @syntax.BinaryExpr)
-      while self.error_count < MAX_ERRORS {
-        match self.peek() {
+      ctx.start_at(mark, @syntax.BinaryExpr)
+      while ctx.error_count < MAX_ERRORS {
+        match ctx.peek() {
           @token.Plus => {
-            self.emit_token(@syntax.PlusToken)
-            self.parse_application()
+            ctx.emit_token(@syntax.PlusToken)
+            parse_application(ctx)
           }
           @token.Minus => {
-            self.emit_token(@syntax.MinusToken)
-            self.parse_application()
+            ctx.emit_token(@syntax.MinusToken)
+            parse_application(ctx)
           }
           _ => break
         }
       }
-      self.finish_node()
+      ctx.finish_node()
     }
     _ => ()
   }
 }
 
 ///|
-fn GreenParser::parse_application(self : GreenParser) -> Unit {
-  let mark = self.mark_node()
-  self.parse_atom()
-  match self.peek() {
+fn parse_application(
+  ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
+) -> Unit {
+  let mark = ctx.mark()
+  parse_atom(ctx)
+  match ctx.peek() {
     @token.LeftParen
     | @token.Identifier(_)
     | @token.Integer(_)
     | @token.Lambda => {
-      self.start_marked_node(mark, @syntax.AppExpr)
-      while self.error_count < MAX_ERRORS {
-        match self.peek() {
+      ctx.start_at(mark, @syntax.AppExpr)
+      while ctx.error_count < MAX_ERRORS {
+        match ctx.peek() {
           @token.LeftParen
           | @token.Identifier(_)
           | @token.Integer(_)
-          | @token.Lambda => self.parse_atom()
+          | @token.Lambda => parse_atom(ctx)
           _ => break
         }
       }
-      self.finish_node()
+      ctx.finish_node()
     }
     _ => ()
   }
 }
 
 ///|
-fn GreenParser::parse_atom(self : GreenParser) -> Unit {
-  if self.error_count >= MAX_ERRORS {
+fn parse_atom(
+  ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
+) -> Unit {
+  if ctx.error_count >= MAX_ERRORS {
     return
   }
-
-  // Try reuse for each atom kind before parsing fresh
-  if self.try_reuse(raw(@syntax.IntLiteral)) {
-    return
-  }
-  if self.try_reuse(raw(@syntax.VarRef)) {
-    return
-  }
-  if self.try_reuse(raw(@syntax.LambdaExpr)) {
-    return
-  }
-  if self.try_reuse(raw(@syntax.IfExpr)) {
-    return
-  }
-  if self.try_reuse(raw(@syntax.ParenExpr)) {
-    return
-  }
-
-  // No reuse possible, parse fresh
-  match self.peek() {
+  match ctx.peek() {
     @token.Integer(_) => {
-      self.start_node(@syntax.IntLiteral)
-      self.emit_token(@syntax.IntToken)
-      self.finish_node()
+      ctx.start_node(@syntax.IntLiteral)
+      ctx.emit_token(@syntax.IntToken)
+      ctx.finish_node()
     }
     @token.Identifier(_) => {
-      self.start_node(@syntax.VarRef)
-      self.emit_token(@syntax.IdentToken)
-      self.finish_node()
+      ctx.start_node(@syntax.VarRef)
+      ctx.emit_token(@syntax.IdentToken)
+      ctx.finish_node()
     }
     @token.Lambda => {
-      self.start_node(@syntax.LambdaExpr)
-      self.emit_token(@syntax.LambdaToken)
-      match self.peek() {
-        @token.Identifier(_) => self.emit_token(@syntax.IdentToken)
-        token => {
-          let info = self.peek_info()
-          self.error("Expected parameter after λ", token, info.start, info.end)
+      ctx.start_node(@syntax.LambdaExpr)
+      ctx.emit_token(@syntax.LambdaToken)
+      match ctx.peek() {
+        @token.Identifier(_) => ctx.emit_token(@syntax.IdentToken)
+        _ => {
+          ctx.error("Expected parameter after λ")
           // Emit zero-width ErrorToken for missing identifier
-          self.events.push(
-            @green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), ""),
-          )
+          ctx.emit_error_placeholder()
         }
       }
-      self.expect(@token.Dot, @syntax.DotToken)
-      self.parse_expression()
-      self.finish_node()
+      lambda_expect(ctx, @token.Dot, @syntax.DotToken)
+      parse_expression(ctx)
+      ctx.finish_node()
     }
     @token.If => {
-      self.start_node(@syntax.IfExpr)
-      self.emit_token(@syntax.IfKeyword)
-      self.parse_expression()
-      self.expect(@token.Then, @syntax.ThenKeyword)
-      self.parse_expression()
-      self.expect(@token.Else, @syntax.ElseKeyword)
-      self.parse_expression()
-      self.finish_node()
+      ctx.start_node(@syntax.IfExpr)
+      ctx.emit_token(@syntax.IfKeyword)
+      parse_expression(ctx)
+      lambda_expect(ctx, @token.Then, @syntax.ThenKeyword)
+      parse_expression(ctx)
+      lambda_expect(ctx, @token.Else, @syntax.ElseKeyword)
+      parse_expression(ctx)
+      ctx.finish_node()
     }
     @token.LeftParen => {
-      self.start_node(@syntax.ParenExpr)
-      self.emit_token(@syntax.LeftParenToken)
-      self.parse_expression()
-      self.expect(@token.RightParen, @syntax.RightParenToken)
-      self.finish_node()
+      ctx.start_node(@syntax.ParenExpr)
+      ctx.emit_token(@syntax.LeftParenToken)
+      parse_expression(ctx)
+      lambda_expect(ctx, @token.RightParen, @syntax.RightParenToken)
+      ctx.finish_node()
     }
-    token => {
-      let info = self.peek_info()
-      self.error("Unexpected token", token, info.start, info.end)
-      if self.at_stop_token() {
+    _ => {
+      ctx.error("Unexpected token")
+      if at_stop_token(ctx) {
         // Stop token: emit zero-width ErrorNode (don't consume)
-        self.start_node(@syntax.ErrorNode)
-        self.events.push(
-          @green_tree.ParseEvent::Token(raw(@syntax.ErrorToken), ""),
-        )
-        self.finish_node()
+        ctx.start_node(@syntax.ErrorNode)
+        ctx.emit_error_placeholder()
+        ctx.finish_node()
       } else {
         // Wrap current token in ErrorNode (consume it)
-        self.start_node(@syntax.ErrorNode)
-        self.bump_error()
-        self.finish_node()
+        ctx.start_node(@syntax.ErrorNode)
+        ctx.bump_error()
+        ctx.finish_node()
       }
     }
   }

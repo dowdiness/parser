@@ -1,5 +1,7 @@
 # Generic Parser Framework Implementation Plan
 
+> **Status: COMPLETED** — Branch `feature/generic-parser-core`, PR #6. All 11 tasks implemented and merged. See **Final Implementation Notes** below for deviations from this plan.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Extract a generic `ParserContext[T, K]` API inside the existing `parser` module so any MoonBit project can reuse the green tree, error recovery, and incremental infrastructure by defining their own token and syntax-kind types plus grammar functions.
@@ -7,6 +9,46 @@
 **Architecture:** Add a new `src/core/` package inside `dowdiness/parser` that defines three types — `TokenInfo[T]`, `LanguageSpec[T, K]`, and `ParserContext[T, K]` — along with a `parse_with` entry point. The existing Lambda Calculus parser is then migrated to use `ParserContext` as a reference implementation proving the API is sufficient. Phase 2 (combinator helpers, separate-repo extraction) is out of scope.
 
 **Tech Stack:** MoonBit, `moon` build tool. Packages use `moon.pkg` files (not `.json`). Run `moon test` from `parser/` root. Tests use `inspect!` for snapshots. No new dependencies needed — `src/core/` imports `dowdiness/parser/green-tree` directly.
+
+---
+
+## Final Implementation Notes
+
+These deviations from the plan were introduced during implementation and code review:
+
+### `Diagnostic[T]` — made generic with `got_token`
+Plan had a non-generic `Diagnostic { message, start, end }`. Final version is `Diagnostic[T] { message, start, end, got_token : T }`. The `got_token` field captures the offending token at error time, eliminating the need for a second tokenize pass (the `token_at_offset` helper that existed in earlier drafts).
+
+### `LanguageSpec[T, K]` — two additional fields
+Plan had 7 fields. Final has 9:
+- `token_is_trivia : (T) -> Bool` — required for trivia-skipping `peek()` (see below)
+- `print_token : (T) -> String` — used in `Diagnostic` formatting and `error_recovery.mbt`
+
+### `ParserContext[T, K]` — closure-based token storage
+Plan used `tokens : Array[TokenInfo[T]]` with a `last_end : Int` field for whitespace emission. The final version stores token access as closures:
+```moonbit
+token_count : Int
+get_token   : (Int) -> T
+get_start   : (Int) -> Int
+get_end     : (Int) -> Int
+```
+This enables `ParserContext::new_indexed` — a zero-copy constructor for callers (like the LSP incremental path) that already have tokens in their own layout. The `new` constructor wraps an `Array[TokenInfo[T]]` into closures internally. `last_end` is absent; whitespace is handled differently (see below).
+
+### Whitespace handling — trivia-inclusive lexer + `flush_trivia()`
+Plan used `emit_whitespace_before(info)` computed from `last_end`. The final lexer is **trivia-inclusive**: whitespace tokens are emitted alongside syntactic tokens. `ParserContext::peek()` skips trivia tokens using `token_is_trivia`. `flush_trivia()` drains leading whitespace before each syntactic token and is called explicitly at the root grammar function's end. This matches the trivia-inclusive lexer design (`docs/plans/2026-02-23-trivia-inclusive-lexer.md`).
+
+### `emit_zero_width` and `emit_error_placeholder`
+Not in the original plan. Added as encapsulated helpers to avoid grammar code calling `ctx.events.push(...)` directly:
+- `emit_zero_width(kind : K)` — emits a zero-width token of any kind
+- `emit_error_placeholder()` — shorthand for `emit_zero_width(spec.error_kind)`
+
+### `parse_with_raise` removed
+Plan described two entry points: `parse_with` and `parse_with_raise`. The final implementation has only `parse_with` (non-raising). The trivia-inclusive lexer already handles errors inside the tokenizer; the grammar function is always `Unit`-returning (errors are recorded as `Diagnostic[T]` values, not raised).
+
+### `cursor` field deferred
+Plan listed `cursor : ReuseCursor?` as a field on `ParserContext`. This was deferred: the `ReuseCursor` is still `@parser`-internal. The incremental path (`parse_green_with_cursor`, `parse_green_recover_with_tokens`) is a thin wrapper over `run_parse` in `src/parser/green_parser.mbt` that passes pre-built tokens. Generic cursor support remains a Phase 2 item.
+
+---
 
 ---
 

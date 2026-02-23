@@ -1,0 +1,484 @@
+// Generic parser infrastructure — ParserContext[T, K]
+
+///|
+/// Generic token with source position. T is the language-specific token type.
+pub struct TokenInfo[T] {
+  token : T
+  start : Int // byte offset, inclusive
+  end : Int // byte offset, exclusive
+} derive(Show)
+
+///|
+/// A parse diagnostic (error or warning) with source position.
+/// Stores the offending token so consumers never need to re-tokenize.
+pub struct Diagnostic[T] {
+  message : String
+  start : Int
+  end : Int
+  got_token : T
+} derive(Show)
+
+///|
+/// Describes one language to the generic parser infrastructure.
+/// Create one instance at module init — it is reused across all parses.
+///
+/// Fields:
+///   kind_to_raw     — maps your SyntaxKind to the green tree's RawKind (an Int)
+///   token_is_eof    — returns true for the end-of-input sentinel token
+///   token_is_trivia — returns true for whitespace/trivia tokens to skip in peek
+///   tokens_equal    — equality check (needed because T has no Eq constraint)
+///   print_token     — human-readable representation of T (for diagnostics)
+///   whitespace_kind — the SyntaxKind for whitespace trivia nodes in the tree
+///   error_kind      — the SyntaxKind for error tokens/nodes
+///   root_kind       — the SyntaxKind for the root node (e.g. SourceFile)
+///   eof_token       — the T value returned when past end of input
+pub struct LanguageSpec[T, K] {
+  kind_to_raw : (K) -> @green_tree.RawKind
+  token_is_eof : (T) -> Bool
+  token_is_trivia : (T) -> Bool
+  tokens_equal : (T, T) -> Bool
+  print_token : (T) -> String
+  whitespace_kind : K
+  error_kind : K
+  root_kind : K
+  eof_token : T
+}
+
+///|
+/// Construct a TokenInfo. Use this from outside the core package.
+pub fn[T] TokenInfo::new(token : T, start : Int, end : Int) -> TokenInfo[T] {
+  { token, start, end }
+}
+
+///|
+/// Construct a LanguageSpec. Use this from outside the core package.
+pub fn[T, K] LanguageSpec::new(
+  kind_to_raw : (K) -> @green_tree.RawKind,
+  token_is_eof : (T) -> Bool,
+  token_is_trivia : (T) -> Bool,
+  tokens_equal : (T, T) -> Bool,
+  print_token : (T) -> String,
+  whitespace_kind : K,
+  error_kind : K,
+  root_kind : K,
+  eof_token : T,
+) -> LanguageSpec[T, K] {
+  {
+    kind_to_raw,
+    token_is_eof,
+    token_is_trivia,
+    tokens_equal,
+    print_token,
+    whitespace_kind,
+    error_kind,
+    root_kind,
+    eof_token,
+  }
+}
+
+///|
+/// Core parser state. Grammar functions receive this and call methods on it.
+/// T = token type, K = syntax-kind type.
+///
+/// Token storage is closure-based: callers provide indexed accessors so
+/// ParserContext never needs to copy tokens into a wrapper array.
+pub struct ParserContext[T, K] {
+  spec : LanguageSpec[T, K]
+  token_count : Int
+  get_token : (Int) -> T
+  get_start : (Int) -> Int
+  get_end : (Int) -> Int
+  source : String
+  mut position : Int
+  events : @green_tree.EventBuffer
+  errors : Array[Diagnostic[T]]
+  mut error_count : Int
+  mut open_nodes : Int
+}
+
+///|
+/// Construct a ParserContext from an Array[TokenInfo[T]].
+/// Convenience wrapper — internally creates indexed accessors over the array.
+pub fn[T, K] ParserContext::new(
+  tokens : Array[TokenInfo[T]],
+  source : String,
+  spec : LanguageSpec[T, K],
+) -> ParserContext[T, K] {
+  {
+    spec,
+    token_count: tokens.length(),
+    get_token: fn(i) { tokens[i].token },
+    get_start: fn(i) { tokens[i].start },
+    get_end: fn(i) { tokens[i].end },
+    source,
+    position: 0,
+    events: @green_tree.EventBuffer::new(),
+    errors: [],
+    error_count: 0,
+    open_nodes: 0,
+  }
+}
+
+///|
+/// Construct a ParserContext from indexed accessor closures.
+/// Use this to avoid allocating a wrapper Array[TokenInfo[T]] when the
+/// caller already has tokens in a different layout (e.g. @token.TokenInfo).
+pub fn[T, K] ParserContext::new_indexed(
+  token_count : Int,
+  get_token : (Int) -> T,
+  get_start : (Int) -> Int,
+  get_end : (Int) -> Int,
+  source : String,
+  spec : LanguageSpec[T, K],
+) -> ParserContext[T, K] {
+  {
+    spec,
+    token_count,
+    get_token,
+    get_start,
+    get_end,
+    source,
+    position: 0,
+    events: @green_tree.EventBuffer::new(),
+    errors: [],
+    error_count: 0,
+    open_nodes: 0,
+  }
+}
+
+///|
+/// Return the next non-trivia token without consuming it.
+pub fn[T, K] ParserContext::peek(self : ParserContext[T, K]) -> T {
+  let mut pos = self.position
+  while pos < self.token_count {
+    let t = (self.get_token)(pos)
+    if (self.spec.token_is_trivia)(t) {
+      pos = pos + 1
+    } else {
+      return t
+    }
+  }
+  self.spec.eof_token
+}
+
+///|
+/// Return the TokenInfo for the next non-trivia token.
+pub fn[T, K] ParserContext::peek_info(
+  self : ParserContext[T, K],
+) -> TokenInfo[T] {
+  let mut pos = self.position
+  while pos < self.token_count {
+    let token = (self.get_token)(pos)
+    if (self.spec.token_is_trivia)(token) {
+      pos = pos + 1
+    } else {
+      return { token, start: (self.get_start)(pos), end: (self.get_end)(pos) }
+    }
+  }
+  let end = self.source.length()
+  { token: self.spec.eof_token, start: end, end }
+}
+
+///|
+/// Return true if the current non-trivia token equals the given token.
+pub fn[T, K] ParserContext::at(self : ParserContext[T, K], token : T) -> Bool {
+  (self.spec.tokens_equal)(self.peek(), token)
+}
+
+///|
+/// Return true if at end of input (ignoring trivia).
+pub fn[T, K] ParserContext::at_eof(self : ParserContext[T, K]) -> Bool {
+  (self.spec.token_is_eof)(self.peek())
+}
+
+///|
+/// Extract source text for a token from the source string.
+/// Returns "" on invalid spans rather than aborting — span errors (whether
+/// from a tokenizer bug or a grammar invariant violation) produce an empty
+/// leaf in the tree instead of crashing a long-running host process or LSP.
+pub fn[T, K] ParserContext::token_text(
+  self : ParserContext[T, K],
+  info : TokenInfo[T],
+) -> String {
+  let slice : StringView = self.source[info.start:info.end] catch {
+      _ => return ""
+    }
+  slice.to_string()
+}
+
+///|
+/// Extract source text at a token index. Internal helper to avoid constructing
+/// intermediate TokenInfo structs on the hot path.
+/// Returns "" on invalid spans (same policy as token_text).
+fn[T, K] ParserContext::text_at(
+  self : ParserContext[T, K],
+  pos : Int,
+) -> String {
+  let start = (self.get_start)(pos)
+  let end = (self.get_end)(pos)
+  let slice : StringView = self.source[start:end] catch {
+      _ => return ""
+    }
+  slice.to_string()
+}
+
+///|
+/// Emit all consecutive trivia tokens at current position to the event stream,
+/// advancing position past each one. Call this before emitting syntactic tokens,
+/// and at the end of the top-level grammar function before returning.
+pub fn[T, K] ParserContext::flush_trivia(self : ParserContext[T, K]) -> Unit {
+  while self.position < self.token_count {
+    let token = (self.get_token)(self.position)
+    if (self.spec.token_is_trivia)(token) {
+      let text = self.text_at(self.position)
+      self.events.push(
+        @green_tree.ParseEvent::Token(
+          (self.spec.kind_to_raw)(self.spec.whitespace_kind),
+          text,
+        ),
+      )
+      self.position = self.position + 1
+    } else {
+      break
+    }
+  }
+}
+
+///|
+/// Consume the current token and emit it as a leaf in the green tree.
+/// Automatically flushes leading trivia before the token.
+pub fn[T, K] ParserContext::emit_token(
+  self : ParserContext[T, K],
+  kind : K,
+) -> Unit {
+  if self.at_eof() {
+    abort(
+      "emit_token: called at EOF — grammar tried to consume past end of input",
+    )
+  }
+  self.flush_trivia()
+  let text = self.text_at(self.position)
+  self.events.push(
+    @green_tree.ParseEvent::Token((self.spec.kind_to_raw)(kind), text),
+  )
+  self.position = self.position + 1
+}
+
+///|
+/// Open a new node. Must be followed by finish_node().
+pub fn[T, K] ParserContext::start_node(
+  self : ParserContext[T, K],
+  kind : K,
+) -> Unit {
+  self.open_nodes = self.open_nodes + 1
+  self.events.push(@green_tree.StartNode((self.spec.kind_to_raw)(kind)))
+}
+
+///|
+/// Close the most recently opened node.
+pub fn[T, K] ParserContext::finish_node(self : ParserContext[T, K]) -> Unit {
+  if self.open_nodes <= 0 {
+    abort("finish_node: no matching start_node")
+  }
+  self.open_nodes = self.open_nodes - 1
+  self.events.push(@green_tree.FinishNode)
+}
+
+///|
+/// Reserve a placeholder that can later be claimed by start_at.
+/// Used for retroactive wrapping (e.g. binary expressions, applications).
+pub fn[T, K] ParserContext::mark(self : ParserContext[T, K]) -> Int {
+  self.events.mark()
+}
+
+///|
+/// Retroactively open a node at a previously marked position.
+pub fn[T, K] ParserContext::start_at(
+  self : ParserContext[T, K],
+  mark : Int,
+  kind : K,
+) -> Unit {
+  self.events.start_at(mark, (self.spec.kind_to_raw)(kind))
+  self.open_nodes = self.open_nodes + 1
+}
+
+///|
+/// Record a diagnostic at the current position. Does not consume a token.
+/// Captures the offending token so consumers never need to re-tokenize.
+pub fn[T, K] ParserContext::error(
+  self : ParserContext[T, K],
+  msg : String,
+) -> Unit {
+  let info = self.peek_info()
+  self.errors.push({
+    message: msg,
+    start: info.start,
+    end: info.end,
+    got_token: info.token,
+  })
+  self.error_count = self.error_count + 1
+}
+
+///|
+/// Consume the current token and emit it as an error token (for error recovery).
+/// Automatically flushes leading trivia before the token.
+pub fn[T, K] ParserContext::bump_error(self : ParserContext[T, K]) -> Unit {
+  self.flush_trivia()
+  let text = self.text_at(self.position)
+  self.events.push(
+    @green_tree.ParseEvent::Token(
+      (self.spec.kind_to_raw)(self.spec.error_kind),
+      text,
+    ),
+  )
+  self.position = self.position + 1
+}
+
+///|
+/// Emit a zero-width token (no source text consumed, position unchanged).
+/// Use this for synthetic tokens inserted during error recovery when the
+/// grammar needs to represent a missing token without consuming input.
+pub fn[T, K] ParserContext::emit_zero_width(
+  self : ParserContext[T, K],
+  kind : K,
+) -> Unit {
+  self.events.push(
+    @green_tree.ParseEvent::Token((self.spec.kind_to_raw)(kind), ""),
+  )
+}
+
+///|
+/// Emit a zero-width error placeholder (no source text consumed).
+/// Shorthand for emit_zero_width(spec.error_kind). Use this in grammar code
+/// to represent a missing or erroneous token without consuming input.
+pub fn[T, K] ParserContext::emit_error_placeholder(
+  self : ParserContext[T, K],
+) -> Unit {
+  self.emit_zero_width(self.spec.error_kind)
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+///|
+test "TokenInfo stores token with position" {
+  let info : TokenInfo[String] = { token: "hello", start: 0, end: 5 }
+  inspect(info.start, content="0")
+  inspect(info.end, content="5")
+  inspect(info.token, content="hello")
+}
+
+///|
+test "Diagnostic stores message, position, and token" {
+  let d : Diagnostic[String] = {
+    message: "unexpected token",
+    start: 3,
+    end: 7,
+    got_token: "bad",
+  }
+  inspect(d.message, content="unexpected token")
+  inspect(d.got_token, content="bad")
+}
+
+///|
+fn make_test_fixtures() -> (LanguageSpec[String, Int], Array[TokenInfo[String]]) {
+  let spec : LanguageSpec[String, Int] = {
+    kind_to_raw: fn(k) { @green_tree.RawKind(k) },
+    token_is_eof: fn(t) { t == "EOF" },
+    token_is_trivia: fn(_) { false },
+    tokens_equal: fn(a, b) { a == b },
+    print_token: fn(t) { t },
+    whitespace_kind: 0,
+    error_kind: 1,
+    root_kind: 2,
+    eof_token: "EOF",
+  }
+  let tokens = [
+    { token: "a", start: 0, end: 1 },
+    { token: "b", start: 1, end: 2 },
+  ]
+  (spec, tokens)
+}
+
+///|
+test "ParserContext can be constructed" {
+  let (spec, tokens) = make_test_fixtures()
+  let ctx = ParserContext::new(tokens, "ab", spec)
+  inspect(ctx.position, content="0")
+}
+
+///|
+test "peek returns current token" {
+  let (spec, tokens) = make_test_fixtures()
+  let ctx = ParserContext::new(tokens, "ab", spec)
+  inspect(ctx.peek(), content="a")
+}
+
+///|
+test "peek returns eof when past end" {
+  let (spec, _) = make_test_fixtures()
+  let ctx = ParserContext::new([], "", spec)
+  inspect(ctx.peek(), content="EOF")
+}
+
+///|
+test "peek skips trivia tokens" {
+  let spec : LanguageSpec[String, Int] = {
+    kind_to_raw: fn(k) { @green_tree.RawKind(k) },
+    token_is_eof: fn(t) { t == "EOF" },
+    token_is_trivia: fn(t) { t == " " },
+    tokens_equal: fn(a, b) { a == b },
+    print_token: fn(t) { t },
+    whitespace_kind: 0,
+    error_kind: 1,
+    root_kind: 2,
+    eof_token: "EOF",
+  }
+  let tokens = [
+    { token: " ", start: 0, end: 1 },
+    { token: " ", start: 1, end: 2 },
+    { token: "x", start: 2, end: 3 },
+  ]
+  let ctx = ParserContext::new(tokens, "  x", spec)
+  inspect(ctx.peek(), content="x")
+}
+
+///|
+test "at matches current token" {
+  let (spec, tokens) = make_test_fixtures()
+  let ctx = ParserContext::new(tokens, "ab", spec)
+  inspect(ctx.at("a"), content="true")
+  inspect(ctx.at("b"), content="false")
+}
+
+// ─── parse_with ───────────────────────────────────────────────────────────────
+
+///|
+/// Parse a source string using the given language spec and grammar function.
+/// Returns the immutable green tree and any parse diagnostics.
+///
+/// tokenize — converts source to a flat token array (including trivia tokens)
+/// grammar  — the entry-point parse function; calls ctx methods to build the tree
+pub fn[T, K] parse_with(
+  source : String,
+  spec : LanguageSpec[T, K],
+  tokenize : (String) -> Array[TokenInfo[T]],
+  grammar : (ParserContext[T, K]) -> Unit,
+) -> (@green_tree.GreenNode, Array[Diagnostic[T]]) {
+  let tokens = tokenize(source)
+  let ctx = ParserContext::new(tokens, source, spec)
+  grammar(ctx)
+  ctx.flush_trivia()
+  if ctx.open_nodes != 0 {
+    abort(
+      "parse_with: grammar left " +
+      ctx.open_nodes.to_string() +
+      " unclosed nodes",
+    )
+  }
+  let tree = @green_tree.build_tree(
+    ctx.events.events,
+    (spec.kind_to_raw)(spec.root_kind),
+    trivia_kind=Some((spec.kind_to_raw)(spec.whitespace_kind)),
+  )
+  (tree, ctx.errors)
+}
