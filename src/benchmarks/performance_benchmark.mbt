@@ -429,7 +429,8 @@ test "parse_green_recover - warm interner, large" (b : @bench.T) {
 //
 // Directly measures the parser-level speedup from subtree reuse.
 // Uses parse_green_recover_with_tokens (no cursor, cursor=None) as the
-// baseline — same pre-tokenized input, pure parse overhead, no lexing cost.
+// baseline with matched cursor-construction overhead inside the timed loop.
+// This keeps comparisons focused on reuse behavior rather than cursor setup.
 // parse_green_with_cursor uses a live ReuseCursor so ctx.node() can skip
 // unchanged subtrees.  The 110-token corpus (55 integers + 54 plus signs)
 // gives 54 reusable IntLiteral nodes for the "edit at end" case and ~54
@@ -444,11 +445,18 @@ test "parse_green_recover - warm interner, large" (b : @bench.T) {
 /// Same tokens passed directly — no tokenization cost in this measurement.
 test "phase3: full green reparse, no cursor - 110 tokens" (b : @bench.T) {
   let source = make_token_source()
-  let tokens = @lexer.tokenize(source) catch {
+  let (old_tree, _) = @parse.parse_green_recover(source) catch {
     _ => abort("setup failed")
   }
+  let tokens = @lexer.tokenize(source) catch { _ => abort("setup failed") }
   b.bench(fn() {
-    let (tree, _, _) = @parse.parse_green_recover_with_tokens(source, tokens, None)
+    // Match the cursor path's per-iteration setup cost for fair comparison.
+    let _ = @parse.make_reuse_cursor(old_tree, 261, 263, tokens)
+    let (tree, _, _) = @parse.parse_green_recover_with_tokens(
+      source,
+      tokens,
+      None,
+    )
     b.keep(tree)
   })
 }
@@ -468,7 +476,9 @@ test "phase3: cursor reuse, edit at end - 110 tokens" (b : @bench.T) {
   }
   b.bench(fn() {
     let cursor = @parse.make_reuse_cursor(old_tree, 261, 263, new_tokens)
-    let (tree, _, _) = @parse.parse_green_with_cursor(new_source, new_tokens, cursor)
+    let (tree, _, _) = @parse.parse_green_with_cursor(
+      new_source, new_tokens, cursor,
+    )
     b.keep(tree)
   })
 }
@@ -488,7 +498,9 @@ test "phase3: cursor reuse, edit at start - 110 tokens" (b : @bench.T) {
   }
   b.bench(fn() {
     let cursor = @parse.make_reuse_cursor(old_tree, 0, 1, new_tokens)
-    let (tree, _, _) = @parse.parse_green_with_cursor(new_source, new_tokens, cursor)
+    let (tree, _, _) = @parse.parse_green_with_cursor(
+      new_source, new_tokens, cursor,
+    )
     b.keep(tree)
   })
 }

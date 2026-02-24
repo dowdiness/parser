@@ -645,3 +645,177 @@ test "ParserContext reuse: later EOF emission replaces replayed stale got_token"
   inspect(ctx.errors[0].message, content="missing trailing expression")
   inspect(ctx.errors[0].got_token, content="TokEof")
 }
+
+///|
+test "ReuseCursor::try_reuse: post-damage node is not reused when source shrinks" {
+  fn grammar_two_numbers(ctx : ParserContext[TestTok, TestKind]) -> Unit {
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected first number")
+      }
+    })
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected second number")
+      }
+    })
+  }
+
+  let old_src = "123 4"
+  let new_src = "1 4"
+  let (old_tree, _) = parse_with(
+    old_src, test_spec, test_tokenize, grammar_two_numbers,
+  )
+  let new_toks = test_tokenize(new_src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    0, // old damage start (replace "123")
+    3, // old damage end
+    new_toks.length(),
+    fn(i) { new_toks[i].token },
+    fn(i) { new_toks[i].start },
+    test_spec,
+  )
+  // Second KExpr node starts at old offset 3 (space+Num(4), trivia folded in).
+  // In the new source it would sit at offset 2 (space+Num(4) after "1 ").
+  // seek_node_at(2, KExpr) finds nothing in the old tree → reuse correctly fails.
+  let result = cursor.try_reuse(test_kind_raw(KExpr), 2, 2)
+  inspect(result is None, content="true")
+}
+
+///|
+test "ReuseCursor::try_reuse: post-damage node is not reused when source grows" {
+  fn grammar_two_numbers(ctx : ParserContext[TestTok, TestKind]) -> Unit {
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected first number")
+      }
+    })
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected second number")
+      }
+    })
+  }
+
+  let old_src = "1 4"
+  let new_src = "123 4"
+  let (old_tree, _) = parse_with(
+    old_src, test_spec, test_tokenize, grammar_two_numbers,
+  )
+  let new_toks = test_tokenize(new_src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    0, // old damage start (replace "1")
+    1, // old damage end
+    new_toks.length(),
+    fn(i) { new_toks[i].token },
+    fn(i) { new_toks[i].start },
+    test_spec,
+  )
+  // Second KExpr node starts at old offset 1 (space+Num(4), trivia folded in).
+  // In the new source it would sit at offset 4 (space+Num(4) after "123 ").
+  // seek_node_at(4, KExpr) finds nothing in the old tree → reuse correctly fails.
+  let result = cursor.try_reuse(test_kind_raw(KExpr), 4, 2)
+  inspect(result is None, content="true")
+}
+
+///|
+test "ReuseCursor::try_reuse: reuses multiple undamaged post-damage nodes" {
+  fn grammar_four_numbers(ctx : ParserContext[TestTok, TestKind]) -> Unit {
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected first number")
+      }
+    })
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected second number")
+      }
+    })
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected third number")
+      }
+    })
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected fourth number")
+      }
+    })
+  }
+
+  let old_src = "1 2 3 4"
+  let new_src = "9 2 3 4"
+  let (old_tree, _) = parse_with(
+    old_src, test_spec, test_tokenize, grammar_four_numbers,
+  )
+  let new_toks = test_tokenize(new_src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    0, // first number changed from 1 -> 9
+    1,
+    new_toks.length(),
+    fn(i) { new_toks[i].token },
+    fn(i) { new_toks[i].start },
+    test_spec,
+  )
+  // Second KExpr starts at offset 1 (space+Num(2)); token_pos=2 is the index of
+  // Num(2) in new_toks (indices 0=Num(9), 1=space, 2=Num(2), …).
+  // Third KExpr starts at offset 3 (space+Num(3)); token_pos=4 is Num(3).
+  // Both nodes are outside damage [0,1) and unchanged → both reused.
+  let second = cursor.try_reuse(test_kind_raw(KExpr), 1, 2)
+  match second {
+    Some(n) => cursor.advance_past(n)
+    None => ()
+  }
+  let third = cursor.try_reuse(test_kind_raw(KExpr), 3, 4)
+  inspect(second is Some(_), content="true")
+  inspect(third is Some(_), content="true")
+}
+
+///|
+test "ReuseCursor::try_reuse: rejects integer boundary merge by follow-token check" {
+  fn grammar_two_numbers(ctx : ParserContext[TestTok, TestKind]) -> Unit {
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected first number")
+      }
+    })
+    ctx.node(KExpr, fn() {
+      match ctx.peek() {
+        Num(_) => ctx.emit_token(KNum)
+        _ => ctx.error("expected second number")
+      }
+    })
+  }
+
+  let old_src = "12 34"
+  let new_src = "12 3"
+  let (old_tree, _) = parse_with(
+    old_src, test_spec, test_tokenize, grammar_two_numbers,
+  )
+  let new_toks = test_tokenize(new_src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    3, // old second token span [3,5) changed from 34 -> 3
+    5,
+    new_toks.length(),
+    fn(i) { new_toks[i].token },
+    fn(i) { new_toks[i].start },
+    test_spec,
+  )
+  // Leading token matches (12), but follow token changed (34 -> 3), so reuse
+  // must be rejected by trailing_context_matches.
+  let result = cursor.try_reuse(test_kind_raw(KExpr), 0, 0)
+  inspect(result is None, content="true")
+}

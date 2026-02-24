@@ -2,11 +2,13 @@
 package "dowdiness/parser/incremental"
 
 import {
+  "dowdiness/parser/core",
   "dowdiness/parser/edit",
   "dowdiness/parser/green-tree",
   "dowdiness/parser/lexer",
   "dowdiness/parser/range",
   "dowdiness/parser/term",
+  "dowdiness/parser/token",
 }
 
 // Values
@@ -44,6 +46,7 @@ pub struct IncrementalParser {
   mut green_tree : @green-tree.GreenNode?
   mut token_buffer : @lexer.TokenBuffer?
   mut last_reuse_count : Int
+  mut last_diagnostics : Array[@core.Diagnostic[@token.Token]]
   // private fields
 }
 pub fn IncrementalParser::adjust_tree_positions(Self, @term.TermNode, @edit.Edit) -> @term.TermNode

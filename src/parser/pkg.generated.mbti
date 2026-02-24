@@ -27,11 +27,11 @@ pub fn parse_green(String) -> @green-tree.GreenNode raise
 
 pub fn parse_green_recover(String, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError
 
-pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
+pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?, prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
 
 pub fn parse_green_to_term_node(String) -> @term.TermNode raise
 
-pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
+pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind], prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
 
 pub fn parse_tree(String) -> @term.TermNode raise
 

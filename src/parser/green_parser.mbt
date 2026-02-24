@@ -35,6 +35,7 @@ fn run_parse_incremental(
   source : String,
   interner : @green_tree.Interner?,
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
+  prev_diagnostics : Array[@core.Diagnostic[@token.Token]]?,
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
   let ctx = @core.ParserContext::new_indexed(
     tokens.length(),
@@ -45,7 +46,13 @@ fn run_parse_incremental(
     lambda_spec,
   )
   match cursor {
-    Some(c) => ctx.set_reuse_cursor(c)
+    Some(c) => {
+      ctx.set_reuse_cursor(c)
+      match prev_diagnostics {
+        Some(prev) => ctx.set_reuse_diagnostics(prev)
+        None => ()
+      }
+    }
     None => ()
   }
   parse_lambda_root(ctx)
@@ -148,8 +155,9 @@ pub fn parse_green_with_cursor(
   source : String,
   tokens : Array[@token.TokenInfo],
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind],
+  prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]? = None,
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
-  run_parse_incremental(tokens, source, None, Some(cursor))
+  run_parse_incremental(tokens, source, None, Some(cursor), prev_diagnostics)
 }
 
 ///|
@@ -157,13 +165,18 @@ pub fn parse_green_with_cursor(
 ///
 /// Uses the supplied token stream directly — never re-tokenizes from source,
 /// so temporarily invalid source text does not cause a hard crash.
+///
+/// `prev_diagnostics` is only forwarded to the context when `cursor` is also
+/// `Some`. Passing `prev_diagnostics=Some(diags)` with `cursor=None` has no
+/// effect; the diagnostics are not replayed.
 pub fn parse_green_recover_with_tokens(
   source : String,
   tokens : Array[@token.TokenInfo],
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
+  prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]? = None,
   interner? : @green_tree.Interner? = None,
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
-  run_parse_incremental(tokens, source, interner, cursor)
+  run_parse_incremental(tokens, source, interner, cursor, prev_diagnostics)
 }
 
 // ─── Grammar helpers ─────────────────────────────────────────────────────────

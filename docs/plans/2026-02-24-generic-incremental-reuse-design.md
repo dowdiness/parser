@@ -1,7 +1,7 @@
 # Generic Incremental Reuse Design
 
 **Date:** 2026-02-24
-**Status:** Proposed
+**Status:** Implemented (2026-02-24)
 **Goal:** Move `ReuseCursor` into `core` as a generic `ReuseCursor[T, K]`, integrate it transparently into `ParserContext` via a `node()` combinator, so any language built on the framework gets incremental subtree reuse for free.
 
 ---
@@ -326,27 +326,29 @@ fn[T, K] ParserContext::emit_node_events(
 
 ### `advance_past_reused`
 
-`GreenNode.token_count` already stores the non-trivia leaf count, specifically for this purpose (see `green_node.mbt` comment). Advance `position` by counting down `token_count` non-trivia tokens, skipping trivia as encountered:
+Advance by byte range (`node_start + node.text_len`) rather than by
+`token_count`. This avoids over-advancing when reused subtrees contain
+zero-width non-trivia leaves (for example, error placeholders):
 
 ```moonbit
 fn[T, K] ParserContext::advance_past_reused(
   self : ParserContext[T, K],
   node : @green_tree.GreenNode,
 ) -> Unit {
-  let mut remaining = node.token_count
-  while remaining > 0 && self.position < self.token_count {
-    let tok = (self.get_token)(self.position)
+  if self.position >= self.token_count {
+    return
+  }
+  let node_end = (self.get_start)(self.position) + node.text_len
+  while self.position < self.token_count &&
+        (self.get_start)(self.position) < node_end {
     self.position = self.position + 1
-    if not (self.spec.token_is_trivia)(tok) {
-      remaining = remaining - 1
-    }
   }
 }
 ```
 
-**Why `token_count` not byte arithmetic?** Leading trivia is stored inside nodes (emitted by `flush_trivia` inside `emit_token`, which runs after `start_node`). So `node.token_count` non-trivia tokens plus any interleaved trivia exactly covers the node's full token span. No byte offset computation needed.
-
-**Why not `position += node.token_count`?** `ParserContext.position` is a raw index including trivia. `token_count` is non-trivia only. The forward scan naturally handles both.
+**Why byte-based?** `token_count` includes zero-width non-trivia leaves, but
+those consume no input tokens. Byte-range advancing matches actual source
+consumption and keeps `position` aligned.
 
 ---
 
@@ -389,7 +391,7 @@ fn[T, K] ParserContext::advance_past_reused(
 - **Dictionary passing over traits**: MoonBit's orphan rule prevents `impl @core.Trait for @token.Type` in the `parser` package. `LanguageSpec` closures avoid dependency pollution.
 - **Damage range as `(Int, Int)`, not `@range.Range`**: Avoids adding `range` package as dependency to `core`.
 - **Seek by absolute position, not non-trivia byte offset**: `seek_node_at` matches nodes by their absolute start offset. Leading trivia belongs inside nodes (placed there by `flush_trivia` inside `emit_token`). Using `get_start(position)` gives the correct anchor; a non-trivia offset would miss valid nodes.
-- **`token_count` forward scan, not byte arithmetic**: `GreenNode.token_count` exists precisely for advancing position after reuse. The forward scan handles mixed trivia/non-trivia correctly without byte offset computation.
+- **Byte-range advance, not `token_count` scan**: advancing to `node_start + node.text_len` and then scanning tokens by start offset prevents over-advance when reused trees contain zero-width non-trivia leaves.
 - **`emit_node_events` and `advance_past_reused` are separate**: Combining them recursively would advance `position` once per child node, corrupting the token stream position. Event emission is pure and recursive; position advancement happens once at the top level.
 - **`cursor.advance_past(node)` after reuse**: Keeps `ReuseCursor.current_offset` in sync so subsequent seeks correctly detect backward movement and reset if needed.
 - **Start with exact-kind reuse, add kind-agnostic later**: `node(kind, body)` covers leaf/simple nodes. `reusable(body)` is additive when needed for compound expressions.

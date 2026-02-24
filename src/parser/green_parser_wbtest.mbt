@@ -118,6 +118,40 @@ test "reuse fires: lambda body VarRef unchanged after parameter edit" {
 }
 
 ///|
+test "parse_green_with_cursor: identifier boundary merge matches full reparse" {
+  // Old: "x y" -> New: "xy" (space deleted at [1,2) in old source).
+  // Reuse must not produce a stale split; result must match full reparse.
+  let old_source = "x y"
+  let (old_tree, _) = parse_green_recover(old_source)
+  let new_source = "xy"
+  let new_tokens = @lexer.tokenize(new_source)
+  let cursor = make_reuse_cursor(old_tree, 1, 2, new_tokens)
+  let (new_tree, errors, _reuse_count) = parse_green_with_cursor(
+    new_source, new_tokens, cursor,
+  )
+  let (full_tree, _) = parse_green_recover(new_source)
+  inspect(new_tree == full_tree, content="true")
+  inspect(errors.length(), content="0")
+}
+
+///|
+test "parse_green_with_cursor: integer boundary merge matches full reparse" {
+  // Old: "1 2" -> New: "12" (space deleted at [1,2) in old source).
+  // Reuse must not keep two stale IntLiteral nodes.
+  let old_source = "1 2"
+  let (old_tree, _) = parse_green_recover(old_source)
+  let new_source = "12"
+  let new_tokens = @lexer.tokenize(new_source)
+  let cursor = make_reuse_cursor(old_tree, 1, 2, new_tokens)
+  let (new_tree, errors, _reuse_count) = parse_green_with_cursor(
+    new_source, new_tokens, cursor,
+  )
+  let (full_tree, _) = parse_green_recover(new_source)
+  inspect(new_tree == full_tree, content="true")
+  inspect(errors.length(), content="0")
+}
+
+///|
 test "parse_green_recover_with_tokens: with interner matches without" {
   let source = "λx.x"
   let tokens = @lexer.tokenize(source)
@@ -130,4 +164,44 @@ test "parse_green_recover_with_tokens: with interner matches without" {
     interner=Some(interner),
   )
   inspect(plain == interned, content="true")
+}
+
+///|
+test "parse_green_with_cursor: preserves prior diagnostic messages on reused invalid subtree" {
+  let source = "λ.x"
+  let tokens = @lexer.tokenize(source)
+  let (old_tree, old_errors) = parse_green_recover(source)
+  inspect(old_errors.length(), content="1")
+  inspect(old_errors[0].message, content="Expected parameter after λ")
+
+  let cursor = make_reuse_cursor(old_tree, 99, 99, tokens)
+  let (_, errors, reuse_count) = parse_green_with_cursor(
+    source,
+    tokens,
+    cursor,
+    prev_diagnostics=Some(old_errors),
+  )
+  inspect(reuse_count > 0, content="true")
+  inspect(errors.length(), content="1")
+  inspect(errors[0].message, content="Expected parameter after λ")
+}
+
+///|
+test "parse_green_recover_with_tokens: preserves prior diagnostic messages on reused invalid subtree" {
+  let source = "λ.x"
+  let tokens = @lexer.tokenize(source)
+  let (old_tree, old_errors) = parse_green_recover(source)
+  inspect(old_errors.length(), content="1")
+  inspect(old_errors[0].message, content="Expected parameter after λ")
+
+  let cursor = make_reuse_cursor(old_tree, 99, 99, tokens)
+  let (_, errors, reuse_count) = parse_green_recover_with_tokens(
+    source,
+    tokens,
+    Some(cursor),
+    prev_diagnostics=Some(old_errors),
+  )
+  inspect(reuse_count > 0, content="true")
+  inspect(errors.length(), content="1")
+  inspect(errors[0].message, content="Expected parameter after λ")
 }

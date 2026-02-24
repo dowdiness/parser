@@ -10,7 +10,7 @@
 /// arguments. Two impls suffice — no stdlib binary_search is available in
 /// MoonBit, and stdlib exact-match search would require Compare on full elements
 /// rather than on an extracted key field.
-trait OffsetIndexed {
+priv trait OffsetIndexed {
   /// Total number of elements in the sorted sequence.
   length(Self) -> Int
   /// The sort key (byte offset) at index i. Must be non-decreasing in i.
@@ -30,11 +30,11 @@ trait OffsetIndexed {
 ///
 /// Note: uses < rather than subtraction for comparison to avoid integer
 /// overflow on large byte offsets.
-pub fn[S : OffsetIndexed] lower_bound(source : S, target : Int) -> Int {
+fn[S : OffsetIndexed] lower_bound(source : S, target : Int) -> Int {
   let mut lo = 0
   let mut hi = source.length()
   while lo < hi {
-    let mid = (lo + hi) / 2
+    let mid = lo + (hi - lo) / 2
     if source.offset_at(mid) < target {
       lo = mid + 1 // mid is too small; exclude it
     } else {
@@ -375,6 +375,8 @@ pub fn[T, K] ParserContext::start_at(
 ///|
 /// Record a diagnostic at the current position. Does not consume a token.
 /// Captures the offending token so consumers never need to re-tokenize.
+/// If an equivalent diagnostic (same message/start/end) already exists, this
+/// updates the stored token payload instead of appending a duplicate entry.
 pub fn[T, K] ParserContext::error(
   self : ParserContext[T, K],
   msg : String,

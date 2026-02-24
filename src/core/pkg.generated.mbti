@@ -6,8 +6,6 @@ import {
 }
 
 // Values
-pub fn[S : OffsetIndexed] lower_bound(S, Int) -> Int
-
 pub fn[T, K] parse_with(String, LanguageSpec[T, K], (String) -> Array[TokenInfo[T]], (ParserContext[T, K]) -> Unit) -> (@green-tree.GreenNode, Array[Diagnostic[T]])
 
 // Errors
@@ -111,5 +109,4 @@ pub impl[T : Show] Show for TokenInfo[T]
 // Type aliases
 
 // Traits
-trait OffsetIndexed
 

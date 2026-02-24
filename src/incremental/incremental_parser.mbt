@@ -24,6 +24,7 @@ pub struct IncrementalParser {
   mut green_tree : @green_tree.GreenNode? // Current green tree (for subtree reuse)
   mut token_buffer : @lexer.TokenBuffer? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
+  mut last_diagnostics : Array[@core.Diagnostic[@token.Token]] // Prior parse diagnostics for reuse replay
   priv interner : @green_tree.Interner // session-scoped token intern table
 }
 
@@ -36,6 +37,7 @@ pub fn IncrementalParser::new(source : String) -> IncrementalParser {
     green_tree: None,
     token_buffer: None,
     last_reuse_count: 0,
+    last_diagnostics: [],
     interner: @green_tree.Interner::new(),
   }
 }
@@ -64,12 +66,13 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @term.TermNode {
     let buffer = @lexer.TokenBuffer::new(self.source)
     self.token_buffer = Some(buffer)
     // Parse through green tree for subtree reuse support
-    let (green, _diagnostics) = @parse.parse_green_recover(
+    let (green, diagnostics) = @parse.parse_green_recover(
       self.source,
       interner=Some(self.interner),
     )
     self.green_tree = Some(green)
     self.last_reuse_count = 0
+    self.last_diagnostics = diagnostics
     let parsed_tree = @parse.green_to_term_node(green, 0, Ref::new(0))
     parsed_tree
   } catch {
@@ -78,6 +81,7 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @term.TermNode {
       self.green_tree = None
       self.token_buffer = None
       self.last_reuse_count = 0
+      self.last_diagnostics = []
       @term.TermNode::error(error_msg, 0, 0)
     }
   }
@@ -111,6 +115,7 @@ pub fn IncrementalParser::edit(
           self.green_tree = None
           self.token_buffer = None
           self.last_reuse_count = 0
+          self.last_diagnostics = []
           return tree
         }
       }
@@ -124,6 +129,7 @@ pub fn IncrementalParser::edit(
           self.green_tree = None
           self.token_buffer = None
           self.last_reuse_count = 0
+          self.last_diagnostics = []
           return tree
         }
       }
@@ -196,16 +202,18 @@ fn IncrementalParser::incremental_reparse(
   }
 
   // Parse with cursor-based reuse
-  let (new_green, _diagnostics, reuse_count) = @parse.parse_green_recover_with_tokens(
+  let (new_green, diagnostics, reuse_count) = @parse.parse_green_recover_with_tokens(
     source,
     tokens,
     cursor,
+    prev_diagnostics=Some(self.last_diagnostics),
     interner=Some(self.interner),
   )
 
   // Update stored green tree and reuse stats
   self.green_tree = Some(new_green)
   self.last_reuse_count = reuse_count
+  self.last_diagnostics = diagnostics
 
   // Convert to TermNode
   @parse.green_to_term_node(new_green, 0, Ref::new(0))
