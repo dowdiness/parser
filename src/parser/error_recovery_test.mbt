@@ -3,7 +3,7 @@
 ///|
 test "parse_with_error_recovery succeeds on valid input" {
   let (tree, errors) = parse_with_error_recovery("42")
-  inspect(@term.print_term_node(tree), content="42")
+  inspect(@ast.print_ast_node(tree), content="42")
   inspect(errors.length(), content="0")
 }
 
@@ -16,7 +16,7 @@ test "parse_with_error_recovery handles parse error" {
 
   // Tree should be a partial lambda (with empty param, not just an error node)
   let expected = "(λ. x)"
-  inspect(@term.print_term_node(tree), content=expected)
+  inspect(@ast.print_ast_node(tree), content=expected)
 }
 
 ///|
@@ -28,7 +28,7 @@ test "parse_with_error_recovery handles tokenization error" {
 
   // Should be error node
   match tree.kind {
-    @term.TermKind::Error(msg) =>
+    @ast.AstKind::Error(msg) =>
       inspect(msg.contains("Tokenization"), content="true")
     _ => inspect(false, content="true")
   }
@@ -38,14 +38,14 @@ test "parse_with_error_recovery handles tokenization error" {
 test "has_errors detects error nodes" {
   let valid_tree = parse_tree("42")
   inspect(has_errors(valid_tree), content="false")
-  let error_tree = @term.TermNode::error("test error", 0, 0)
+  let error_tree = @ast.AstNode::error("test error", 0, 0)
   inspect(has_errors(error_tree), content="true")
 }
 
 ///|
 test "collect_errors finds all error messages" {
   // Create a tree with an error node
-  let error_node = @term.TermNode::error("test error", 0, 0)
+  let error_node = @ast.AstNode::error("test error", 0, 0)
   let errors = collect_errors(error_node)
   inspect(errors.length(), content="1")
   inspect(errors[0], content="test error")
@@ -93,7 +93,7 @@ test "error recovery: if without else" {
   inspect(errors.length() > 0, content="true")
 
   // Should have partial IfExpr
-  inspect(tree.kind is @term.TermKind::If, content="true")
+  inspect(tree.kind is @ast.AstKind::If, content="true")
 }
 
 ///|
@@ -115,10 +115,7 @@ test "error recovery: valid input identical to parse_tree" {
   for input in inputs {
     let direct = parse_tree(input)
     let (recovered, _) = parse_with_error_recovery(input)
-    inspect(
-      @term.print_term_node(recovered),
-      content=@term.print_term_node(direct),
-    )
+    inspect(@ast.print_ast_node(recovered), content=@ast.print_ast_node(direct))
   }
 }
 

@@ -6,25 +6,25 @@
 //   dowdiness/parser/token        - Token, TokenInfo
 //   dowdiness/parser/range        - Range
 //   dowdiness/parser/edit         - Edit
-//   dowdiness/parser/term         - Term, TermNode, TermKind, Bop
+//   dowdiness/parser/ast          - Ast, AstNode, AstKind, Bop
 //   dowdiness/parser/lexer        - tokenize, TokenBuffer
 //   dowdiness/parser/syntax       - CstNode, CstToken, SyntaxKind
 //   dowdiness/parser/parser       - parse, parse_tree, parse_with_error_recovery
 //   dowdiness/parser/incremental  - IncrementalParser, DamageTracker
 //   dowdiness/parser/crdt         - CRDTNode, ParsedDocument
-//   dowdiness/parser/viz          - term_node_to_dot
+//   dowdiness/parser/viz          - ast_node_to_dot
 
 // ── Parsing ──────────────────────────────────────────────────
 
 ///|
-/// Parse a source string into an abstract term.
-pub fn parse(source : String) -> @term.Term raise {
+/// Parse a source string into an abstract syntax tree (Ast).
+pub fn parse(source : String) -> @ast.Ast raise {
   @parse.parse(source)
 }
 
 ///|
-/// Parse a source string into a concrete term tree with positions.
-pub fn parse_tree(source : String) -> @term.TermNode raise {
+/// Parse a source string into a concrete AST tree with positions.
+pub fn parse_tree(source : String) -> @ast.AstNode raise {
   @parse.parse_tree(source)
 }
 
@@ -32,7 +32,7 @@ pub fn parse_tree(source : String) -> @term.TermNode raise {
 /// Parse a source string with error recovery, returning a tree and diagnostics.
 pub fn parse_with_error_recovery(
   source : String,
-) -> (@term.TermNode, Array[String]) {
+) -> (@ast.AstNode, Array[String]) {
   @parse.parse_with_error_recovery(source)
 }
 
@@ -55,16 +55,16 @@ pub fn incremental(source : String) -> @incremental.IncrementalParser {
 // ── Visualization ────────────────────────────────────────────
 
 ///|
-/// Convert a term node tree to DOT format for Graphviz visualization.
-pub fn term_node_to_dot(node : @term.TermNode) -> String {
-  @viz.term_node_to_dot(node)
+/// Convert a AST node tree to DOT format for Graphviz visualization.
+pub fn ast_node_to_dot(node : @ast.AstNode) -> String {
+  @viz.ast_node_to_dot(node)
 }
 
 // ── CRDT ─────────────────────────────────────────────────────
 
 ///|
-/// Convert a term node tree to a CRDT representation.
-pub fn ast_to_crdt(node : @term.TermNode) -> @crdt.CRDTNode {
+/// Convert a AST node tree to a CRDT representation.
+pub fn ast_to_crdt(node : @ast.AstNode) -> @crdt.CRDTNode {
   @crdt.ast_to_crdt(node)
 }
 

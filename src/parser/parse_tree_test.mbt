@@ -3,7 +3,7 @@
 ///|
 test "parse_tree simple integer" {
   let node = parse_tree("42")
-  let printed = @term.print_term_node(node)
+  let printed = @ast.print_ast_node(node)
   inspect(printed, content="42")
   inspect(node.start, content="0")
   inspect(node.end, content="2")
@@ -12,7 +12,7 @@ test "parse_tree simple integer" {
 ///|
 test "parse_tree simple variable" {
   let node = parse_tree("x")
-  let printed = @term.print_term_node(node)
+  let printed = @ast.print_ast_node(node)
   inspect(printed, content="x")
   inspect(node.start, content="0")
   inspect(node.end, content="1")
@@ -21,7 +21,7 @@ test "parse_tree simple variable" {
 ///|
 test "parse_tree identity function" {
   let node = parse_tree("λx.x")
-  let printed = @term.print_term_node(node)
+  let printed = @ast.print_ast_node(node)
   inspect(printed, content="(λx. x)")
   inspect(node.start, content="0")
   // Should span from λ to the end of body
@@ -31,7 +31,7 @@ test "parse_tree identity function" {
 ///|
 test "parse_tree binary operator" {
   let node = parse_tree("1 + 2")
-  let printed = @term.print_term_node(node)
+  let printed = @ast.print_ast_node(node)
   inspect(printed, content="(1 + 2)")
   inspect(node.children.length(), content="2")
   // Check left operand
@@ -43,7 +43,7 @@ test "parse_tree binary operator" {
 ///|
 test "parse_tree application" {
   let node = parse_tree("f x")
-  let printed = @term.print_term_node(node)
+  let printed = @ast.print_ast_node(node)
   inspect(printed, content="(f x)")
   inspect(node.children.length(), content="2")
 }
@@ -51,7 +51,7 @@ test "parse_tree application" {
 ///|
 test "parse_tree if-then-else" {
   let node = parse_tree("if x then y else z")
-  let printed = @term.print_term_node(node)
+  let printed = @ast.print_ast_node(node)
   inspect(printed, content="if x then y else z")
   inspect(node.children.length(), content="3")
 }
@@ -59,7 +59,7 @@ test "parse_tree if-then-else" {
 ///|
 test "parse_tree complex expression" {
   let node = parse_tree("λf.λx.f x")
-  let printed = @term.print_term_node(node)
+  let printed = @ast.print_ast_node(node)
   inspect(printed.contains("λf"), content="true")
   inspect(printed.contains("λx"), content="true")
   // Outer lambda should have one child (the inner lambda)

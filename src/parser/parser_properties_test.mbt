@@ -44,7 +44,7 @@ test "property: positions are within bounds" {
 }
 
 ///|
-fn check_positions(node : @term.TermNode, max_len : Int) -> Unit raise {
+fn check_positions(node : @ast.AstNode, max_len : Int) -> Unit raise {
   // Verify positions are within bounds
   assert_true(node.start >= 0)
   assert_true(node.end <= max_len)
@@ -71,16 +71,16 @@ test "property: ast structure is well-formed" {
 }
 
 ///|
-fn check_well_formed(node : @term.TermNode) -> Unit raise {
+fn check_well_formed(node : @ast.AstNode) -> Unit raise {
   // Check node has correct number of children based on kind
   let valid = match node.kind {
-    @term.TermKind::Int(_) => node.children.length() == 0
-    @term.TermKind::Var(_) => node.children.length() == 0
-    @term.TermKind::Lam(_) => node.children.length() <= 1 // Body or error
-    @term.TermKind::App => node.children.length() <= 2 // Left, right
-    @term.TermKind::Bop(_) => node.children.length() <= 2 // Left, right
-    @term.TermKind::If => node.children.length() <= 3 // Cond, then, else
-    @term.TermKind::Error(_) => true // Error nodes can have any children
+    @ast.AstKind::Int(_) => node.children.length() == 0
+    @ast.AstKind::Var(_) => node.children.length() == 0
+    @ast.AstKind::Lam(_) => node.children.length() <= 1 // Body or error
+    @ast.AstKind::App => node.children.length() <= 2 // Left, right
+    @ast.AstKind::Bop(_) => node.children.length() <= 2 // Left, right
+    @ast.AstKind::If => node.children.length() <= 3 // Cond, then, else
+    @ast.AstKind::Error(_) => true // Error nodes can have any children
   }
   assert_true(valid)
 
@@ -134,7 +134,7 @@ test "property: integers parse as Int nodes" {
 
       // Should be an Int node (not an error)
       match ast.kind {
-        @term.TermKind::Int(_) => ()
+        @ast.AstKind::Int(_) => ()
         _ => abort("Integer literal should parse as Int node")
       }
     } catch {
@@ -244,16 +244,16 @@ test "property: parser is deterministic" {
 }
 
 ///|
-fn ast_structure_equal(a : @term.TermNode, b : @term.TermNode) -> Bool {
+fn ast_structure_equal(a : @ast.AstNode, b : @ast.AstNode) -> Bool {
   // Check kind matches
   let kind_matches = match (a.kind, b.kind) {
-    (@term.TermKind::Int(n1), @term.TermKind::Int(n2)) => n1 == n2
-    (@term.TermKind::Var(x1), @term.TermKind::Var(x2)) => x1 == x2
-    (@term.TermKind::Lam(p1), @term.TermKind::Lam(p2)) => p1 == p2
-    (@term.TermKind::App, @term.TermKind::App) => true
-    (@term.TermKind::Bop(op1), @term.TermKind::Bop(op2)) => op1 == op2
-    (@term.TermKind::If, @term.TermKind::If) => true
-    (@term.TermKind::Error(_), @term.TermKind::Error(_)) => true
+    (@ast.AstKind::Int(n1), @ast.AstKind::Int(n2)) => n1 == n2
+    (@ast.AstKind::Var(x1), @ast.AstKind::Var(x2)) => x1 == x2
+    (@ast.AstKind::Lam(p1), @ast.AstKind::Lam(p2)) => p1 == p2
+    (@ast.AstKind::App, @ast.AstKind::App) => true
+    (@ast.AstKind::Bop(op1), @ast.AstKind::Bop(op2)) => op1 == op2
+    (@ast.AstKind::If, @ast.AstKind::If) => true
+    (@ast.AstKind::Error(_), @ast.AstKind::Error(_)) => true
     _ => false
   }
   if not(kind_matches) {
@@ -299,7 +299,7 @@ test "property: node ids are unique" {
 }
 
 ///|
-fn collect_node_ids(node : @term.TermNode, ids : Array[Int]) -> Unit {
+fn collect_node_ids(node : @ast.AstNode, ids : Array[Int]) -> Unit {
   ids.push(node.node_id)
   for child in node.children {
     collect_node_ids(child, ids)

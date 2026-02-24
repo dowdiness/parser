@@ -2,12 +2,12 @@
 package "dowdiness/parser/incremental"
 
 import {
+  "dowdiness/parser/ast",
   "dowdiness/parser/core",
   "dowdiness/parser/edit",
   "dowdiness/parser/lexer",
   "dowdiness/parser/range",
   "dowdiness/parser/seam",
-  "dowdiness/parser/term",
   "dowdiness/parser/token",
 }
 
@@ -33,7 +33,7 @@ pub struct DamageTracker {
 pub fn DamageTracker::add_range(Self, @range.Range) -> Unit
 pub fn DamageTracker::empty() -> Self
 pub fn DamageTracker::expand_for_node(Self, Int, Int) -> Unit
-pub fn DamageTracker::expand_for_tree(Self, @term.TermNode) -> Unit
+pub fn DamageTracker::expand_for_tree(Self, @ast.AstNode) -> Unit
 pub fn DamageTracker::is_damaged(Self, @range.Range) -> Bool
 pub fn DamageTracker::is_position_damaged(Self, Int) -> Bool
 pub fn DamageTracker::new(@edit.Edit) -> Self
@@ -42,22 +42,22 @@ pub fn DamageTracker::stats(Self) -> String
 
 pub struct IncrementalParser {
   mut source : String
-  mut tree : @term.TermNode?
+  mut tree : @ast.AstNode?
   mut green_tree : @seam.CstNode?
   mut token_buffer : @lexer.TokenBuffer?
   mut last_reuse_count : Int
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]]
   // private fields
 }
-pub fn IncrementalParser::adjust_tree_positions(Self, @term.TermNode, @edit.Edit) -> @term.TermNode
-pub fn IncrementalParser::edit(Self, @edit.Edit, String) -> @term.TermNode
+pub fn IncrementalParser::adjust_tree_positions(Self, @ast.AstNode, @edit.Edit) -> @ast.AstNode
+pub fn IncrementalParser::edit(Self, @edit.Edit, String) -> @ast.AstNode
 pub fn IncrementalParser::get_last_reuse_count(Self) -> Int
 pub fn IncrementalParser::get_source(Self) -> String
-pub fn IncrementalParser::get_tree(Self) -> @term.TermNode?
+pub fn IncrementalParser::get_tree(Self) -> @ast.AstNode?
 pub fn IncrementalParser::interner_clear(Self) -> Unit
 pub fn IncrementalParser::interner_size(Self) -> Int
 pub fn IncrementalParser::new(String) -> Self
-pub fn IncrementalParser::parse(Self) -> @term.TermNode
+pub fn IncrementalParser::parse(Self) -> @ast.AstNode
 pub fn IncrementalParser::stats(Self) -> String
 
 pub struct PerfStats {

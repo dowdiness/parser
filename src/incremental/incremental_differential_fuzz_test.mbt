@@ -132,12 +132,12 @@ fn idf_apply_random_edit(
 
 ///|
 fn idf_assert_incremental_matches_full(
-  incremental : @term.TermNode,
-  full : @term.TermNode,
+  incremental : @ast.AstNode,
+  full : @ast.AstNode,
   context : String,
 ) -> Unit {
-  let incremental_str = @term.print_term_node(incremental)
-  let full_str = @term.print_term_node(full)
+  let incremental_str = @ast.print_ast_node(incremental)
+  let full_str = @ast.print_ast_node(full)
   if incremental_str != full_str {
     abort(
       "Differential mismatch (" +

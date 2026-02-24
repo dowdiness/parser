@@ -5,13 +5,13 @@
 /// Parse with error recovery (returns partial tree with error nodes)
 pub fn parse_with_error_recovery(
   input : String,
-) -> (@term.TermNode, Array[String]) {
+) -> (@ast.AstNode, Array[String]) {
   let errors : Array[String] = []
   let result = parse_cst_recover(input) catch {
     @lexer.TokenizationError(msg) => {
       let error_msg = "Tokenization error: " + msg
       errors.push(error_msg)
-      return (@term.TermNode::error(error_msg, 0, 0), errors)
+      return (@ast.AstNode::error(error_msg, 0, 0), errors)
     }
   }
   let (green, diagnostics) = result
@@ -25,7 +25,7 @@ pub fn parse_with_error_recovery(
       ")",
     )
   }
-  let tree = cst_to_term_node(green, 0, Ref::new(0))
+  let tree = cst_to_ast_node(green, 0, Ref::new(0))
   (tree, errors)
 }
 
@@ -33,7 +33,7 @@ pub fn parse_with_error_recovery(
 /// Parse pre-tokenized input with error recovery
 pub fn parse_with_error_recovery_tokens(
   tokens : Array[@token.TokenInfo],
-) -> (@term.TermNode, Array[String]) {
+) -> (@ast.AstNode, Array[String]) {
   let errors : Array[String] = []
   let tree = parse_tree_from_tokens(tokens) catch {
     ParseError(msg, token) => {
@@ -42,12 +42,12 @@ pub fn parse_with_error_recovery_tokens(
         " at token " +
         @token.print_token(token)
       errors.push(error_msg)
-      @term.TermNode::error(error_msg, 0, 0)
+      @ast.AstNode::error(error_msg, 0, 0)
     }
     e => {
       let error_msg = "Unexpected error: " + e.to_string()
       errors.push(error_msg)
-      @term.TermNode::error(error_msg, 0, 0)
+      @ast.AstNode::error(error_msg, 0, 0)
     }
   }
   (tree, errors)
@@ -55,9 +55,9 @@ pub fn parse_with_error_recovery_tokens(
 
 ///|
 /// Check if a tree contains any error nodes
-pub fn has_errors(tree : @term.TermNode) -> Bool {
+pub fn has_errors(tree : @ast.AstNode) -> Bool {
   match tree.kind {
-    @term.TermKind::Error(_) => true
+    @ast.AstKind::Error(_) => true
     _ => {
       // Check children recursively
       for child in tree.children {
@@ -72,17 +72,17 @@ pub fn has_errors(tree : @term.TermNode) -> Bool {
 
 ///|
 /// Collect all error messages from a tree
-pub fn collect_errors(tree : @term.TermNode) -> Array[String] {
+pub fn collect_errors(tree : @ast.AstNode) -> Array[String] {
   let errors : Array[String] = []
-  fn collect(node : @term.TermNode, acc : Array[String]) -> Unit {
+  fn collect(node : @ast.AstNode, acc : Array[String]) -> Unit {
     match node.kind {
-      @term.TermKind::Error(msg) => acc.push(msg)
-      @term.TermKind::Int(_)
-      | @term.TermKind::Var(_)
-      | @term.TermKind::Lam(_)
-      | @term.TermKind::App
-      | @term.TermKind::Bop(_)
-      | @term.TermKind::If => ()
+      @ast.AstKind::Error(msg) => acc.push(msg)
+      @ast.AstKind::Int(_)
+      | @ast.AstKind::Var(_)
+      | @ast.AstKind::Lam(_)
+      | @ast.AstKind::App
+      | @ast.AstKind::Bop(_)
+      | @ast.AstKind::If => ()
     }
     for child in node.children {
       collect(child, acc)

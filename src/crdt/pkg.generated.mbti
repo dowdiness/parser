@@ -2,14 +2,14 @@
 package "dowdiness/parser/crdt"
 
 import {
+  "dowdiness/parser/ast",
   "dowdiness/parser/edit",
   "dowdiness/parser/incremental",
-  "dowdiness/parser/term",
   "moonbitlang/core/hashmap",
 }
 
 // Values
-pub fn ast_to_crdt(@term.TermNode) -> CRDTNode
+pub fn ast_to_crdt(@ast.AstNode) -> CRDTNode
 
 pub fn crdt_to_source(CRDTNode) -> String
 

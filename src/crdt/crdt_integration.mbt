@@ -2,41 +2,39 @@
 // Demonstrates how to bridge AST with tree-based CRDT (conceptual)
 
 ///|
-/// Mapping from TermKind to CRDT node type
+/// Mapping from AstKind to CRDT node type
 ///
 /// This defines how AST nodes map to CRDT tree nodes
-fn term_kind_to_node_type(kind : @term.TermKind) -> String {
+fn ast_kind_to_node_type(kind : @ast.AstKind) -> String {
   match kind {
-    @term.TermKind::Int(_) => "int_literal"
-    @term.TermKind::Var(_) => "variable"
-    @term.TermKind::Lam(_) => "lambda"
-    @term.TermKind::App => "application"
-    @term.TermKind::Bop(@term.Plus) => "binary_op_plus"
-    @term.TermKind::Bop(@term.Minus) => "binary_op_minus"
-    @term.TermKind::If => "if_expr"
-    @term.TermKind::Error(_) => "error"
+    @ast.AstKind::Int(_) => "int_literal"
+    @ast.AstKind::Var(_) => "variable"
+    @ast.AstKind::Lam(_) => "lambda"
+    @ast.AstKind::App => "application"
+    @ast.AstKind::Bop(@ast.Plus) => "binary_op_plus"
+    @ast.AstKind::Bop(@ast.Minus) => "binary_op_minus"
+    @ast.AstKind::If => "if_expr"
+    @ast.AstKind::Error(_) => "error"
   }
 }
 
 ///|
-/// Get text value from TermKind
-fn term_kind_to_text(kind : @term.TermKind) -> String {
+/// Get text value from AstKind
+fn ast_kind_to_text(kind : @ast.AstKind) -> String {
   match kind {
-    @term.TermKind::Int(n) => n.to_string()
-    @term.TermKind::Var(name) => name
-    @term.TermKind::Lam(param) => param
-    @term.TermKind::App => ""
-    @term.TermKind::Bop(_) => ""
-    @term.TermKind::If => ""
-    @term.TermKind::Error(msg) => msg
+    @ast.AstKind::Int(n) => n.to_string()
+    @ast.AstKind::Var(name) => name
+    @ast.AstKind::Lam(param) => param
+    @ast.AstKind::App => ""
+    @ast.AstKind::Bop(_) => ""
+    @ast.AstKind::If => ""
+    @ast.AstKind::Error(msg) => msg
   }
 }
 
 ///|
-/// Get attributes from TermNode
-fn term_to_attributes(
-  node : @term.TermNode,
-) -> @hashmap.HashMap[String, String] {
+/// Get attributes from AstNode
+fn ast_to_attributes(node : @ast.AstNode) -> @hashmap.HashMap[String, String] {
   let attrs = @hashmap.HashMap::new()
 
   // Store source positions
@@ -46,9 +44,9 @@ fn term_to_attributes(
 
   // Store kind-specific attributes
   match node.kind {
-    @term.TermKind::Bop(@term.Plus) => attrs.set("op", "plus")
-    @term.TermKind::Bop(@term.Minus) => attrs.set("op", "minus")
-    @term.TermKind::Lam(param) => attrs.set("param", param)
+    @ast.AstKind::Bop(@ast.Plus) => attrs.set("op", "plus")
+    @ast.AstKind::Bop(@ast.Minus) => attrs.set("op", "minus")
+    @ast.AstKind::Lam(param) => attrs.set("param", param)
     _ => ()
   }
   attrs
@@ -77,14 +75,14 @@ pub fn CRDTNode::new(
 }
 
 ///|
-/// Convert AST TermNode to CRDT tree structure
+/// Convert AstNode to CRDT tree structure
 ///
 /// This demonstrates the AST → CRDT conversion that would be
 /// used in a full CRDT TreeDocument implementation
-pub fn ast_to_crdt(node : @term.TermNode) -> CRDTNode {
-  let node_type = term_kind_to_node_type(node.kind)
-  let text_value = term_kind_to_text(node.kind)
-  let attributes = term_to_attributes(node)
+pub fn ast_to_crdt(node : @ast.AstNode) -> CRDTNode {
+  let node_type = ast_kind_to_node_type(node.kind)
+  let text_value = ast_kind_to_text(node.kind)
+  let attributes = ast_to_attributes(node)
 
   // Recursively convert children
   let crdt_children = node.children.map(ast_to_crdt)

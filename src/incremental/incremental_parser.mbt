@@ -20,7 +20,7 @@
 /// objects), call `interner_clear()` between documents to release stale entries.
 pub struct IncrementalParser {
   mut source : String // Current source text
-  mut tree : @term.TermNode? // Current parse tree
+  mut tree : @ast.AstNode? // Current parse tree
   mut green_tree : @seam.CstNode? // Current green tree (for subtree reuse)
   mut token_buffer : @lexer.TokenBuffer? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
@@ -61,7 +61,7 @@ pub fn IncrementalParser::interner_clear(self : IncrementalParser) -> Unit {
 
 ///|
 /// Perform initial full parse
-pub fn IncrementalParser::parse(self : IncrementalParser) -> @term.TermNode {
+pub fn IncrementalParser::parse(self : IncrementalParser) -> @ast.AstNode {
   let tree = try {
     let buffer = @lexer.TokenBuffer::new(self.source)
     self.token_buffer = Some(buffer)
@@ -73,7 +73,7 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @term.TermNode {
     self.green_tree = Some(green)
     self.last_reuse_count = 0
     self.last_diagnostics = diagnostics
-    let parsed_tree = @parse.cst_to_term_node(green, 0, Ref::new(0))
+    let parsed_tree = @parse.cst_to_ast_node(green, 0, Ref::new(0))
     parsed_tree
   } catch {
     @lexer.TokenizationError(msg) => {
@@ -82,7 +82,7 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @term.TermNode {
       self.token_buffer = None
       self.last_reuse_count = 0
       self.last_diagnostics = []
-      @term.TermNode::error(error_msg, 0, 0)
+      @ast.AstNode::error(error_msg, 0, 0)
     }
   }
   self.tree = Some(tree)
@@ -100,7 +100,7 @@ pub fn IncrementalParser::edit(
   self : IncrementalParser,
   edit : @edit.Edit,
   new_source : String,
-) -> @term.TermNode {
+) -> @ast.AstNode {
   // Step 1: Update source
   self.source = new_source
 
@@ -110,7 +110,7 @@ pub fn IncrementalParser::edit(
       buffer.update(edit, self.source) catch {
         @lexer.TokenizationError(msg) => {
           let error_msg = "Tokenization error: " + msg
-          let tree = @term.TermNode::error(error_msg, 0, 0)
+          let tree = @ast.AstNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
           self.green_tree = None
           self.token_buffer = None
@@ -124,7 +124,7 @@ pub fn IncrementalParser::edit(
       let buffer = @lexer.TokenBuffer::new(self.source) catch {
         @lexer.TokenizationError(msg) => {
           let error_msg = "Tokenization error: " + msg
-          let tree = @term.TermNode::error(error_msg, 0, 0)
+          let tree = @ast.AstNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
           self.green_tree = None
           self.token_buffer = None
@@ -175,9 +175,9 @@ fn IncrementalParser::incremental_reparse(
   self : IncrementalParser,
   source : String,
   damaged_range : @range.Range,
-  adjusted_tree : @term.TermNode,
+  adjusted_tree : @ast.AstNode,
   tokens : Array[@token.TokenInfo],
-) -> @term.TermNode {
+) -> @ast.AstNode {
   // Attempt whole-tree reuse: Can we reuse the entire tree?
   // Only safe if damage is completely outside tree bounds
   if self.can_reuse_node(adjusted_tree, damaged_range) &&
@@ -215,8 +215,8 @@ fn IncrementalParser::incremental_reparse(
   self.last_reuse_count = reuse_count
   self.last_diagnostics = diagnostics
 
-  // Convert to TermNode
-  @parse.cst_to_term_node(new_green, 0, Ref::new(0))
+  // Convert to AstNode
+  @parse.cst_to_ast_node(new_green, 0, Ref::new(0))
 }
 
 ///|
@@ -226,7 +226,7 @@ fn IncrementalParser::incremental_reparse(
 /// Overlap occurs when: node.start < damaged.end AND node.end > damaged.start
 fn IncrementalParser::can_reuse_node(
   _self : IncrementalParser,
-  node : @term.TermNode,
+  node : @ast.AstNode,
   damaged_range : @range.Range,
 ) -> Bool {
   // Node is reusable if it doesn't overlap the damaged range
@@ -243,9 +243,9 @@ fn IncrementalParser::can_reuse_node(
 /// - Nodes after edit: shifted by delta
 pub fn IncrementalParser::adjust_tree_positions(
   self : IncrementalParser,
-  tree : @term.TermNode,
+  tree : @ast.AstNode,
   edit : @edit.Edit,
-) -> @term.TermNode {
+) -> @ast.AstNode {
   let delta = edit.delta()
 
   //  tree.end <= edit.start Doesn't Work!
@@ -262,7 +262,7 @@ pub fn IncrementalParser::adjust_tree_positions(
     let adjusted_children = tree.children.map(fn(child) {
       self.adjust_tree_positions(child, edit)
     })
-    @term.TermNode::new(
+    @ast.AstNode::new(
       tree.kind,
       tree.start + delta,
       tree.end + delta,
@@ -275,7 +275,7 @@ pub fn IncrementalParser::adjust_tree_positions(
     let adjusted_children = tree.children.map(fn(child) {
       self.adjust_tree_positions(child, edit)
     })
-    @term.TermNode::new(
+    @ast.AstNode::new(
       tree.kind,
       tree.start,
       tree.end,
@@ -287,7 +287,7 @@ pub fn IncrementalParser::adjust_tree_positions(
 
 ///|
 /// Get the current parse tree
-pub fn IncrementalParser::get_tree(self : IncrementalParser) -> @term.TermNode? {
+pub fn IncrementalParser::get_tree(self : IncrementalParser) -> @ast.AstNode? {
   self.tree
 }
 

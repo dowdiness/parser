@@ -9,9 +9,9 @@ pub suberror ParseError {
 /// Parse the input string into a Term (without position information)
 ///
 /// This is a wrapper around parse_tree that discards position information.
-pub fn parse(input : String) -> @term.Term raise {
+pub fn parse(input : String) -> @ast.Ast raise {
   let node = parse_tree(input)
-  @term.node_to_term(node)
+  @ast.node_to_ast(node)
 }
 
 ///|
@@ -68,27 +68,27 @@ fn expect(parser : Parser, expected : @token.Token) -> Parser raise ParseError {
 }
 
 ///|
-/// Parse the input string into a TermNode with position tracking
+/// Parse the input string into an AstNode with position tracking
 ///
 /// Routes through the green tree (CST) as the canonical intermediate
-/// representation: parse_cst → cst_to_term_node.
-pub fn parse_tree(input : String) -> @term.TermNode raise {
+/// representation: parse_cst → cst_to_ast_node.
+pub fn parse_tree(input : String) -> @ast.AstNode raise {
   let green = parse_cst(input)
-  cst_to_term_node(green, 0, Ref::new(0))
+  cst_to_ast_node(green, 0, Ref::new(0))
 }
 
 ///|
-/// Parse a pre-tokenized input into a TermNode with position tracking
+/// Parse a pre-tokenized input into an AstNode with position tracking
 pub fn parse_tree_from_tokens(
   tokens : Array[@token.TokenInfo],
-) -> @term.TermNode raise {
+) -> @ast.AstNode raise {
   let parser = make_parser(tokens)
   letrec parse_expression = fn(
     parser : Parser,
-  ) -> (Parser, @term.TermNode) raise {
+  ) -> (Parser, @ast.AstNode) raise {
     parse_binary_op(parser)
   }
-  and parse_binary_op = fn(parser : Parser) -> (Parser, @term.TermNode) raise {
+  and parse_binary_op = fn(parser : Parser) -> (Parser, @ast.AstNode) raise {
     let (parser, left) = parse_application(parser)
     loop (parser, left) {
       (parser, term) =>
@@ -99,8 +99,8 @@ pub fn parse_tree_from_tokens(
             let start = term.start
             let end = right.end
             let node_id = next_node_id(parser)
-            let node = @term.TermNode::new(
-              @term.TermKind::Bop(@term.Bop::Plus),
+            let node = @ast.AstNode::new(
+              @ast.AstKind::Bop(@ast.Bop::Plus),
               start,
               end,
               node_id,
@@ -114,8 +114,8 @@ pub fn parse_tree_from_tokens(
             let start = term.start
             let end = right.end
             let node_id = next_node_id(parser)
-            let node = @term.TermNode::new(
-              @term.TermKind::Bop(@term.Bop::Minus),
+            let node = @ast.AstNode::new(
+              @ast.AstKind::Bop(@ast.Bop::Minus),
               start,
               end,
               node_id,
@@ -127,9 +127,7 @@ pub fn parse_tree_from_tokens(
         }
     }
   }
-  and parse_application = fn(
-    parser : Parser,
-  ) -> (Parser, @term.TermNode) raise {
+  and parse_application = fn(parser : Parser) -> (Parser, @ast.AstNode) raise {
     let (parser, first) = parse_atom(parser)
     loop (parser, first) {
       (parser, acc) =>
@@ -142,8 +140,8 @@ pub fn parse_tree_from_tokens(
             let start = acc.start
             let end = next.end
             let node_id = next_node_id(parser)
-            let node = @term.TermNode::new(
-              @term.TermKind::App,
+            let node = @ast.AstNode::new(
+              @ast.AstKind::App,
               start,
               end,
               node_id,
@@ -155,13 +153,13 @@ pub fn parse_tree_from_tokens(
         }
     }
   }
-  and parse_atom = fn(parser : Parser) -> (Parser, @term.TermNode) raise {
+  and parse_atom = fn(parser : Parser) -> (Parser, @ast.AstNode) raise {
     let token_info = peek_info(parser)
     match token_info.token {
       @token.Integer(n) => {
         let node_id = next_node_id(parser)
-        let node = @term.TermNode::new(
-          @term.TermKind::Int(n),
+        let node = @ast.AstNode::new(
+          @ast.AstKind::Int(n),
           token_info.start,
           token_info.end,
           node_id,
@@ -171,8 +169,8 @@ pub fn parse_tree_from_tokens(
       }
       @token.Identifier(name) => {
         let node_id = next_node_id(parser)
-        let node = @term.TermNode::new(
-          @term.TermKind::Var(name),
+        let node = @ast.AstNode::new(
+          @ast.AstKind::Var(name),
           token_info.start,
           token_info.end,
           node_id,
@@ -190,8 +188,8 @@ pub fn parse_tree_from_tokens(
             let parser = expect(parser, @token.Dot)
             let (parser, body) = parse_expression(parser)
             let node_id = next_node_id(parser)
-            let node = @term.TermNode::new(
-              @term.TermKind::Lam(param),
+            let node = @ast.AstNode::new(
+              @ast.AstKind::Lam(param),
               lambda_start,
               body.end,
               node_id,
@@ -211,8 +209,8 @@ pub fn parse_tree_from_tokens(
         let parser = expect(parser, @token.Else)
         let (parser, else_expr) = parse_expression(parser)
         let node_id = next_node_id(parser)
-        let node = @term.TermNode::new(
-          @term.TermKind::If,
+        let node = @ast.AstNode::new(
+          @ast.AstKind::If,
           if_start,
           else_expr.end,
           node_id,
@@ -228,7 +226,7 @@ pub fn parse_tree_from_tokens(
         let parser = expect(parser, @token.RightParen)
         // Update the end position to include the closing paren
         let node_id = next_node_id(parser)
-        let node = @term.TermNode::new(
+        let node = @ast.AstNode::new(
           expr.kind,
           paren_start,
           close_info.end,

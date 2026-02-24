@@ -2,11 +2,11 @@
 package "dowdiness/parser/viz"
 
 import {
-  "dowdiness/parser/term",
+  "dowdiness/parser/ast",
 }
 
 // Values
-pub fn term_node_to_dot(@term.TermNode) -> String
+pub fn ast_node_to_dot(@ast.AstNode) -> String
 
 // Errors
 

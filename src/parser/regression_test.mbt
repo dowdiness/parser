@@ -43,7 +43,7 @@ test "parse parenthesized lambda (\\x.x)" {
 
   // Should be a Lam node
   match result.kind {
-    @term.TermKind::Lam(_) => ()
+    @ast.AstKind::Lam(_) => ()
     _ => abort("Expected Lam node, got \{result.kind}")
   }
 }

@@ -64,15 +64,15 @@ fn tight_span(cst : @seam.CstNode, offset : Int) -> (Int, Int) {
 }
 
 ///|
-fn collect_binary_ops(cst : @seam.CstNode) -> Array[@term.Bop] {
-  let ops : Array[@term.Bop] = []
+fn collect_binary_ops(cst : @seam.CstNode) -> Array[@ast.Bop] {
+  let ops : Array[@ast.Bop] = []
   for elem in cst.children {
     match elem {
       @seam.CstElement::Token(t) =>
         if t.kind == @syntax.PlusToken.to_raw() {
-          ops.push(@term.Bop::Plus)
+          ops.push(@ast.Bop::Plus)
         } else if t.kind == @syntax.MinusToken.to_raw() {
-          ops.push(@term.Bop::Minus)
+          ops.push(@ast.Bop::Minus)
         }
       _ => ()
     }
@@ -83,10 +83,10 @@ fn collect_binary_ops(cst : @seam.CstNode) -> Array[@term.Bop] {
 ///|
 /// Handle multiple children from SourceFile (main expression + error nodes).
 fn convert_source_file_children(
-  children : Array[@term.TermNode],
+  children : Array[@ast.AstNode],
   off : Int,
   counter : Ref[Int],
-) -> @term.TermNode {
+) -> @ast.AstNode {
   fn next_id() -> Int {
     let id = counter.val
     counter.val = id + 1
@@ -94,30 +94,30 @@ fn convert_source_file_children(
   }
 
   if children.length() == 0 {
-    return @term.TermNode::error("Empty SourceFile", off, next_id())
+    return @ast.AstNode::error("Empty SourceFile", off, next_id())
   }
   if children.length() == 1 {
     return children[0]
   }
   // Multiple children: find the first non-error child as main, rest as error children
-  let main_nodes : Array[@term.TermNode] = []
-  let error_nodes : Array[@term.TermNode] = []
+  let main_nodes : Array[@ast.AstNode] = []
+  let error_nodes : Array[@ast.AstNode] = []
   for child in children {
     match child.kind {
-      @term.TermKind::Error(_) => error_nodes.push(child)
+      @ast.AstKind::Error(_) => error_nodes.push(child)
       _ => main_nodes.push(child)
     }
   }
   if main_nodes.length() > 0 {
     let m = main_nodes[0]
     // Attach any extra main nodes and error nodes as children
-    let extra : Array[@term.TermNode] = []
+    let extra : Array[@ast.AstNode] = []
     for i = 1; i < main_nodes.length(); i = i + 1 {
       extra.push(main_nodes[i])
     }
     extra.append(error_nodes)
     if extra.length() > 0 {
-      let all_children : Array[@term.TermNode] = m.children.copy()
+      let all_children : Array[@ast.AstNode] = m.children.copy()
       all_children.append(extra)
       // Extend end to cover all children so the parent span is a superset
       let mut end = m.end
@@ -126,7 +126,7 @@ fn convert_source_file_children(
           end = child.end
         }
       }
-      @term.TermNode::new(m.kind, m.start, end, next_id(), all_children)
+      @ast.AstNode::new(m.kind, m.start, end, next_id(), all_children)
     } else {
       m
     }
@@ -143,8 +143,8 @@ fn convert_source_file_children(
         end = child.end
       }
     }
-    @term.TermNode::new(
-      @term.TermKind::Error("Syntax error"),
+    @ast.AstNode::new(
+      @ast.AstKind::Error("Syntax error"),
       start,
       end,
       next_id(),
@@ -154,12 +154,12 @@ fn convert_source_file_children(
 }
 
 ///|
-/// Convert a SyntaxNode to a TermNode. Uses SyntaxNode's offset-based position
+/// Convert a SyntaxNode to an AstNode. Uses SyntaxNode's offset-based position
 /// computation instead of manual offset tracking.
 fn convert_syntax_node(
   node : @seam.SyntaxNode,
   counter : Ref[Int],
-) -> @term.TermNode {
+) -> @ast.AstNode {
   fn next_id() -> Int {
     let id = counter.val
     counter.val = id + 1
@@ -173,8 +173,8 @@ fn convert_syntax_node(
       let text = extract_token_text(g, @syntax.IntToken.to_raw()).unwrap_or("")
       let value = @strconv.parse_int(text) catch { _ => 0 }
       let (tight_start, tight_end) = tight_span(g, off)
-      @term.TermNode::new(
-        @term.TermKind::Int(value),
+      @ast.AstNode::new(
+        @ast.AstKind::Int(value),
         tight_start,
         tight_end,
         next_id(),
@@ -186,8 +186,8 @@ fn convert_syntax_node(
         "",
       )
       let (tight_start, tight_end) = tight_span(g, off)
-      @term.TermNode::new(
-        @term.TermKind::Var(name),
+      @ast.AstNode::new(
+        @ast.AstKind::Var(name),
         tight_start,
         tight_end,
         next_id(),
@@ -202,16 +202,16 @@ fn convert_syntax_node(
       let red_children = node.children()
       for child in red_children {
         let body = convert_syntax_node(child, counter)
-        return @term.TermNode::new(
-          @term.TermKind::Lam(param),
+        return @ast.AstNode::new(
+          @ast.AstKind::Lam(param),
           tight_start,
           body.end,
           next_id(),
           [body],
         )
       }
-      @term.TermNode::new(
-        @term.TermKind::Lam(param),
+      @ast.AstNode::new(
+        @ast.AstKind::Lam(param),
         tight_start,
         tight_end,
         next_id(),
@@ -219,7 +219,7 @@ fn convert_syntax_node(
       )
     }
     @syntax.AppExpr => {
-      let children : Array[@term.TermNode] = []
+      let children : Array[@ast.AstNode] = []
       let red_children = node.children()
       for child in red_children {
         children.push(convert_syntax_node(child, counter))
@@ -227,8 +227,8 @@ fn convert_syntax_node(
       if children.length() >= 2 {
         let mut result = children[0]
         for i = 1; i < children.length(); i = i + 1 {
-          result = @term.TermNode::new(
-            @term.TermKind::App,
+          result = @ast.AstNode::new(
+            @ast.AstKind::App,
             result.start,
             children[i].end,
             next_id(),
@@ -239,12 +239,12 @@ fn convert_syntax_node(
       } else if children.length() == 1 {
         children[0]
       } else {
-        @term.TermNode::error("Empty AppExpr", off, next_id())
+        @ast.AstNode::error("Empty AppExpr", off, next_id())
       }
     }
     @syntax.BinaryExpr => {
       let ops = collect_binary_ops(g)
-      let children : Array[@term.TermNode] = []
+      let children : Array[@ast.AstNode] = []
       let red_children = node.children()
       for child in red_children {
         children.push(convert_syntax_node(child, counter))
@@ -255,10 +255,10 @@ fn convert_syntax_node(
           let op = if i - 1 < ops.length() {
             ops[i - 1]
           } else {
-            @term.Bop::Plus
+            @ast.Bop::Plus
           }
-          result = @term.TermNode::new(
-            @term.TermKind::Bop(op),
+          result = @ast.AstNode::new(
+            @ast.AstKind::Bop(op),
             result.start,
             children[i].end,
             next_id(),
@@ -269,12 +269,12 @@ fn convert_syntax_node(
       } else if children.length() == 1 {
         children[0]
       } else {
-        @term.TermNode::error("Empty BinaryExpr", off, next_id())
+        @ast.AstNode::error("Empty BinaryExpr", off, next_id())
       }
     }
     @syntax.IfExpr => {
       let (tight_start, _) = tight_span(g, off)
-      let children : Array[@term.TermNode] = []
+      let children : Array[@ast.AstNode] = []
       let red_children = node.children()
       for child in red_children {
         children.push(convert_syntax_node(child, counter))
@@ -284,8 +284,8 @@ fn convert_syntax_node(
       } else {
         off + g.text_len
       }
-      @term.TermNode::new(
-        @term.TermKind::If,
+      @ast.AstNode::new(
+        @ast.AstKind::If,
         tight_start,
         if_end,
         next_id(),
@@ -297,7 +297,7 @@ fn convert_syntax_node(
       let red_children = node.children()
       for child in red_children {
         let inner = convert_syntax_node(child, counter)
-        return @term.TermNode::new(
+        return @ast.AstNode::new(
           inner.kind,
           tight_start,
           tight_end,
@@ -305,7 +305,7 @@ fn convert_syntax_node(
           inner.children,
         )
       }
-      @term.TermNode::error("Empty ParenExpr", off, next_id())
+      @ast.AstNode::error("Empty ParenExpr", off, next_id())
     }
     @syntax.ErrorNode => {
       let (tight_start, tight_end) = tight_span(g, off)
@@ -315,8 +315,8 @@ fn convert_syntax_node(
       } else {
         "Syntax error"
       }
-      @term.TermNode::new(
-        @term.TermKind::Error(msg),
+      @ast.AstNode::new(
+        @ast.AstKind::Error(msg),
         tight_start,
         tight_end,
         next_id(),
@@ -325,14 +325,14 @@ fn convert_syntax_node(
     }
     @syntax.SourceFile => {
       let red_children = node.children()
-      let children : Array[@term.TermNode] = []
+      let children : Array[@ast.AstNode] = []
       for child in red_children {
         children.push(convert_syntax_node(child, counter))
       }
       convert_source_file_children(children, off, counter)
     }
     _ =>
-      @term.TermNode::error(
+      @ast.AstNode::error(
         "Unexpected node kind: " + g.kind.to_string(),
         off,
         next_id(),
@@ -341,34 +341,34 @@ fn convert_syntax_node(
 }
 
 ///|
-/// Convert a SyntaxNode (position-aware CST facade) to a TermNode.
-pub fn syntax_node_to_term_node(
+/// Convert a SyntaxNode (position-aware CST facade) to an AstNode.
+pub fn syntax_node_to_ast_node(
   node : @seam.SyntaxNode,
   node_id_counter : Ref[Int],
-) -> @term.TermNode {
+) -> @ast.AstNode {
   convert_syntax_node(node, node_id_counter)
 }
 
 ///|
-/// Convert a CstNode to a TermNode. Preserved for backward compatibility.
+/// Convert a CstNode to an AstNode. Preserved for backward compatibility.
 /// Internally creates a SyntaxNode and delegates to convert_syntax_node.
-pub fn cst_to_term_node(
+pub fn cst_to_ast_node(
   cst : @seam.CstNode,
   offset : Int,
   node_id_counter : Ref[Int],
-) -> @term.TermNode {
+) -> @ast.AstNode {
   let red = @seam.SyntaxNode::new(cst, None, offset)
   convert_syntax_node(red, node_id_counter)
 }
 
 ///|
-pub fn cst_to_term(cst : @seam.CstNode) -> @term.Term {
-  let node = cst_to_term_node(cst, 0, Ref::new(0))
-  @term.node_to_term(node)
+pub fn cst_to_ast(cst : @seam.CstNode) -> @ast.Ast {
+  let node = cst_to_ast_node(cst, 0, Ref::new(0))
+  @ast.node_to_ast(node)
 }
 
 ///|
-pub fn parse_cst_to_term_node(source : String) -> @term.TermNode raise {
+pub fn parse_cst_to_ast_node(source : String) -> @ast.AstNode raise {
   let cst = parse_cst(source)
-  cst_to_term_node(cst, 0, Ref::new(0))
+  cst_to_ast_node(cst, 0, Ref::new(0))
 }

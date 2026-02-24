@@ -110,7 +110,7 @@ pub fn DamageTracker::expand_for_node(
 /// Walk the tree and mark nodes that overlap damaged regions
 pub fn DamageTracker::expand_for_tree(
   self : DamageTracker,
-  tree : @term.TermNode,
+  tree : @ast.AstNode,
 ) -> Unit {
   // Check if this node overlaps any damaged range
   let node_range = @range.Range::new(tree.start, tree.end)

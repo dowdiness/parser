@@ -7,7 +7,7 @@ test "Interner: initial parse result unchanged with interner" {
   let parser = IncrementalParser::new("λf.λx.f (f x)")
   let tree = parser.parse()
   let full_tree = @parse.parse_tree("λf.λx.f (f x)")
-  inspect(@term.print_term_node(tree), content=@term.print_term_node(full_tree))
+  inspect(@ast.print_ast_node(tree), content=@ast.print_ast_node(full_tree))
 }
 
 ///|
@@ -20,8 +20,8 @@ test "Interner: edit result unchanged with interner" {
   let incr_tree = parser.edit(edit, "λx.x + 2")
   let full_tree = @parse.parse_tree("λx.x + 2")
   inspect(
-    @term.print_term_node(incr_tree),
-    content=@term.print_term_node(full_tree),
+    @ast.print_ast_node(incr_tree),
+    content=@ast.print_ast_node(full_tree),
   )
 }
 

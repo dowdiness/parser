@@ -1,0 +1,68 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser/ast"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn node_to_ast(AstNode) -> Ast
+
+pub fn print_ast(Ast) -> String
+
+pub fn print_ast_node(AstNode) -> String
+
+// Errors
+
+// Types and methods
+pub(all) enum Ast {
+  Int(Int)
+  Var(String)
+  Lam(String, Ast)
+  App(Ast, Ast)
+  Bop(Bop, Ast, Ast)
+  If(Ast, Ast, Ast)
+}
+pub impl Eq for Ast
+pub impl Show for Ast
+
+pub(all) enum AstKind {
+  Int(Int)
+  Var(String)
+  Lam(String)
+  App
+  Bop(Bop)
+  If
+  Error(String)
+}
+pub impl Show for AstKind
+pub impl ToJson for AstKind
+pub impl @json.FromJson for AstKind
+
+pub(all) struct AstNode {
+  kind : AstKind
+  start : Int
+  end : Int
+  node_id : Int
+  children : Array[AstNode]
+}
+pub fn AstNode::error(String, Int, Int) -> Self
+pub fn AstNode::new(AstKind, Int, Int, Int, Array[Self]) -> Self
+pub impl Show for AstNode
+pub impl ToJson for AstNode
+pub impl @json.FromJson for AstNode
+
+pub(all) enum Bop {
+  Plus
+  Minus
+}
+pub impl Eq for Bop
+pub impl Show for Bop
+pub impl ToJson for Bop
+pub impl @json.FromJson for Bop
+
+// Type aliases
+pub type VarName = String
+
+// Traits
+

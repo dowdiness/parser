@@ -1,6 +1,6 @@
 import {
   "dowdiness/parser/token",
-  "dowdiness/parser/term",
+  "dowdiness/parser/ast",
   "dowdiness/parser/lexer",
   "dowdiness/parser/parser" @parse,
   "dowdiness/parser/incremental",

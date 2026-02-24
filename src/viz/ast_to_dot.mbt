@@ -1,8 +1,8 @@
-// Convert AST (TermNode) to DOT format for graphviz visualization
+// Convert AST (AstNode) to DOT format for graphviz visualization
 
 ///|
-/// Convert a TermNode to DOT format for graphviz visualization
-pub fn term_node_to_dot(node : @term.TermNode) -> String {
+/// Convert an AstNode to DOT format for graphviz visualization
+pub fn ast_node_to_dot(node : @ast.AstNode) -> String {
   let buf = StringBuilder::new()
 
   // DOT header with dark theme styling
@@ -25,7 +25,7 @@ pub fn term_node_to_dot(node : @term.TermNode) -> String {
 
 ///|
 /// Recursively write node definitions and edges
-fn write_node_and_edges(buf : StringBuilder, node : @term.TermNode) -> Unit {
+fn write_node_and_edges(buf : StringBuilder, node : @ast.AstNode) -> Unit {
   // Write this node's definition
   write_node_definition(buf, node)
 
@@ -41,23 +41,23 @@ fn write_node_and_edges(buf : StringBuilder, node : @term.TermNode) -> Unit {
 
     // Add edge label for clarity (optional, based on position)
     match node.kind {
-      @term.TermKind::Lam(_) =>
+      @ast.AstKind::Lam(_) =>
         if i == 0 {
           buf.write_string(" [label=\"body\"]")
         }
-      @term.TermKind::App =>
+      @ast.AstKind::App =>
         if i == 0 {
           buf.write_string(" [label=\"func\"]")
         } else if i == 1 {
           buf.write_string(" [label=\"arg\"]")
         }
-      @term.TermKind::Bop(_) =>
+      @ast.AstKind::Bop(_) =>
         if i == 0 {
           buf.write_string(" [label=\"left\"]")
         } else if i == 1 {
           buf.write_string(" [label=\"right\"]")
         }
-      @term.TermKind::If =>
+      @ast.AstKind::If =>
         if i == 0 {
           buf.write_string(" [label=\"cond\"]")
         } else if i == 1 {
@@ -76,51 +76,51 @@ fn write_node_and_edges(buf : StringBuilder, node : @term.TermNode) -> Unit {
 
 ///|
 /// Write a single node definition
-fn write_node_definition(buf : StringBuilder, node : @term.TermNode) -> Unit {
+fn write_node_definition(buf : StringBuilder, node : @ast.AstNode) -> Unit {
   buf.write_string("  node")
   buf.write_string(node.node_id.to_string())
   buf.write_string(" [label=\"")
 
   // Generate label based on kind
   match node.kind {
-    @term.TermKind::Int(n) =>
+    @ast.AstKind::Int(n) =>
       // buf.write_string("Int\\n")
       buf.write_string(n.to_string())
-    @term.TermKind::Var(name) =>
+    @ast.AstKind::Var(name) =>
       // buf.write_string("Var\\n")
       buf.write_string(escape_label(name))
-    @term.TermKind::Lam(param) => {
+    @ast.AstKind::Lam(param) => {
       buf.write_string("λ")
       buf.write_string(escape_label(param))
     }
-    @term.TermKind::App => buf.write_string("App")
-    @term.TermKind::Bop(@term.Plus) => buf.write_string("+")
-    @term.TermKind::Bop(@term.Minus) => buf.write_string("-")
-    @term.TermKind::If => buf.write_string("If")
-    @term.TermKind::Error(_msg) => buf.write_string("Error")
+    @ast.AstKind::App => buf.write_string("App")
+    @ast.AstKind::Bop(@ast.Plus) => buf.write_string("+")
+    @ast.AstKind::Bop(@ast.Minus) => buf.write_string("-")
+    @ast.AstKind::If => buf.write_string("If")
+    @ast.AstKind::Error(_msg) => buf.write_string("Error")
     // buf.write_string(escape_label(msg))
   }
   buf.write_string("\"]")
 
   // Add styling based on kind (color for border, fillcolor for background, fontcolor for text)
   match node.kind {
-    @term.TermKind::Error(_) =>
+    @ast.AstKind::Error(_) =>
       buf.write_string(
         " [color=\"#ff0000\", fillcolor=\"#ff000022\", fontcolor=\"#ff6b6b\"]",
       )
-    @term.TermKind::Lam(_) =>
+    @ast.AstKind::Lam(_) =>
       buf.write_string(
         " [color=\"#c586c0\", fillcolor=\"#c586c022\", fontcolor=\"#c586c0\"]",
       )
-    @term.TermKind::Var(_) =>
+    @ast.AstKind::Var(_) =>
       buf.write_string(
         " [color=\"#9cdcfe\", fillcolor=\"#9cdcfe22\", fontcolor=\"#9cdcfe\"]",
       )
-    @term.TermKind::Int(_) =>
+    @ast.AstKind::Int(_) =>
       buf.write_string(
         " [color=\"#b5cea8\", fillcolor=\"#b5cea822\", fontcolor=\"#b5cea8\"]",
       )
-    @term.TermKind::Bop(_) =>
+    @ast.AstKind::Bop(_) =>
       buf.write_string(
         " [color=\"#d4d4d4\", fillcolor=\"#d4d4d422\", fontcolor=\"#d4d4d4\"]",
       )

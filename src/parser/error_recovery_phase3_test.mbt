@@ -16,7 +16,7 @@ test "phase3: missing lambda parameter produces partial lambda" {
   let (tree, errors) = parse_with_error_recovery("λ.x")
   // Should have error but still produce LambdaExpr
   inspect(errors.length() > 0, content="true")
-  inspect(tree.kind is @term.TermKind::Lam(_), content="true")
+  inspect(tree.kind is @ast.AstKind::Lam(_), content="true")
 }
 
 ///|
@@ -24,7 +24,7 @@ test "phase3: missing lambda body produces partial lambda" {
   let (tree, errors) = parse_with_error_recovery("λx.")
   // Should have error for missing body, but still produce lambda structure
   inspect(errors.length() > 0, content="true")
-  inspect(tree.kind is @term.TermKind::Lam(_), content="true")
+  inspect(tree.kind is @ast.AstKind::Lam(_), content="true")
 }
 
 ///|
@@ -32,7 +32,7 @@ test "phase3: unexpected operator in lambda body - recovery continues" {
   let (tree, errors) = parse_with_error_recovery("λx. + y")
   // Should produce lambda with error in body, then continue to parse y
   inspect(errors.length(), content="1")
-  inspect(tree.kind is @term.TermKind::Lam(_), content="true")
+  inspect(tree.kind is @ast.AstKind::Lam(_), content="true")
   // Body should have application containing error and y
   inspect(has_errors(tree), content="true")
 }
@@ -50,7 +50,7 @@ test "phase3: missing if condition" {
   let (tree, errors) = parse_with_error_recovery("if then y else z")
   // Should report error but still produce IfExpr structure
   inspect(errors.length() > 0, content="true")
-  inspect(tree.kind is @term.TermKind::If, content="true")
+  inspect(tree.kind is @ast.AstKind::If, content="true")
 }
 
 ///|
@@ -58,7 +58,7 @@ test "phase3: missing then branch" {
   let (tree, errors) = parse_with_error_recovery("if x else z")
   // Should report missing then
   inspect(errors.length() > 0, content="true")
-  inspect(tree.kind is @term.TermKind::If, content="true")
+  inspect(tree.kind is @ast.AstKind::If, content="true")
 }
 
 ///|
@@ -66,7 +66,7 @@ test "phase3: missing else branch" {
   let (tree, errors) = parse_with_error_recovery("if x then y")
   // Should report missing else
   inspect(errors.length() > 0, content="true")
-  inspect(tree.kind is @term.TermKind::If, content="true")
+  inspect(tree.kind is @ast.AstKind::If, content="true")
 }
 
 // ============================================================================
@@ -94,7 +94,7 @@ test "phase3: error in each clause of if" {
   let (tree, errors) = parse_with_error_recovery("if + then + else +")
   // Each + is unexpected, should get multiple errors
   inspect(errors.length() >= 3, content="true")
-  inspect(tree.kind is @term.TermKind::If, content="true")
+  inspect(tree.kind is @ast.AstKind::If, content="true")
 }
 
 ///|
@@ -230,8 +230,8 @@ test "phase3: valid inputs unchanged - comprehensive" {
     }
 
     // Trees must match
-    let direct_str = @term.print_term_node(direct)
-    let recovered_str = @term.print_term_node(recovered)
+    let direct_str = @ast.print_ast_node(direct)
+    let recovered_str = @ast.print_ast_node(recovered)
     if direct_str != recovered_str {
       abort("Mismatch on valid input: \{input}")
     }

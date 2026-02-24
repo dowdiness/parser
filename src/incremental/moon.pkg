@@ -1,7 +1,7 @@
 import {
   "dowdiness/parser/token",
   "dowdiness/parser/range",
-  "dowdiness/parser/term",
+  "dowdiness/parser/ast",
   "dowdiness/parser/edit",
   "dowdiness/parser/lexer",
   "dowdiness/parser/core" @core,

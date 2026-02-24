@@ -216,83 +216,83 @@ test "green tree: SyntaxNode child positions in application" {
 }
 
 // ============================================================================
-// 4. Backward compatibility - parse_cst_to_term_node matches parse_tree
+// 4. Backward compatibility - parse_cst_to_ast_node matches parse_tree
 // ============================================================================
 
 ///|
 test "green tree: backward compatibility - simple integer" {
   let source = "42"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
 ///|
 test "green tree: backward compatibility - variable" {
   let source = "x"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
 ///|
 test "green tree: backward compatibility - lambda" {
   let source = "λx.x"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
 ///|
 test "green tree: backward compatibility - lambda with body" {
   let source = "λx.x + 1"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
 ///|
 test "green tree: backward compatibility - application" {
   let source = "f x"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
 ///|
 test "green tree: backward compatibility - nested application" {
   let source = "f x y"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
 ///|
 test "green tree: backward compatibility - binary operation" {
   let source = "1 + 2"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
@@ -302,44 +302,44 @@ test "green tree: backward compatibility - chained binary (same op)" {
   // have a known limitation in green_convert - it uses the first operator for all.
   // This test uses same operator to verify the basic mechanism works.
   let source = "1 + 2 + 3"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
 ///|
 test "green tree: backward compatibility - if-then-else" {
   let source = "if x then 1 else 2"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
 ///|
 test "green tree: backward compatibility - parenthesized expression" {
   let source = "(x)"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
 ///|
 test "green tree: backward compatibility - complex expression" {
   let source = "λf.λx.f (f x)"
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @term.print_term_node(term_via_green),
-    content=@term.print_term_node(term_direct),
+    @ast.print_ast_node(term_via_green),
+    content=@ast.print_ast_node(term_direct),
   )
 }
 
@@ -526,7 +526,7 @@ test "green tree: CstElement text_len accessor" {
 test "green tree: position comparison" {
   let source = "x + y"
   let term_direct = parse_tree(source)
-  let term_via_green = parse_cst_to_term_node(source)
+  let term_via_green = parse_cst_to_ast_node(source)
   inspect(term_direct.start, content="0")
   inspect(term_direct.end, content="5")
   inspect(term_via_green.start, content="0")

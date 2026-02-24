@@ -1,5 +1,5 @@
 import {
-  "dowdiness/parser/term",
+  "dowdiness/parser/ast",
   "dowdiness/parser/edit",
   "dowdiness/parser/incremental",
   "moonbitlang/core/hashmap",

@@ -2,26 +2,26 @@
 package "dowdiness/parser/parser"
 
 import {
+  "dowdiness/parser/ast",
   "dowdiness/parser/core",
   "dowdiness/parser/lexer",
   "dowdiness/parser/seam",
   "dowdiness/parser/syntax",
-  "dowdiness/parser/term",
   "dowdiness/parser/token",
 }
 
 // Values
-pub fn collect_errors(@term.TermNode) -> Array[String]
+pub fn collect_errors(@ast.AstNode) -> Array[String]
 
-pub fn cst_to_term(@seam.CstNode) -> @term.Term
+pub fn cst_to_ast(@seam.CstNode) -> @ast.Ast
 
-pub fn cst_to_term_node(@seam.CstNode, Int, Ref[Int]) -> @term.TermNode
+pub fn cst_to_ast_node(@seam.CstNode, Int, Ref[Int]) -> @ast.AstNode
 
-pub fn has_errors(@term.TermNode) -> Bool
+pub fn has_errors(@ast.AstNode) -> Bool
 
 pub fn make_reuse_cursor(@seam.CstNode, Int, Int, Array[@token.TokenInfo]) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]
 
-pub fn parse(String) -> @term.Term raise
+pub fn parse(String) -> @ast.Ast raise
 
 pub fn parse_cst(String) -> @seam.CstNode raise
 
@@ -29,19 +29,19 @@ pub fn parse_cst_recover(String, interner? : @seam.Interner?) -> (@seam.CstNode,
 
 pub fn parse_cst_recover_with_tokens(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?, prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?, interner? : @seam.Interner?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int)
 
-pub fn parse_cst_to_term_node(String) -> @term.TermNode raise
+pub fn parse_cst_to_ast_node(String) -> @ast.AstNode raise
 
 pub fn parse_cst_with_cursor(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind], prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int)
 
-pub fn parse_tree(String) -> @term.TermNode raise
+pub fn parse_tree(String) -> @ast.AstNode raise
 
-pub fn parse_tree_from_tokens(Array[@token.TokenInfo]) -> @term.TermNode raise
+pub fn parse_tree_from_tokens(Array[@token.TokenInfo]) -> @ast.AstNode raise
 
-pub fn parse_with_error_recovery(String) -> (@term.TermNode, Array[String])
+pub fn parse_with_error_recovery(String) -> (@ast.AstNode, Array[String])
 
-pub fn parse_with_error_recovery_tokens(Array[@token.TokenInfo]) -> (@term.TermNode, Array[String])
+pub fn parse_with_error_recovery_tokens(Array[@token.TokenInfo]) -> (@ast.AstNode, Array[String])
 
-pub fn syntax_node_to_term_node(@seam.SyntaxNode, Ref[Int]) -> @term.TermNode
+pub fn syntax_node_to_ast_node(@seam.SyntaxNode, Ref[Int]) -> @ast.AstNode
 
 // Errors
 pub suberror ParseError {
