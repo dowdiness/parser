@@ -40,3 +40,27 @@ test "subscriber: dynamic dep change updates subscribers" {
   inspect(a_meta2.subscribers.contains(pick.id()), content="false")
   inspect(b_meta2.subscribers.contains(pick.id()), content="true")
 }
+
+///|
+test "subscriber: dependents returns subscriber list" {
+  let rt = Runtime::new()
+  let a = Signal::new(rt, 1)
+  let m1 = Memo::new(rt, () => a.get() + 1)
+  let m2 = Memo::new(rt, () => a.get() * 2)
+  let _ = m1.get()
+  let _ = m2.get()
+  let deps = rt.dependents(a.id())
+  inspect(deps.length(), content="2")
+  inspect(deps.contains(m1.id()), content="true")
+  inspect(deps.contains(m2.id()), content="true")
+}
+
+///|
+test "subscriber: dependents returns empty for leaf memo" {
+  let rt = Runtime::new()
+  let a = Signal::new(rt, 1)
+  let m = Memo::new(rt, () => a.get())
+  let _ = m.get()
+  let deps = rt.dependents(m.id())
+  inspect(deps.length(), content="0")
+}

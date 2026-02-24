@@ -276,6 +276,42 @@ pub fn Runtime::cell_info(self : Runtime, id : CellId) -> CellInfo? {
 }
 
 ///|
+/// Returns the cell IDs that depend on the given cell (reverse edges).
+///
+/// This enables introspection of the dependency graph in both directions.
+/// The returned array is a snapshot; modifying it does not affect the runtime.
+///
+/// Returns an empty array if the cell ID is invalid, out of bounds, or
+/// belongs to a different runtime — matching `cell_info` semantics.
+///
+/// # Parameters
+///
+/// - `id`: The cell to query
+///
+/// # Returns
+///
+/// Array of CellIds that have `id` in their dependency list, or empty
+/// array if the cell ID is not valid for this runtime
+pub fn Runtime::dependents(self : Runtime, id : CellId) -> Array[CellId] {
+  if id.runtime_id != self.runtime_id {
+    return []
+  }
+  if id.id < 0 || id.id >= self.cells.length() {
+    return []
+  }
+  match self.cells[id.id] {
+    Some(meta) => {
+      let result : Array[CellId] = []
+      for sub in meta.subscribers {
+        result.push(sub)
+      }
+      result
+    }
+    None => []
+  }
+}
+
+///|
 /// Advance the global revision counter and record which durability level changed.
 /// Updates current_revision and all durability_last_changed entries up to dur_idx.
 /// Callers must ensure this is only called outside of a batch (batch_depth == 0).
