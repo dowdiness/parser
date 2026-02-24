@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-22
 **Updated:** 2026-02-25
-**Status:** In Progress — Phase 0 complete; Phase 1 Task 1.1 complete; Phases 1.2–5 not started; Phase 6 (CI) deferred
+**Status:** In Progress — Phase 0 complete; Phase 1 complete; Phases 2–5 not started; Phase 6 (CI) deferred
 
 ## Goal
 
@@ -173,7 +173,7 @@ Acceptance criteria:
 - each public type/method has concise docs for invariants
 - trait impl behavior (`Eq`, `Hash`) is documented and tested
 
-### Task 1.2: Rowan-model documentation — ❌ Not done
+### Task 1.2: Rowan-model documentation — ✅ Done
 
 Document mapping:
 - `RawKind` ~ rowan raw kind

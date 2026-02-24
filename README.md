@@ -33,15 +33,15 @@ Performance benchmarks measure incremental parsing efficiency:
 # Full benchmark suite
 moon bench --package dowdiness/parser/benchmarks --release
 
-# Focused green-tree microbenchmarks
-moon bench --package dowdiness/parser/benchmarks --file green_tree_benchmark.mbt --release
+# Focused CST microbenchmarks
+moon bench --package dowdiness/parser/benchmarks --file cst_benchmark.mbt --release
 ```
 
 Key benchmarks:
 - `incremental vs full - edit at start/end/middle` — Measures edit performance
 - `worst case - full invalidation` — Edit that invalidates entire tree
 - `best case - cosmetic change` — Localized edit with potential reuse
-- `green-tree - token/node/equality` — Focused construction/hash/equality microbenchmarks
+- `CST - token/node/equality` — Focused construction/hash/equality microbenchmarks
 
 ### Cursor Optimization
 
@@ -156,48 +156,100 @@ let ast = parse("λx.x + 1")
 
 ### Concrete Syntax Tree (CST)
 
-The parser produces a lossless Concrete Syntax Tree using a green/red tree architecture before converting to the semantic AST.
+The parser produces a lossless Concrete Syntax Tree before converting to the semantic AST.
 
 ```moonbit
-pub fn parse_green(String) -> GreenNode raise
+pub fn parse_cst(String) -> @seam.CstNode raise
 ```
 
-Parses a string into an immutable green tree (CST). Green nodes store relative widths, enabling structural sharing.
+Parses a string into an immutable `CstNode` tree (lossless CST with structural hashing).
 
 ```moonbit
-pub fn parse_tree(String) -> TermNode raise
+pub fn parse_cst_recover(String) -> (@seam.CstNode, Array[Diagnostic]) raise
 ```
 
-Parses a string into a `TermNode` with position tracking. Routes through the green tree internally: `parse_green` -> `green_to_term_node`.
+Like `parse_cst` but returns error nodes instead of raising, paired with a diagnostic list.
 
 ```moonbit
-pub fn green_to_term_node(GreenNode, Int, Ref[Int]) -> TermNode
+pub fn parse_tree(String) -> @ast.AstNode raise
 ```
 
-Converts a `GreenNode` to a `TermNode`. The `Int` parameter is the byte offset, and `Ref[Int]` is a node ID counter. Internally wraps the green node in a `RedNode` for position computation.
+Parses a string into an `AstNode` with position tracking. Routes through the CST internally.
 
-```moonbit
-pub fn red_to_term_node(RedNode, Ref[Int]) -> TermNode
-```
+**Key types (from `seam` package):**
 
-Converts a `RedNode` (position-aware CST facade) directly to a `TermNode`.
-
-**Key types:**
-
-- `GreenNode` -- Immutable CST node storing kind, children, and text width. Position-independent.
-- `GreenToken` -- Leaf token in the green tree with kind and text.
-- `RedNode` -- Ephemeral wrapper around `GreenNode` that computes absolute byte positions on demand via parent pointers.
-
-Hashing notes:
-- `GreenToken`/`GreenNode` store a cached structural hash computed during construction (FNV utility).
-- `Hash` trait impls reuse cached hashes for `HashMap`/`HashSet` interoperability.
+- `CstNode` — Immutable CST node: kind, children, text length, structural hash, token count. Position-independent; structurally shareable.
+- `CstToken` — Leaf token with kind, text, and cached structural hash.
+- `SyntaxNode` — Ephemeral positioned view over a `CstNode`. Computes absolute byte offsets on demand via parent pointers; not stored persistently.
+- `RawKind` — Language-agnostic node/token kind (a newtype over `Int`).
 
 **Example:**
 ```moonbit
-let green = parse_green("λx.x + 1")
-let red = RedNode::from_green(green)
-let term_node = red_to_term_node(red, Ref::new(0))
+let cst = parse_cst("λx.x + 1")
+let syntax = @seam.SyntaxNode::from_cst(cst)
+// syntax.start() == 0, syntax.end() == 8
+let ast = parse_tree("λx.x + 1")
+// AstNode{ kind: Lam("x"), start: 0, end: 8, ... }
 ```
+
+### Seam Module — CST Infrastructure (`src/seam/`)
+
+The `seam` package implements a language-agnostic CST infrastructure modelled after [rowan](https://github.com/rust-analyzer/rowan) (the Rust library used by rust-analyzer). Understanding this model is required to work with `CstNode`, `SyntaxNode`, and the event stream.
+
+#### Two-tree model
+
+| `seam` type | rowan equivalent | Role |
+|---|---|---|
+| `RawKind` | `SyntaxKind` | Language-specific node/token kind, newtype over `Int` |
+| `CstNode` | `GreenNode` | Immutable, position-independent, content-addressed CST node |
+| `CstToken` | `GreenToken` | Immutable leaf token with kind and text |
+| `SyntaxNode` | `SyntaxNode` | Ephemeral positioned view; adds absolute offsets |
+
+**`CstNode`** stores structure and content but has no knowledge of where in the source file it appears. Its `hash` field is a structural content hash that enables efficient equality checks and structural sharing. Once constructed, `children` must not be mutated — `text_len`, `hash`, and `token_count` are cached at construction time.
+
+**`SyntaxNode`** is a thin wrapper that adds a source offset. It is created on demand and walks the `CstNode` tree to compute child positions by accumulating text lengths.
+
+#### Event stream → CST model
+
+`CstNode` trees are not built directly. Instead, a parser emits a flat sequence of `ParseEvent`s into an `EventBuffer`, then `build_tree()` replays the buffer:
+
+```moonbit
+// Three event types drive tree construction:
+StartNode(RawKind)   // push a new node frame
+FinishNode           // pop frame, wrap children into a CstNode
+Token(RawKind, String) // attach a leaf token to the current frame
+```
+
+A fourth event, `Tombstone`, enables **retroactive wrapping** — the parser can reserve a slot with `mark()` before it knows the node kind, then fill it with `start_at(mark, kind)` later:
+
+```moonbit
+// Binary expression "1 + 2" — the BinaryExpr wrapper is decided after
+// both operands are parsed:
+let buf = EventBuffer::new()
+let m = buf.mark()               // reserve slot; buf contains [Tombstone]
+buf.push(Token(IntLit, "1"))
+buf.push(Token(Plus, "+"))
+buf.push(Token(IntLit, "2"))
+buf.start_at(m, BinaryExpr)     // retroactively fill: [StartNode(BinaryExpr), ...]
+buf.push(FinishNode)
+let cst = build_tree(buf.to_events(), SourceFile)
+```
+
+#### Traversal example
+
+```moonbit
+let cst = parse_cst("λx.x + 1")
+let syntax = @seam.SyntaxNode::from_cst(cst)
+inspect(syntax.start())  // 0
+inspect(syntax.end())    // 8
+for child in syntax.children() {
+  // child.start(), child.end(), child.kind()
+}
+```
+
+#### Non-goals
+
+The `seam` module is deliberately language-agnostic. It does not know about lambda calculus, `SyntaxKind`, or any parser-specific concerns — those live in `src/parser/`. The only language-specific hook is `RawKind`, which each language maps to/from its own kind enum.
 
 ### Generic Parser Core (`src/core/`)
 
@@ -250,10 +302,10 @@ pub fn parse_with[T, K](
   spec     : LanguageSpec[T, K],
   tokenize : (String) -> Array[TokenInfo[T]],
   grammar  : (ParserContext[T, K]) -> Unit,
-) -> (GreenNode, Array[Diagnostic[T]])
+) -> (@seam.CstNode, Array[Diagnostic[T]])
 ```
 
-The Lambda Calculus parser in `src/parser/` serves as the reference implementation (`lambda_spec.mbt`, `green_parser.mbt`). See [docs/plans/2026-02-23-generic-parser-design.md](docs/plans/2026-02-23-generic-parser-design.md) for the full design.
+The Lambda Calculus parser in `src/parser/` serves as the reference implementation (`lambda_spec.mbt`, `cst_parser.mbt`). See [docs/plans/2026-02-23-generic-parser-design.md](docs/plans/2026-02-23-generic-parser-design.md) for the full design.
 
 ### Pretty Printing
 
@@ -381,51 +433,47 @@ try {
 The canonical parse pipeline is:
 
 ```
-Source string -> Lexer -> Green Tree (CST) -> Red Tree -> TermNode -> Term
+Source string → Lexer → EventBuffer → CstNode (CST) → SyntaxNode → AstNode → Term
 ```
 
-1. **Lexer** tokenizes the source into a stream of tokens
-2. **Green Parser** produces an immutable green tree (lossless CST with relative widths)
-3. **Red Tree** wraps the green tree to compute absolute byte positions on demand
-4. **Conversion** transforms the red tree into `TermNode` (typed AST with positions)
-5. **Simplification** converts `TermNode` to `Term` (semantic AST without positions)
+1. **Lexer** tokenizes the source into a stream of typed tokens
+2. **CST Parser** emits `ParseEvent`s into an `EventBuffer`; `build_tree()` constructs the immutable `CstNode` tree
+3. **SyntaxNode** wraps the `CstNode` to add absolute byte positions on demand
+4. **Conversion** walks `SyntaxNode` to produce `AstNode` (typed AST with positions)
+5. **Simplification** converts `AstNode` to `Term` (semantic AST without positions)
 
-### Lexer ([lexer.mbt](lexer.mbt))
+### Lexer (`src/lexer/`)
 
 The lexer performs character-by-character scanning with:
-- **Whitespace handling**: Automatically skips spaces, tabs, and newlines
+- **Whitespace handling**: Preserves whitespace as trivia tokens for lossless round-tripping
 - **Keyword recognition**: Identifies reserved words (`if`, `then`, `else`)
 - **Number parsing**: Reads multi-digit integers
 - **Identifier reading**: Supports alphanumeric variable names
 - **Unicode support**: Accepts both `λ` (U+03BB) and `\` for lambda
 
-### Green Parser ([green_parser.mbt](green_parser.mbt))
+### CST Parser (`src/parser/cst_parser.mbt`)
 
-Produces a lossless Concrete Syntax Tree using an event buffer pattern:
-- Emits `ParseEvent`s (StartNode, FinishNode, Token) into a flat buffer
-- Uses `mark()`/`start_at()` for retroactive wrapping (binary expressions, applications)
-- `build_tree()` replays events to construct the immutable `GreenNode` tree
+Produces a lossless CST using an event buffer pattern:
+- Grammar functions call `ctx.start_node(kind)` / `ctx.emit_token(kind)` / `ctx.finish_node()`
+- `ctx.mark()` / `ctx.start_at(mark, kind)` enable retroactive wrapping (binary expressions, applications)
+- `build_tree()` replays the flat `EventBuffer` to construct the immutable `CstNode` tree
 - Preserves all whitespace as `WhitespaceToken` nodes for lossless round-tripping
 
-### Red Tree ([red_tree.mbt](red_tree.mbt))
+### SyntaxNode (`src/seam/syntax_node.mbt`)
 
-Ephemeral facade over the green tree for position queries:
-- Computes absolute byte offsets from the green tree's relative widths
+Ephemeral positioned view over a `CstNode`:
+- Computes absolute byte offsets from the CST's cumulative text lengths
 - Maintains parent pointers for upward traversal
-- Created on demand, not stored persistently
+- Created on demand; not stored persistently
 
-### Green-to-AST Conversion ([green_convert.mbt](green_convert.mbt))
+### CST-to-AST Conversion (`src/parser/cst_convert.mbt`)
 
-Converts the CST to typed AST nodes using `RedNode` for position computation:
-- `convert_red()` walks the red tree, using `red.children()` for child iteration with correct offsets
-- `tight_span()` computes precise positions by skipping leading/trailing whitespace
+Converts the CST to typed `AstNode`s using `SyntaxNode` for position computation:
+- `convert_syntax_node()` walks the `SyntaxNode` tree, using `syntax.children()` for correct offsets
+- `tight_span()` computes precise positions by skipping leading/trailing whitespace tokens
 - `ParenExpr` nodes are unwrapped to their inner expression's kind in the AST
 
-### Parser ([parser.mbt](parser.mbt))
-
-The `parse_tree` function routes through the green tree as the canonical path. A legacy `parse_tree_from_tokens` function provides direct recursive descent for the `IncrementalParser` token-based path.
-
-### Pretty Printer ([term.mbt](term.mbt))
+### Pretty Printer (`src/ast/`)
 
 The `print_term` function traverses the AST and reconstructs expressions with:
 - Parentheses for clarity (may add extra parens for unambiguous output)
