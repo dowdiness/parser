@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-22
 **Updated:** 2026-02-24
-**Status:** In Progress — Phase 0 not started; Phases 1–2 partially complete; Phases 3–6 not started
+**Status:** In Progress — Phase 0 not started; Phases 1–2 partially complete; Phases 3–5 not started; Phase 6 (CI) deferred
 
 ## Goal
 
@@ -18,7 +18,7 @@ In scope:
 - Standalone module packaging and metadata
 - API hardening for `seam` core types
 - Test coverage and documentation for external users
-- CI and release checklist
+- CI gates (deferred — not needed yet)
 
 Out of scope:
 - Migration from current internal import paths
@@ -38,7 +38,7 @@ Initial version: `0.1.0` (to be tagged and published separately)
 - Public API is intentional, documented, and frozen.
 - `moon check --target all`, `moon test`, and `moon info` pass cleanly.
 - README examples are self-contained and illustrate the event-stream → tree model.
-- CI gates are configured and green on the standalone module.
+- CI gates are deferred — not required for publish-readiness at this stage.
 
 ## Open Concerns (Track Before Release Freeze)
 
@@ -378,21 +378,12 @@ Acceptance criteria:
 
 ---
 
-## Phase 6: CI — ❌ Not started
+## Phase 6: CI — ⏸️ Deferred
 
-### Task 6.1: CI gates — ❌ Not done
-
-Required CI commands:
+Not needed yet. When CI is added, required commands are:
 - `moon check --target all`
 - `moon test`
 - `moon info`
-
-**Current state:** no CI exists for the standalone `seam` module
-(CI would be set up after Phase 3 standalone bootstrap).
-
-Acceptance criteria:
-- all three gates run on every push to the default branch
-- failures are visible before any release attempt
 
 ---
 
@@ -404,7 +395,7 @@ Acceptance criteria:
 3. Phase 3 (standalone module bootstrap) — extract to independent module/repo
 4. Phase 4 (tests) — panic tests + property tests in standalone module
 5. Phase 5 (docs/examples) — publish-grade README
-6. Phase 6 (CI) — gates on standalone module
+6. Phase 6 (CI) — deferred
 
 ## Risks
 
