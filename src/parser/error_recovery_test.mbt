@@ -155,8 +155,8 @@ test "error recovery: unclosed paren" {
 }
 
 ///|
-test "parse_green_recover returns diagnostics" {
-  let (green, diagnostics) = parse_green_recover("λ.x")
+test "parse_cst_recover returns diagnostics" {
+  let (green, diagnostics) = parse_cst_recover("λ.x")
   inspect(diagnostics.length(), content="1")
   inspect(diagnostics[0].message, content="Expected parameter after λ")
   // Green tree should be a valid SourceFile
@@ -164,18 +164,18 @@ test "parse_green_recover returns diagnostics" {
 }
 
 ///|
-test "parse_green_recover no errors on valid input" {
-  let (green, diagnostics) = parse_green_recover("λx.x")
+test "parse_cst_recover no errors on valid input" {
+  let (green, diagnostics) = parse_cst_recover("λx.x")
   inspect(diagnostics.length(), content="0")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
 }
 
 ///|
-test "parse_green_recover EOF diagnostics point to end of source" {
+test "parse_cst_recover EOF diagnostics point to end of source" {
   // "if x then y" is missing "else" — the diagnostic for the missing
   // "else" keyword fires at EOF which should be at the end of the source.
   let source = "if x then y"
-  let (_, diagnostics) = parse_green_recover(source)
+  let (_, diagnostics) = parse_cst_recover(source)
   inspect(diagnostics.length() > 0, content="true")
   // Find the diagnostic about the missing "else"
   let mut found = false
@@ -201,14 +201,14 @@ test "error recovery: all-error input preserves every error node" {
 }
 
 ///|
-test "parse_green still raises on first error" {
-  // parse_green should maintain backward compat and raise
-  let result = parse_green("λ.x") catch {
+test "parse_cst still raises on first error" {
+  // parse_cst should maintain backward compat and raise
+  let result = parse_cst("λ.x") catch {
     _ =>
       // Expected to raise ParseError
       return
   }
   ignore(result)
-  // Should not reach here — parse_green should have raised
+  // Should not reach here — parse_cst should have raised
   inspect(false, content="true")
 }

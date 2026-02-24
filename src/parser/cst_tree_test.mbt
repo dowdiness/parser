@@ -6,7 +6,7 @@
 
 ///|
 test "green tree: simple integer" {
-  let green = parse_green("42")
+  let green = parse_cst("42")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   inspect(green.children.length() > 0, content="true")
   let child = match green.children[0] {
@@ -18,7 +18,7 @@ test "green tree: simple integer" {
 
 ///|
 test "green tree: simple variable" {
-  let green = parse_green("x")
+  let green = parse_cst("x")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
@@ -29,7 +29,7 @@ test "green tree: simple variable" {
 
 ///|
 test "green tree: lambda expression" {
-  let green = parse_green("λx.x")
+  let green = parse_cst("λx.x")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
@@ -40,7 +40,7 @@ test "green tree: lambda expression" {
 
 ///|
 test "green tree: application" {
-  let green = parse_green("f x")
+  let green = parse_cst("f x")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
@@ -51,7 +51,7 @@ test "green tree: application" {
 
 ///|
 test "green tree: binary operation" {
-  let green = parse_green("1 + 2")
+  let green = parse_cst("1 + 2")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
@@ -62,7 +62,7 @@ test "green tree: binary operation" {
 
 ///|
 test "green tree: if-then-else" {
-  let green = parse_green("if x then 1 else 2")
+  let green = parse_cst("if x then 1 else 2")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
@@ -77,7 +77,7 @@ test "green tree: if-then-else" {
 
 ///|
 test "green tree: ParenExpr is present" {
-  let green = parse_green("(x)")
+  let green = parse_cst("(x)")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
@@ -89,8 +89,8 @@ test "green tree: ParenExpr is present" {
 
 ///|
 test "green tree: x vs (x) have different structure" {
-  let green_bare = parse_green("x")
-  let green_paren = parse_green("(x)")
+  let green_bare = parse_cst("x")
+  let green_paren = parse_cst("(x)")
   let bare_child = match green_bare.children[0] {
     @seam.CstElement::Node(n) => n
     @seam.CstElement::Token(_) => abort("Expected node, got token")
@@ -108,7 +108,7 @@ test "green tree: x vs (x) have different structure" {
 
 ///|
 test "green tree: nested parentheses ((x))" {
-  let green = parse_green("((x))")
+  let green = parse_cst("((x))")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
     @seam.CstElement::Token(_) => abort("Expected node, got token")
@@ -131,7 +131,7 @@ test "green tree: nested parentheses ((x))" {
 
 ///|
 test "green tree: deeply nested parentheses (((1)))" {
-  let green = parse_green("(((1)))")
+  let green = parse_cst("(((1)))")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   // Count the nesting depth of ParenExpr
   fn count_paren_depth(node : @seam.CstNode) -> Int {
@@ -162,7 +162,7 @@ test "green tree: deeply nested parentheses (((1)))" {
 
 ///|
 test "green tree: SyntaxNode positions for simple expression" {
-  let green = parse_green("x + y")
+  let green = parse_cst("x + y")
   let red = @seam.SyntaxNode::from_green(green)
   inspect(red.start(), content="0")
   inspect(red.end(), content="5")
@@ -170,7 +170,7 @@ test "green tree: SyntaxNode positions for simple expression" {
 
 ///|
 test "green tree: SyntaxNode positions for integer" {
-  let green = parse_green("42")
+  let green = parse_cst("42")
   let red = @seam.SyntaxNode::from_green(green)
   inspect(red.start(), content="0")
   inspect(red.end(), content="2")
@@ -178,7 +178,7 @@ test "green tree: SyntaxNode positions for integer" {
 
 ///|
 test "green tree: SyntaxNode positions for lambda" {
-  let green = parse_green("λx.x")
+  let green = parse_cst("λx.x")
   let red = @seam.SyntaxNode::from_green(green)
   inspect(red.start(), content="0")
   inspect(red.end(), content="4")
@@ -186,7 +186,7 @@ test "green tree: SyntaxNode positions for lambda" {
 
 ///|
 test "green tree: SyntaxNode children positions" {
-  let green = parse_green("1 + 2")
+  let green = parse_cst("1 + 2")
   let red = @seam.SyntaxNode::from_green(green)
   let children = red.children()
   inspect(children.length(), content="1")
@@ -201,7 +201,7 @@ test "green tree: SyntaxNode children positions" {
 
 ///|
 test "green tree: SyntaxNode child positions in application" {
-  let green = parse_green("f x")
+  let green = parse_cst("f x")
   let red = @seam.SyntaxNode::from_green(green)
   let children = red.children()
   inspect(children.length(), content="1")
@@ -216,13 +216,13 @@ test "green tree: SyntaxNode child positions in application" {
 }
 
 // ============================================================================
-// 4. Backward compatibility - parse_green_to_term_node matches parse_tree
+// 4. Backward compatibility - parse_cst_to_term_node matches parse_tree
 // ============================================================================
 
 ///|
 test "green tree: backward compatibility - simple integer" {
   let source = "42"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -233,7 +233,7 @@ test "green tree: backward compatibility - simple integer" {
 ///|
 test "green tree: backward compatibility - variable" {
   let source = "x"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -244,7 +244,7 @@ test "green tree: backward compatibility - variable" {
 ///|
 test "green tree: backward compatibility - lambda" {
   let source = "λx.x"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -255,7 +255,7 @@ test "green tree: backward compatibility - lambda" {
 ///|
 test "green tree: backward compatibility - lambda with body" {
   let source = "λx.x + 1"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -266,7 +266,7 @@ test "green tree: backward compatibility - lambda with body" {
 ///|
 test "green tree: backward compatibility - application" {
   let source = "f x"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -277,7 +277,7 @@ test "green tree: backward compatibility - application" {
 ///|
 test "green tree: backward compatibility - nested application" {
   let source = "f x y"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -288,7 +288,7 @@ test "green tree: backward compatibility - nested application" {
 ///|
 test "green tree: backward compatibility - binary operation" {
   let source = "1 + 2"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -302,7 +302,7 @@ test "green tree: backward compatibility - chained binary (same op)" {
   // have a known limitation in green_convert - it uses the first operator for all.
   // This test uses same operator to verify the basic mechanism works.
   let source = "1 + 2 + 3"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -313,7 +313,7 @@ test "green tree: backward compatibility - chained binary (same op)" {
 ///|
 test "green tree: backward compatibility - if-then-else" {
   let source = "if x then 1 else 2"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -324,7 +324,7 @@ test "green tree: backward compatibility - if-then-else" {
 ///|
 test "green tree: backward compatibility - parenthesized expression" {
   let source = "(x)"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -335,7 +335,7 @@ test "green tree: backward compatibility - parenthesized expression" {
 ///|
 test "green tree: backward compatibility - complex expression" {
   let source = "λf.λx.f (f x)"
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   let term_direct = parse_tree(source)
   inspect(
     @term.print_term_node(term_via_green),
@@ -349,7 +349,7 @@ test "green tree: backward compatibility - complex expression" {
 
 ///|
 test "green tree: identical integer tokens have same text" {
-  let green = parse_green("1 + 1")
+  let green = parse_cst("1 + 1")
   fn collect_int_tokens(node : @seam.CstNode) -> Array[String] {
     let tokens : Array[String] = []
     for elem in node.children {
@@ -373,7 +373,7 @@ test "green tree: identical integer tokens have same text" {
 
 ///|
 test "green tree: identical identifier tokens have same text" {
-  let green = parse_green("x + x")
+  let green = parse_cst("x + x")
   fn collect_ident_tokens(node : @seam.CstNode) -> Array[String] {
     let tokens : Array[String] = []
     for elem in node.children {
@@ -397,7 +397,7 @@ test "green tree: identical identifier tokens have same text" {
 
 ///|
 test "green tree: token text is preserved correctly" {
-  let green = parse_green("abc + 123")
+  let green = parse_cst("abc + 123")
   fn find_first_ident(node : @seam.CstNode) -> String? {
     for elem in node.children {
       match elem {
@@ -450,7 +450,7 @@ test "green tree: token text is preserved correctly" {
 
 ///|
 test "green tree: lambda with application body" {
-  let green = parse_green("λf.f x")
+  let green = parse_cst("λf.f x")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
@@ -461,7 +461,7 @@ test "green tree: lambda with application body" {
 
 ///|
 test "green tree: nested if-then-else" {
-  let green = parse_green("if x then if y then 1 else 2 else 3")
+  let green = parse_cst("if x then if y then 1 else 2 else 3")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
@@ -472,7 +472,7 @@ test "green tree: nested if-then-else" {
 
 ///|
 test "green tree: parenthesized lambda" {
-  let green = parse_green("(λx.x)")
+  let green = parse_cst("(λx.x)")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
     @seam.CstElement::Token(_) => abort("Expected node, got token")
@@ -482,7 +482,7 @@ test "green tree: parenthesized lambda" {
 
 ///|
 test "green tree: application with parenthesized argument" {
-  let green = parse_green("f (x)")
+  let green = parse_cst("f (x)")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
     @seam.CstElement::Token(_) => abort("Expected node, got token")
@@ -492,7 +492,7 @@ test "green tree: application with parenthesized argument" {
 
 ///|
 test "green tree: binary with parenthesized operands" {
-  let green = parse_green("(1) + (2)")
+  let green = parse_cst("(1) + (2)")
   let child = match green.children[0] {
     @seam.CstElement::Node(n) => n
     @seam.CstElement::Token(_) => abort("Expected node, got token")
@@ -502,22 +502,22 @@ test "green tree: binary with parenthesized operands" {
 
 ///|
 test "green tree: text_len is computed correctly" {
-  let green = parse_green("abc")
+  let green = parse_cst("abc")
   inspect(green.text_len, content="3")
-  let green2 = parse_green("1 + 2")
+  let green2 = parse_cst("1 + 2")
   inspect(green2.text_len, content="5")
 }
 
 ///|
 test "green tree: CstElement kind accessor" {
-  let green = parse_green("42")
+  let green = parse_cst("42")
   let elem = green.children[0]
   inspect(@syntax.SyntaxKind::from_raw(elem.kind()), content="IntLiteral")
 }
 
 ///|
 test "green tree: CstElement text_len accessor" {
-  let green = parse_green("42")
+  let green = parse_cst("42")
   let elem = green.children[0]
   inspect(elem.text_len(), content="2")
 }
@@ -526,7 +526,7 @@ test "green tree: CstElement text_len accessor" {
 test "green tree: position comparison" {
   let source = "x + y"
   let term_direct = parse_tree(source)
-  let term_via_green = parse_green_to_term_node(source)
+  let term_via_green = parse_cst_to_term_node(source)
   inspect(term_direct.start, content="0")
   inspect(term_direct.end, content="5")
   inspect(term_via_green.start, content="0")
@@ -535,8 +535,8 @@ test "green tree: position comparison" {
 
 ///|
 test "green tree: structural sharing - identical CstNodes are equal" {
-  let green1 = parse_green("x")
-  let green2 = parse_green("x")
+  let green1 = parse_cst("x")
+  let green2 = parse_cst("x")
   let node1 = match green1.children[0] {
     @seam.CstElement::Node(n) => n
     @seam.CstElement::Token(_) => abort("Expected node")
@@ -554,7 +554,7 @@ test "green tree: structural sharing - identical CstNodes are equal" {
 
 ///|
 test "green tree: has_green_errors on valid input" {
-  let green = parse_green("42")
+  let green = parse_cst("42")
   inspect(
     green.has_errors(@syntax.ErrorNode.to_raw(), @syntax.ErrorToken.to_raw()),
     content="false",
@@ -563,7 +563,7 @@ test "green tree: has_green_errors on valid input" {
 
 ///|
 test "green tree: has_green_errors on valid lambda" {
-  let green = parse_green("λx.x")
+  let green = parse_cst("λx.x")
   inspect(
     green.has_errors(@syntax.ErrorNode.to_raw(), @syntax.ErrorToken.to_raw()),
     content="false",
@@ -572,7 +572,7 @@ test "green tree: has_green_errors on valid lambda" {
 
 ///|
 test "green tree: error recovery - missing param produces ErrorToken" {
-  let (green, diagnostics) = parse_green_recover("λ.x")
+  let (green, diagnostics) = parse_cst_recover("λ.x")
   inspect(
     green.has_errors(@syntax.ErrorNode.to_raw(), @syntax.ErrorToken.to_raw()),
     content="true",
@@ -589,7 +589,7 @@ test "green tree: error recovery - missing param produces ErrorToken" {
 
 ///|
 test "green tree: error recovery - extra tokens wrapped in ErrorNode" {
-  let (green, diagnostics) = parse_green_recover("42 )")
+  let (green, diagnostics) = parse_cst_recover("42 )")
   inspect(diagnostics.length() > 0, content="true")
   // SourceFile should have IntLiteral + ErrorNode
   let mut found_int = false
@@ -611,7 +611,7 @@ test "green tree: error recovery - extra tokens wrapped in ErrorNode" {
 
 ///|
 test "green tree: error recovery - missing else in if" {
-  let (green, diagnostics) = parse_green_recover("if x then y")
+  let (green, diagnostics) = parse_cst_recover("if x then y")
   inspect(diagnostics.length() > 0, content="true")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
@@ -623,14 +623,14 @@ test "green tree: error recovery - missing else in if" {
 
 ///|
 test "green tree: error recovery - text_len preserved" {
-  let (green, _) = parse_green_recover("λ.x")
+  let (green, _) = parse_cst_recover("λ.x")
   // text_len should cover the entire source
   inspect(green.text_len, content="3")
 }
 
 ///|
 test "green tree: error recovery - multiple errors" {
-  let (green, diagnostics) = parse_green_recover("λ.x + )")
+  let (green, diagnostics) = parse_cst_recover("λ.x + )")
   // Should have at least 2 errors: missing param, extra ")"
   inspect(diagnostics.length() >= 2, content="true")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
@@ -641,8 +641,8 @@ test "green tree: error recovery preserves valid input" {
   // Valid inputs should produce identical trees via recover vs strict
   let inputs = ["42", "x", "λx.x", "f x", "1 + 2", "if x then 1 else 2", "(x)"]
   for input in inputs {
-    let strict = parse_green(input)
-    let (recovered, diagnostics) = parse_green_recover(input)
+    let strict = parse_cst(input)
+    let (recovered, diagnostics) = parse_cst_recover(input)
     inspect(diagnostics.length(), content="0")
     inspect(strict == recovered, content="true")
   }
@@ -668,7 +668,7 @@ fn collect_leaf_texts(node : @seam.CstNode) -> String {
 ///|
 test "parse preserves all whitespace in green tree" {
   let source = "  x + 1  "
-  let (tree, _) = parse_green_recover(source)
+  let (tree, _) = parse_cst_recover(source)
   let texts = collect_leaf_texts(tree)
   inspect(texts, content="  x + 1  ")
 }
@@ -676,7 +676,7 @@ test "parse preserves all whitespace in green tree" {
 ///|
 test "parse preserves leading and trailing whitespace" {
   let source = "  42  "
-  let (tree, _) = parse_green_recover(source)
+  let (tree, _) = parse_cst_recover(source)
   let texts = collect_leaf_texts(tree)
   inspect(texts, content="  42  ")
 }
@@ -684,7 +684,7 @@ test "parse preserves leading and trailing whitespace" {
 ///|
 test "parse preserves internal whitespace in application" {
   let source = "f  x"
-  let (tree, _) = parse_green_recover(source)
+  let (tree, _) = parse_cst_recover(source)
   let texts = collect_leaf_texts(tree)
   inspect(texts, content="f  x")
 }

@@ -7,7 +7,7 @@ pub fn parse_with_error_recovery(
   input : String,
 ) -> (@term.TermNode, Array[String]) {
   let errors : Array[String] = []
-  let result = parse_green_recover(input) catch {
+  let result = parse_cst_recover(input) catch {
     @lexer.TokenizationError(msg) => {
       let error_msg = "Tokenization error: " + msg
       errors.push(error_msg)
@@ -25,7 +25,7 @@ pub fn parse_with_error_recovery(
       ")",
     )
   }
-  let tree = green_to_term_node(green, 0, Ref::new(0))
+  let tree = cst_to_term_node(green, 0, Ref::new(0))
   (tree, errors)
 }
 

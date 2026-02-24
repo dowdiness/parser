@@ -355,15 +355,15 @@ test "phase1: full re-tokenize after edit - 110 tokens" (b : @bench.T) {
 }
 
 // --- Token interning overhead in full parse pipeline ---
-// Compares parse_green_recover with and without an Interner to measure the
+// Compares parse_cst_recover with and without an Interner to measure the
 // per-parse cost of interning. These are the reference numbers for evaluating
 // whether node-level interning is worth its additional lookup overhead.
 
 ///|
-/// Benchmark: parse_green_recover without interner (baseline, no dedup).
-test "parse_green_recover - no interner, small" (b : @bench.T) {
+/// Benchmark: parse_cst_recover without interner (baseline, no dedup).
+test "parse_cst_recover - no interner, small" (b : @bench.T) {
   b.bench(fn() {
-    let (tree, _) = @parse.parse_green_recover("x + 1") catch {
+    let (tree, _) = @parse.parse_cst_recover("x + 1") catch {
       _ => abort("benchmark failed")
     }
     b.keep(tree)
@@ -371,11 +371,11 @@ test "parse_green_recover - no interner, small" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: parse_green_recover with interner, cold (first parse of session).
-test "parse_green_recover - cold interner, small" (b : @bench.T) {
+/// Benchmark: parse_cst_recover with interner, cold (first parse of session).
+test "parse_cst_recover - cold interner, small" (b : @bench.T) {
   b.bench(fn() {
     let interner = @seam.Interner::new()
-    let (tree, _) = @parse.parse_green_recover("x + 1", interner=Some(interner)) catch {
+    let (tree, _) = @parse.parse_cst_recover("x + 1", interner=Some(interner)) catch {
       _ => abort("benchmark failed")
     }
     b.keep(tree)
@@ -383,14 +383,14 @@ test "parse_green_recover - cold interner, small" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: parse_green_recover with interner, warm (subsequent parses of same session).
-test "parse_green_recover - warm interner, small" (b : @bench.T) {
+/// Benchmark: parse_cst_recover with interner, warm (subsequent parses of same session).
+test "parse_cst_recover - warm interner, small" (b : @bench.T) {
   let interner = @seam.Interner::new()
-  let _ = @parse.parse_green_recover("x + 1", interner=Some(interner)) catch {
+  let _ = @parse.parse_cst_recover("x + 1", interner=Some(interner)) catch {
     _ => abort("benchmark failed")
   }
   b.bench(fn() {
-    let (tree, _) = @parse.parse_green_recover("x + 1", interner=Some(interner)) catch {
+    let (tree, _) = @parse.parse_cst_recover("x + 1", interner=Some(interner)) catch {
       _ => abort("benchmark failed")
     }
     b.keep(tree)
@@ -398,11 +398,11 @@ test "parse_green_recover - warm interner, small" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: parse_green_recover without interner - larger input (baseline).
-test "parse_green_recover - no interner, large" (b : @bench.T) {
+/// Benchmark: parse_cst_recover without interner - larger input (baseline).
+test "parse_cst_recover - no interner, large" (b : @bench.T) {
   let src = "λf.λx.if f x then (λy.y + 1) x else (λz.z - 1) (f x)"
   b.bench(fn() {
-    let (tree, _) = @parse.parse_green_recover(src) catch {
+    let (tree, _) = @parse.parse_cst_recover(src) catch {
       _ => abort("benchmark failed")
     }
     b.keep(tree)
@@ -410,15 +410,15 @@ test "parse_green_recover - no interner, large" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: parse_green_recover with warm interner - larger input.
-test "parse_green_recover - warm interner, large" (b : @bench.T) {
+/// Benchmark: parse_cst_recover with warm interner - larger input.
+test "parse_cst_recover - warm interner, large" (b : @bench.T) {
   let src = "λf.λx.if f x then (λy.y + 1) x else (λz.z - 1) (f x)"
   let interner = @seam.Interner::new()
-  let _ = @parse.parse_green_recover(src, interner=Some(interner)) catch {
+  let _ = @parse.parse_cst_recover(src, interner=Some(interner)) catch {
     _ => abort("benchmark failed")
   }
   b.bench(fn() {
-    let (tree, _) = @parse.parse_green_recover(src, interner=Some(interner)) catch {
+    let (tree, _) = @parse.parse_cst_recover(src, interner=Some(interner)) catch {
       _ => abort("benchmark failed")
     }
     b.keep(tree)
@@ -428,10 +428,10 @@ test "parse_green_recover - warm interner, large" (b : @bench.T) {
 // --- Phase 3: cursor-based green-tree reuse ---
 //
 // Directly measures the parser-level speedup from subtree reuse.
-// Uses parse_green_recover_with_tokens (no cursor, cursor=None) as the
+// Uses parse_cst_recover_with_tokens (no cursor, cursor=None) as the
 // baseline with matched cursor-construction overhead inside the timed loop.
 // This keeps comparisons focused on reuse behavior rather than cursor setup.
-// parse_green_with_cursor uses a live ReuseCursor so ctx.node() can skip
+// parse_cst_with_cursor uses a live ReuseCursor so ctx.node() can skip
 // unchanged subtrees.  The 110-token corpus (55 integers + 54 plus signs)
 // gives 54 reusable IntLiteral nodes for the "edit at end" case and ~54
 // reusable nodes for "edit at start" (everything after position 1).
@@ -445,14 +445,14 @@ test "parse_green_recover - warm interner, large" (b : @bench.T) {
 /// Same tokens passed directly — no tokenization cost in this measurement.
 test "phase3: full green reparse, no cursor - 110 tokens" (b : @bench.T) {
   let source = make_token_source()
-  let (old_tree, _) = @parse.parse_green_recover(source) catch {
+  let (old_tree, _) = @parse.parse_cst_recover(source) catch {
     _ => abort("setup failed")
   }
   let tokens = @lexer.tokenize(source) catch { _ => abort("setup failed") }
   b.bench(fn() {
     // Match the cursor path's per-iteration setup cost for fair comparison.
     let _ = @parse.make_reuse_cursor(old_tree, 261, 263, tokens)
-    let (tree, _, _) = @parse.parse_green_recover_with_tokens(
+    let (tree, _, _) = @parse.parse_cst_recover_with_tokens(
       source,
       tokens,
       None,
@@ -468,7 +468,7 @@ test "phase3: full green reparse, no cursor - 110 tokens" (b : @bench.T) {
 test "phase3: cursor reuse, edit at end - 110 tokens" (b : @bench.T) {
   let old_source = make_token_source()
   let new_source = make_token_source_replace(55)
-  let (old_tree, _) = @parse.parse_green_recover(old_source) catch {
+  let (old_tree, _) = @parse.parse_cst_recover(old_source) catch {
     _ => abort("setup failed")
   }
   let new_tokens = @lexer.tokenize(new_source) catch {
@@ -476,7 +476,7 @@ test "phase3: cursor reuse, edit at end - 110 tokens" (b : @bench.T) {
   }
   b.bench(fn() {
     let cursor = @parse.make_reuse_cursor(old_tree, 261, 263, new_tokens)
-    let (tree, _, _) = @parse.parse_green_with_cursor(
+    let (tree, _, _) = @parse.parse_cst_with_cursor(
       new_source, new_tokens, cursor,
     )
     b.keep(tree)
@@ -490,7 +490,7 @@ test "phase3: cursor reuse, edit at end - 110 tokens" (b : @bench.T) {
 test "phase3: cursor reuse, edit at start - 110 tokens" (b : @bench.T) {
   let old_source = make_token_source()
   let new_source = make_token_source_replace(1)
-  let (old_tree, _) = @parse.parse_green_recover(old_source) catch {
+  let (old_tree, _) = @parse.parse_cst_recover(old_source) catch {
     _ => abort("setup failed")
   }
   let new_tokens = @lexer.tokenize(new_source) catch {
@@ -498,7 +498,7 @@ test "phase3: cursor reuse, edit at start - 110 tokens" (b : @bench.T) {
   }
   b.bench(fn() {
     let cursor = @parse.make_reuse_cursor(old_tree, 0, 1, new_tokens)
-    let (tree, _, _) = @parse.parse_green_with_cursor(
+    let (tree, _, _) = @parse.parse_cst_with_cursor(
       new_source, new_tokens, cursor,
     )
     b.keep(tree)

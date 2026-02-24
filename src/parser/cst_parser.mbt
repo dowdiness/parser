@@ -89,10 +89,10 @@ fn select_build_tree(
 ///|
 /// Strict: raises ParseError on first syntax error (backward compat).
 /// The ParseError token field comes directly from the diagnostic's got_token.
-/// Prefer parse_green_recover for new code; this function is retained for
+/// Prefer parse_cst_recover for new code; this function is retained for
 /// callers that depend on the raising contract.
-pub fn parse_green(source : String) -> @seam.CstNode raise {
-  let (green, errors) = parse_green_recover(source)
+pub fn parse_cst(source : String) -> @seam.CstNode raise {
+  let (green, errors) = parse_cst_recover(source)
   if errors.length() > 0 {
     let diag = errors[0]
     raise ParseError(diag.message, diag.got_token)
@@ -132,7 +132,7 @@ fn run_parse(
 ///|
 /// Recovering: returns tree with ErrorNodes + diagnostic list.
 /// Only raises for TokenizationError (unrecoverable).
-pub fn parse_green_recover(
+pub fn parse_cst_recover(
   source : String,
   interner? : @seam.Interner? = None,
 ) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError {
@@ -145,9 +145,9 @@ pub fn parse_green_recover(
 ///
 /// Uses the supplied token stream directly — never re-tokenizes from source.
 /// Note: this function does not accept an Interner. For incremental use with
-/// token deduplication, prefer parse_green_recover_with_tokens which supports
+/// token deduplication, prefer parse_cst_recover_with_tokens which supports
 /// the interner? parameter.
-pub fn parse_green_with_cursor(
+pub fn parse_cst_with_cursor(
   source : String,
   tokens : Array[@token.TokenInfo],
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind],
@@ -165,7 +165,7 @@ pub fn parse_green_with_cursor(
 /// `prev_diagnostics` is only forwarded to the context when `cursor` is also
 /// `Some`. Passing `prev_diagnostics=Some(diags)` with `cursor=None` has no
 /// effect; the diagnostics are not replayed.
-pub fn parse_green_recover_with_tokens(
+pub fn parse_cst_recover_with_tokens(
   source : String,
   tokens : Array[@token.TokenInfo],
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,

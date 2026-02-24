@@ -1,8 +1,8 @@
 ///|
 /// Collect token text from all children of an ErrorNode.
-fn extract_error_text(green : @seam.CstNode) -> String {
+fn extract_error_text(cst : @seam.CstNode) -> String {
   let parts : Array[String] = []
-  for elem in green.children {
+  for elem in cst.children {
     match elem {
       @seam.CstElement::Token(t) =>
         if t.kind != @syntax.WhitespaceToken.to_raw() && t.text != "" {
@@ -16,10 +16,10 @@ fn extract_error_text(green : @seam.CstNode) -> String {
 
 ///|
 fn extract_token_text(
-  green : @seam.CstNode,
+  cst : @seam.CstNode,
   token_kind : @seam.RawKind,
 ) -> String? {
-  for elem in green.children {
+  for elem in cst.children {
     match elem {
       @seam.CstElement::Token(t) =>
         if t.kind == token_kind {
@@ -32,14 +32,14 @@ fn extract_token_text(
 }
 
 ///|
-/// Compute tight start/end positions for a green node, skipping leading and
+/// Compute tight start/end positions for a cst node, skipping leading and
 /// trailing whitespace tokens. Returns (start, end) relative to the given offset.
-fn tight_span(green : @seam.CstNode, offset : Int) -> (Int, Int) {
+fn tight_span(cst : @seam.CstNode, offset : Int) -> (Int, Int) {
   let mut pos = offset
   let mut tight_start = offset
-  let mut tight_end = offset + green.text_len
+  let mut tight_end = offset + cst.text_len
   let mut found_start = false
-  for elem in green.children {
+  for elem in cst.children {
     let len = elem.text_len()
     match elem {
       @seam.CstElement::Token(t) =>
@@ -64,9 +64,9 @@ fn tight_span(green : @seam.CstNode, offset : Int) -> (Int, Int) {
 }
 
 ///|
-fn collect_binary_ops(green : @seam.CstNode) -> Array[@term.Bop] {
+fn collect_binary_ops(cst : @seam.CstNode) -> Array[@term.Bop] {
   let ops : Array[@term.Bop] = []
-  for elem in green.children {
+  for elem in cst.children {
     match elem {
       @seam.CstElement::Token(t) =>
         if t.kind == @syntax.PlusToken.to_raw() {
@@ -156,15 +156,18 @@ fn convert_source_file_children(
 ///|
 /// Convert a SyntaxNode to a TermNode. Uses SyntaxNode's offset-based position
 /// computation instead of manual offset tracking.
-fn convert_red(red : @seam.SyntaxNode, counter : Ref[Int]) -> @term.TermNode {
+fn convert_syntax_node(
+  node : @seam.SyntaxNode,
+  counter : Ref[Int],
+) -> @term.TermNode {
   fn next_id() -> Int {
     let id = counter.val
     counter.val = id + 1
     id
   }
 
-  let g = red.green
-  let off = red.start()
+  let g = node.green
+  let off = node.start()
   match @syntax.SyntaxKind::from_raw(g.kind) {
     @syntax.IntLiteral => {
       let text = extract_token_text(g, @syntax.IntToken.to_raw()).unwrap_or("")
@@ -196,9 +199,9 @@ fn convert_red(red : @seam.SyntaxNode, counter : Ref[Int]) -> @term.TermNode {
         "",
       )
       let (tight_start, tight_end) = tight_span(g, off)
-      let red_children = red.children()
+      let red_children = node.children()
       for child in red_children {
-        let body = convert_red(child, counter)
+        let body = convert_syntax_node(child, counter)
         return @term.TermNode::new(
           @term.TermKind::Lam(param),
           tight_start,
@@ -217,9 +220,9 @@ fn convert_red(red : @seam.SyntaxNode, counter : Ref[Int]) -> @term.TermNode {
     }
     @syntax.AppExpr => {
       let children : Array[@term.TermNode] = []
-      let red_children = red.children()
+      let red_children = node.children()
       for child in red_children {
-        children.push(convert_red(child, counter))
+        children.push(convert_syntax_node(child, counter))
       }
       if children.length() >= 2 {
         let mut result = children[0]
@@ -242,9 +245,9 @@ fn convert_red(red : @seam.SyntaxNode, counter : Ref[Int]) -> @term.TermNode {
     @syntax.BinaryExpr => {
       let ops = collect_binary_ops(g)
       let children : Array[@term.TermNode] = []
-      let red_children = red.children()
+      let red_children = node.children()
       for child in red_children {
-        children.push(convert_red(child, counter))
+        children.push(convert_syntax_node(child, counter))
       }
       if children.length() >= 2 {
         let mut result = children[0]
@@ -272,9 +275,9 @@ fn convert_red(red : @seam.SyntaxNode, counter : Ref[Int]) -> @term.TermNode {
     @syntax.IfExpr => {
       let (tight_start, _) = tight_span(g, off)
       let children : Array[@term.TermNode] = []
-      let red_children = red.children()
+      let red_children = node.children()
       for child in red_children {
-        children.push(convert_red(child, counter))
+        children.push(convert_syntax_node(child, counter))
       }
       let if_end = if children.length() > 0 {
         children[children.length() - 1].end
@@ -291,9 +294,9 @@ fn convert_red(red : @seam.SyntaxNode, counter : Ref[Int]) -> @term.TermNode {
     }
     @syntax.ParenExpr => {
       let (tight_start, tight_end) = tight_span(g, off)
-      let red_children = red.children()
+      let red_children = node.children()
       for child in red_children {
-        let inner = convert_red(child, counter)
+        let inner = convert_syntax_node(child, counter)
         return @term.TermNode::new(
           inner.kind,
           tight_start,
@@ -321,10 +324,10 @@ fn convert_red(red : @seam.SyntaxNode, counter : Ref[Int]) -> @term.TermNode {
       )
     }
     @syntax.SourceFile => {
-      let red_children = red.children()
+      let red_children = node.children()
       let children : Array[@term.TermNode] = []
       for child in red_children {
-        children.push(convert_red(child, counter))
+        children.push(convert_syntax_node(child, counter))
       }
       convert_source_file_children(children, off, counter)
     }
@@ -339,33 +342,33 @@ fn convert_red(red : @seam.SyntaxNode, counter : Ref[Int]) -> @term.TermNode {
 
 ///|
 /// Convert a SyntaxNode (position-aware CST facade) to a TermNode.
-pub fn red_to_term_node(
-  red : @seam.SyntaxNode,
+pub fn syntax_node_to_term_node(
+  node : @seam.SyntaxNode,
   node_id_counter : Ref[Int],
 ) -> @term.TermNode {
-  convert_red(red, node_id_counter)
+  convert_syntax_node(node, node_id_counter)
 }
 
 ///|
 /// Convert a CstNode to a TermNode. Preserved for backward compatibility.
-/// Internally creates a SyntaxNode and delegates to convert_red.
-pub fn green_to_term_node(
-  green : @seam.CstNode,
+/// Internally creates a SyntaxNode and delegates to convert_syntax_node.
+pub fn cst_to_term_node(
+  cst : @seam.CstNode,
   offset : Int,
   node_id_counter : Ref[Int],
 ) -> @term.TermNode {
-  let red = @seam.SyntaxNode::new(green, None, offset)
-  convert_red(red, node_id_counter)
+  let red = @seam.SyntaxNode::new(cst, None, offset)
+  convert_syntax_node(red, node_id_counter)
 }
 
 ///|
-pub fn green_to_term(green : @seam.CstNode) -> @term.Term {
-  let node = green_to_term_node(green, 0, Ref::new(0))
+pub fn cst_to_term(cst : @seam.CstNode) -> @term.Term {
+  let node = cst_to_term_node(cst, 0, Ref::new(0))
   @term.node_to_term(node)
 }
 
 ///|
-pub fn parse_green_to_term_node(source : String) -> @term.TermNode raise {
-  let green = parse_green(source)
-  green_to_term_node(green, 0, Ref::new(0))
+pub fn parse_cst_to_term_node(source : String) -> @term.TermNode raise {
+  let cst = parse_cst(source)
+  cst_to_term_node(cst, 0, Ref::new(0))
 }

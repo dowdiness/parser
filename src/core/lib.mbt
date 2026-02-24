@@ -421,7 +421,7 @@ pub fn[T, K] ParserContext::emit_error_placeholder(
 
 ///|
 /// Attach a reuse cursor to an existing ParserContext, enabling incremental parsing.
-/// Called by entry points (parse_green_with_cursor etc.) after construction.
+/// Called by entry points (parse_cst_with_cursor etc.) after construction.
 pub fn[T, K] ParserContext::set_reuse_cursor(
   self : ParserContext[T, K],
   cursor : ReuseCursor[T, K],

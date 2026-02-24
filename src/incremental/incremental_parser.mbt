@@ -66,14 +66,14 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @term.TermNode {
     let buffer = @lexer.TokenBuffer::new(self.source)
     self.token_buffer = Some(buffer)
     // Parse through green tree for subtree reuse support
-    let (green, diagnostics) = @parse.parse_green_recover(
+    let (green, diagnostics) = @parse.parse_cst_recover(
       self.source,
       interner=Some(self.interner),
     )
     self.green_tree = Some(green)
     self.last_reuse_count = 0
     self.last_diagnostics = diagnostics
-    let parsed_tree = @parse.green_to_term_node(green, 0, Ref::new(0))
+    let parsed_tree = @parse.cst_to_term_node(green, 0, Ref::new(0))
     parsed_tree
   } catch {
     @lexer.TokenizationError(msg) => {
@@ -202,7 +202,7 @@ fn IncrementalParser::incremental_reparse(
   }
 
   // Parse with cursor-based reuse
-  let (new_green, diagnostics, reuse_count) = @parse.parse_green_recover_with_tokens(
+  let (new_green, diagnostics, reuse_count) = @parse.parse_cst_recover_with_tokens(
     source,
     tokens,
     cursor,
@@ -216,7 +216,7 @@ fn IncrementalParser::incremental_reparse(
   self.last_diagnostics = diagnostics
 
   // Convert to TermNode
-  @parse.green_to_term_node(new_green, 0, Ref::new(0))
+  @parse.cst_to_term_node(new_green, 0, Ref::new(0))
 }
 
 ///|

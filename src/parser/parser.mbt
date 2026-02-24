@@ -71,10 +71,10 @@ fn expect(parser : Parser, expected : @token.Token) -> Parser raise ParseError {
 /// Parse the input string into a TermNode with position tracking
 ///
 /// Routes through the green tree (CST) as the canonical intermediate
-/// representation: parse_green → green_to_term_node.
+/// representation: parse_cst → cst_to_term_node.
 pub fn parse_tree(input : String) -> @term.TermNode raise {
-  let green = parse_green(input)
-  green_to_term_node(green, 0, Ref::new(0))
+  let green = parse_cst(input)
+  cst_to_term_node(green, 0, Ref::new(0))
 }
 
 ///|
