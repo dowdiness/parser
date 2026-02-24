@@ -106,6 +106,7 @@ pub(all) struct CellInfo {
   verified_at : Revision
   durability : Durability
   dependencies : Array[CellId]
+  subscribers : Array[CellId]
 }
 
 ///|
@@ -270,6 +271,13 @@ pub fn Runtime::cell_info(self : Runtime, id : CellId) -> CellInfo? {
         verified_at: meta.verified_at,
         durability: meta.durability,
         dependencies: meta.dependencies.copy(),
+        subscribers: {
+          let subs : Array[CellId] = []
+          for sub in meta.subscribers {
+            subs.push(sub)
+          }
+          subs
+        },
       })
     None => None
   }

@@ -64,3 +64,15 @@ test "subscriber: dependents returns empty for leaf memo" {
   let deps = rt.dependents(m.id())
   inspect(deps.length(), content="0")
 }
+
+///|
+test "subscriber: cell_info includes subscribers" {
+  let rt = Runtime::new()
+  let a = Signal::new(rt, 1)
+  let m = Memo::new(rt, () => a.get() + 1)
+  let _ = m.get()
+  match rt.cell_info(a.id()) {
+    Some(info) => inspect(info.subscribers.contains(m.id()), content="true")
+    None => abort("expected cell info")
+  }
+}
