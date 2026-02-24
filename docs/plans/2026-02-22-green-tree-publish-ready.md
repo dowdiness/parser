@@ -145,10 +145,22 @@ Audit items:
   behavior is implemented but not documented as a stability guarantee.
 - `RawKind::inner` is `#deprecated` — good, no action needed.
 
+**Decisions recorded:**
+- `CstNode.token_count` — **keep**. Computed for free during `CstNode::new`
+  children traversal; removing forces O(subtree) recount at every use site.
+- `EventBuffer.events` — **make private**. Only `push`/`mark`/`start_at`
+  should be accessible; raw array access allows callers to corrupt event
+  stream invariants.
+- `CstNode.hash`, `CstToken.hash` — **keep as `pub` fields** (read-only
+  cached value; useful for external consumers implementing custom caches).
+  Document as stable.
+- `CstNode.children` — **decision pending Task 1.1 audit**: either keep
+  `pub(all)` with documented invariants, or expose via a method.
+
 **Remaining work:**
-- Decide which fields to make private (breaking change — must happen before
-  standalone module is published).
-- Add invariant docs to each public type: what the cached `hash` represents,
+- Make `EventBuffer.events` private; expose read-only access via method if needed.
+- Audit `CstNode.children` — document invariants or restrict to method access.
+- Add invariant docs to each public type: what `hash` represents,
   what `token_count` counts, what `EventBuffer` balancing requires.
 - Document `Eq`/`Hash` fast-path semantics as a stability guarantee.
 
@@ -219,16 +231,23 @@ Acceptance criteria:
 
 ## Phase 3: Standalone Module Bootstrap — ❌ Not started
 
+**Decision:** `seam` will be extracted as a **git submodule** (new repository
+`dowdiness/seam`), added to `dowdiness/parser` via `git submodule add`.
+`dowdiness/parser`'s `moon.mod.json` will reference it as a path dependency:
+`"dowdiness/seam": { "path": "seam" }`.
+
 **Current state:** `seam` (currently `green-tree`) lives at `src/green-tree/`
 inside the `dowdiness/parser` module (`moon.mod.json` name = `"dowdiness/parser"`).
 It cannot be added as a standalone dependency today.
 
 ### Task 3.1: Create module skeleton — ❌ Not done
 
+New repository: `https://github.com/dowdiness/seam`
+
 Files:
 - `moon.mod.json`
 - `moon.pkg` (root package manifest)
-- `README.mbt.md` (symlink `README.md` if desired)
+- `README.md`
 - `LICENSE`
 - source files under package root
 
@@ -246,16 +265,38 @@ Acceptance criteria:
 
 ### Task 3.2: Move/copy core implementation — ❌ Not done
 
-Source set (all present in current `src/green-tree/`, will move to `src/seam/`):
-- `green_node.mbt` ✅
-- `red_node.mbt` ✅
-- `event.mbt` ✅
-- `hash.mbt` ✅
-- `interner.mbt` ✅ (not in original plan — include in standalone)
+Source set (all present in current `src/green-tree/`, will move to `seam/`):
+- `green_node.mbt` ✅ — includes `CstNode`, `CstToken`, `CstElement`, `RawKind`
+- `red_node.mbt` ✅ — includes `SyntaxNode`
+- `event.mbt` ✅ — includes `EventBuffer`, `ParseEvent`, `build_tree`
+- `hash.mbt` ✅ — includes `combine_hash`, `string_hash`
+- `interner.mbt` ✅ — includes `Interner`, `build_tree_interned`
+
+**Explicit inclusions decided:**
+- `Interner` + `build_tree_interned` — structural sharing/deduplication is core
+  to the module's value; useful beyond incremental parsing
+- `GreenNode.token_count` (→ `CstNode.token_count`) — computed for free during
+  `GreenNode::new` children traversal; removing it forces O(subtree) recount
+  at use time; keep
+- `has_errors(error_node_kind, error_token_kind)` — language-agnostic via
+  `RawKind` parameters; include
 
 Acceptance criteria:
 - behavior matches current internal `green-tree` / `seam`
 - no parser/language-specific code in standalone module
+
+### Task 3.3: Wire `dowdiness/parser` to standalone `seam` — ❌ Not done
+
+After extraction:
+- Add `seam` as a git submodule to `dowdiness/parser`
+- Add `"dowdiness/seam": { "path": "seam" }` to `dowdiness/parser`'s
+  `moon.mod.json` deps
+- Remove `src/green-tree/` from `dowdiness/parser` source tree
+- Verify `moon check` and `moon test` pass with 0 regressions
+
+Acceptance criteria:
+- `dowdiness/parser` builds against standalone `seam` via path dep
+- no source duplication between the two modules
 
 ---
 
@@ -369,8 +410,9 @@ Acceptance criteria:
   unnecessary follow-up releases. **High risk — must fix before Phase 3.**
 - Deferred API decisions (`node_at`, `width`) can create documentation/code drift.
 - Hash/equality semantics are easy to regress without dedicated tests.
-- `token_count` (incremental-parser detail) exposed on `GreenNode` — may be
-  wrong to include in a language-agnostic standalone module.
+- `CstNode.children` visibility — if kept `pub(all)`, callers can build
+  structurally invalid trees by mutating the array. Document immutability
+  contract clearly or restrict to method access.
 
 ## Success Metric
 
