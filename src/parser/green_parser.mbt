@@ -28,6 +28,39 @@ pub fn make_reuse_cursor(
 }
 
 ///|
+/// Core parse-and-build with optional reuse cursor. Shared by the incremental
+/// entry points. Returns (tree, errors, reuse_count).
+fn run_parse_incremental(
+  tokens : Array[@token.TokenInfo],
+  source : String,
+  interner : @green_tree.Interner?,
+  cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
+) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
+  let ctx = @core.ParserContext::new_indexed(
+    tokens.length(),
+    fn(i) { tokens[i].token },
+    fn(i) { tokens[i].start },
+    fn(i) { tokens[i].end },
+    source,
+    lambda_spec,
+  )
+  match cursor {
+    Some(c) => ctx.set_reuse_cursor(c)
+    None => ()
+  }
+  parse_lambda_root(ctx)
+  ctx.flush_trivia()
+  if ctx.open_nodes != 0 {
+    abort(
+      "run_parse_incremental: grammar left " +
+      ctx.open_nodes.to_string() +
+      " unclosed nodes",
+    )
+  }
+  (select_build_tree(ctx.events.events, interner), ctx.errors, ctx.reuse_count)
+}
+
+///|
 fn select_build_tree(
   events : Array[@green_tree.ParseEvent],
   interner : @green_tree.Interner?,
@@ -108,19 +141,15 @@ pub fn parse_green_recover(
 /// Parse with reuse cursor for incremental parsing with subtree reuse.
 ///
 /// Uses the supplied token stream directly — never re-tokenizes from source.
-/// DEFERRED: cursor is ignored and reuse_count is always 0 until cursor
-/// support is restored.
-///
 /// Note: this function does not accept an Interner. For incremental use with
 /// token deduplication, prefer parse_green_recover_with_tokens which supports
 /// the interner? parameter.
 pub fn parse_green_with_cursor(
   source : String,
   tokens : Array[@token.TokenInfo],
-  _cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind],
+  cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind],
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
-  let (tree, errors) = run_parse(tokens, source, None)
-  (tree, errors, 0)
+  run_parse_incremental(tokens, source, None, Some(cursor))
 }
 
 ///|
@@ -128,16 +157,13 @@ pub fn parse_green_with_cursor(
 ///
 /// Uses the supplied token stream directly — never re-tokenizes from source,
 /// so temporarily invalid source text does not cause a hard crash.
-/// DEFERRED: cursor is ignored and reuse_count is always 0 until cursor
-/// support is restored.
 pub fn parse_green_recover_with_tokens(
   source : String,
   tokens : Array[@token.TokenInfo],
-  _cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
+  cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
   interner? : @green_tree.Interner? = None,
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
-  let (tree, errors) = run_parse(tokens, source, interner)
-  (tree, errors, 0)
+  run_parse_incremental(tokens, source, interner, cursor)
 }
 
 // ─── Grammar helpers ─────────────────────────────────────────────────────────
@@ -210,23 +236,22 @@ fn parse_binary_op(
   let mark = ctx.mark()
   parse_application(ctx)
   match ctx.peek() {
-    @token.Plus | @token.Minus => {
-      ctx.start_at(mark, @syntax.BinaryExpr)
-      while ctx.error_count < MAX_ERRORS {
-        match ctx.peek() {
-          @token.Plus => {
-            ctx.emit_token(@syntax.PlusToken)
-            parse_application(ctx)
+    @token.Plus | @token.Minus =>
+      ctx.wrap_at(mark, @syntax.BinaryExpr, fn() {
+        while ctx.error_count < MAX_ERRORS {
+          match ctx.peek() {
+            @token.Plus => {
+              ctx.emit_token(@syntax.PlusToken)
+              parse_application(ctx)
+            }
+            @token.Minus => {
+              ctx.emit_token(@syntax.MinusToken)
+              parse_application(ctx)
+            }
+            _ => break
           }
-          @token.Minus => {
-            ctx.emit_token(@syntax.MinusToken)
-            parse_application(ctx)
-          }
-          _ => break
         }
-      }
-      ctx.finish_node()
-    }
+      })
     _ => ()
   }
 }
@@ -241,19 +266,18 @@ fn parse_application(
     @token.LeftParen
     | @token.Identifier(_)
     | @token.Integer(_)
-    | @token.Lambda => {
-      ctx.start_at(mark, @syntax.AppExpr)
-      while ctx.error_count < MAX_ERRORS {
-        match ctx.peek() {
-          @token.LeftParen
-          | @token.Identifier(_)
-          | @token.Integer(_)
-          | @token.Lambda => parse_atom(ctx)
-          _ => break
+    | @token.Lambda =>
+      ctx.wrap_at(mark, @syntax.AppExpr, fn() {
+        while ctx.error_count < MAX_ERRORS {
+          match ctx.peek() {
+            @token.LeftParen
+            | @token.Identifier(_)
+            | @token.Integer(_)
+            | @token.Lambda => parse_atom(ctx)
+            _ => break
+          }
         }
-      }
-      ctx.finish_node()
-    }
+      })
     _ => ()
   }
 }
@@ -266,57 +290,46 @@ fn parse_atom(
     return
   }
   match ctx.peek() {
-    @token.Integer(_) => {
-      ctx.start_node(@syntax.IntLiteral)
-      ctx.emit_token(@syntax.IntToken)
-      ctx.finish_node()
-    }
-    @token.Identifier(_) => {
-      ctx.start_node(@syntax.VarRef)
-      ctx.emit_token(@syntax.IdentToken)
-      ctx.finish_node()
-    }
-    @token.Lambda => {
-      ctx.start_node(@syntax.LambdaExpr)
-      ctx.emit_token(@syntax.LambdaToken)
-      match ctx.peek() {
-        @token.Identifier(_) => ctx.emit_token(@syntax.IdentToken)
-        _ => {
-          ctx.error("Expected parameter after λ")
-          // Emit zero-width ErrorToken for missing identifier
-          ctx.emit_error_placeholder()
+    @token.Integer(_) =>
+      ctx.node(@syntax.IntLiteral, fn() { ctx.emit_token(@syntax.IntToken) })
+    @token.Identifier(_) =>
+      ctx.node(@syntax.VarRef, fn() { ctx.emit_token(@syntax.IdentToken) })
+    @token.Lambda =>
+      ctx.node(@syntax.LambdaExpr, () => {
+        ctx.emit_token(@syntax.LambdaToken)
+        match ctx.peek() {
+          @token.Identifier(_) => ctx.emit_token(@syntax.IdentToken)
+          _ => {
+            ctx.error("Expected parameter after λ")
+            ctx.emit_error_placeholder()
+          }
         }
-      }
-      lambda_expect(ctx, @token.Dot, @syntax.DotToken)
-      parse_expression(ctx)
-      ctx.finish_node()
-    }
-    @token.If => {
-      ctx.start_node(@syntax.IfExpr)
-      ctx.emit_token(@syntax.IfKeyword)
-      parse_expression(ctx)
-      lambda_expect(ctx, @token.Then, @syntax.ThenKeyword)
-      parse_expression(ctx)
-      lambda_expect(ctx, @token.Else, @syntax.ElseKeyword)
-      parse_expression(ctx)
-      ctx.finish_node()
-    }
-    @token.LeftParen => {
-      ctx.start_node(@syntax.ParenExpr)
-      ctx.emit_token(@syntax.LeftParenToken)
-      parse_expression(ctx)
-      lambda_expect(ctx, @token.RightParen, @syntax.RightParenToken)
-      ctx.finish_node()
-    }
+        lambda_expect(ctx, @token.Dot, @syntax.DotToken)
+        parse_expression(ctx)
+      })
+    @token.If =>
+      ctx.node(@syntax.IfExpr, fn() {
+        ctx.emit_token(@syntax.IfKeyword)
+        parse_expression(ctx)
+        lambda_expect(ctx, @token.Then, @syntax.ThenKeyword)
+        parse_expression(ctx)
+        lambda_expect(ctx, @token.Else, @syntax.ElseKeyword)
+        parse_expression(ctx)
+      })
+    @token.LeftParen =>
+      ctx.node(@syntax.ParenExpr, fn() {
+        ctx.emit_token(@syntax.LeftParenToken)
+        parse_expression(ctx)
+        lambda_expect(ctx, @token.RightParen, @syntax.RightParenToken)
+      })
     _ => {
+      // Error recovery — never reuse error nodes; keep raw start/finish_node.
       ctx.error("Unexpected token")
       if at_stop_token(ctx) {
-        // Stop token: emit zero-width ErrorNode (don't consume)
         ctx.start_node(@syntax.ErrorNode)
         ctx.emit_error_placeholder()
         ctx.finish_node()
       } else {
-        // Wrap current token in ErrorNode (consume it)
         ctx.start_node(@syntax.ErrorNode)
         ctx.bump_error()
         ctx.finish_node()

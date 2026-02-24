@@ -73,11 +73,10 @@ test "parse_green_with_cursor: uses supplied tokens, not re-tokenization" {
     fn(i) { tokens[i].start },
     lambda_spec,
   )
-  let (_, errors, reuse_count) = parse_green_with_cursor(
+  let (_, errors, _reuse_count) = parse_green_with_cursor(
     "@invalid", tokens, cursor,
   )
   inspect(errors.length(), content="0")
-  inspect(reuse_count, content="0")
 }
 
 ///|
