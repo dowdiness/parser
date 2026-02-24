@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-22
 **Updated:** 2026-02-24
-**Status:** In Progress — Phases 1–2 partially complete; Phases 3–5 not started
+**Status:** In Progress — Phase 0 not started; Phases 1–2 partially complete; Phases 3–6 not started
 
 ## Goal
 
@@ -64,6 +64,65 @@ Initial version: `0.1.0` (to be tagged and published separately)
      reference `green-tree` via a path dependency — no mooncakes publish needed.
      Path dep syntax: `"dowdiness/green-tree": { "path": "../green-tree" }` in
      `moon.mod.json`.
+
+---
+
+## Phase 0: Naming Alignment — ❌ Not started
+
+Rename the three tree layers to names that are self-explanatory without
+knowledge of the Roslyn/rowan tradition. Must land before Phase 1 so all
+subsequent work uses the final names.
+
+### Rationale
+
+Current names (`green-tree`, `red-tree`, `term-tree`) come from the Roslyn
+compiler (C#) and rowan (Rust). They are precise within that tradition but
+opaque to newcomers. Proposed replacements:
+
+| Current | New | Why |
+|---|---|---|
+| `green-tree` / `GreenNode` / `GreenToken` | `cst` / `CstNode` / `CstToken` | "CST" (concrete syntax tree) signals full-fidelity trivia-preserving tree; also captures the immutable structurally-shared property |
+| `red-tree` / `RedNode` | `SyntaxNode` (module stays `cst` or separate `syntax`) | rust-analyzer convention; implies "positioned view", not a separate tree layer |
+| `term-tree` / `TermNode` | `ast` / `AstNode` | Universally understood; lambda-specific semantic layer |
+
+**Note on "ST" (syntax tree):** rejected — too ambiguous (used for both CST
+and AST in different communities). `SyntaxNode` (type) inside the CST module
+is the preferred convention.
+
+### Task 0.1: Rename `green-tree` package and types — ❌ Not done
+
+Scope:
+- Rename package directory `src/green-tree/` and module path accordingly
+- Rename `GreenNode` → `CstNode`, `GreenToken` → `CstToken`,
+  `GreenElement` → `CstElement`
+- Update all callers in `src/core/`, `src/parser/`, `src/lexer/`,
+  `src/incremental/`, `src/syntax/`, benchmarks, and tests
+- Update `pkg.generated.mbti` via `moon info`
+
+Acceptance criteria:
+- `moon check` and `moon test` pass with 0 regressions
+- no remaining references to the old type names in source or docs
+
+### Task 0.2: Rename `red-tree` types — ❌ Not done
+
+Scope:
+- Rename `RedNode` → `SyntaxNode` within the CST package (or a new `syntax`
+  package if a clean separation is preferred)
+- Update all callers
+
+Acceptance criteria:
+- `moon check` and `moon test` pass with 0 regressions
+
+### Task 0.3: Rename `term-tree` to `ast` — ❌ Not done
+
+Scope:
+- Rename package `src/term-tree/` (if it exists as a directory) or the
+  relevant source files
+- Rename `TermNode` → `AstNode` and related types
+- Update all callers
+
+Acceptance criteria:
+- `moon check` and `moon test` pass with 0 regressions
 
 ---
 
@@ -295,6 +354,7 @@ Acceptance criteria:
 
 ## Execution Order
 
+0. Phase 0 (naming) — rename green/red/term to CST/SyntaxNode/AST before any API work
 1. Phase 1 (API hardening) — resolve `pub(all)` field visibility, add invariant docs
 2. Phase 2 (contract decisions + API freeze) — record `node_at`/`width` decision
 3. Phase 3 (standalone module bootstrap) — extract to independent module/repo
@@ -313,6 +373,6 @@ Acceptance criteria:
 
 ## Success Metric
 
-External user can add `dowdiness/green-tree`, build a small syntax tree via
-events, traverse with `RedNode`, and pass `moon check`/`moon test` with no
-knowledge of this parser repository.
+External user can add `dowdiness/green-tree` (or its renamed successor), build
+a small CST via events, traverse with `SyntaxNode`, and pass
+`moon check`/`moon test` with no knowledge of this parser repository.
