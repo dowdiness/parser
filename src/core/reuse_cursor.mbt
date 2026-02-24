@@ -1,4 +1,4 @@
-// Generic ReuseCursor[T, K] — walks an old green tree in parallel with parsing
+// Generic ReuseCursor[T, K] — walks an old CST in parallel with parsing
 // to find reusable subtrees. Genericized from src/parser/reuse_cursor.mbt.
 //
 // All language-specific checks are delegated to the LanguageSpec callbacks:
@@ -18,7 +18,7 @@ struct CursorFrame {
 }
 
 ///|
-/// Flattened non-trivia, non-error token from the old green tree.
+/// Flattened non-trivia, non-error token from the old CST.
 /// Used for trailing-context matching during reuse checks.
 struct OldToken {
   kind : @seam.RawKind
@@ -27,7 +27,7 @@ struct OldToken {
 } derive(Show, Eq, Compare)
 
 ///|
-/// Generic cursor for walking an old green tree to find reusable subtrees.
+/// Generic cursor for walking an old CST to find reusable subtrees.
 /// Maintains traversal state for O(depth) lookups.
 pub struct ReuseCursor[T, K] {
   stack : Array[CursorFrame]
@@ -121,7 +121,7 @@ pub fn[T, K] ReuseCursor::is_reuse_disabled(self : ReuseCursor[T, K]) -> Bool {
 }
 
 ///|
-/// Return the first non-trivia token text from a green node.
+/// Return the first non-trivia token text from a CST node.
 fn[T, K] first_token_text(
   node : @seam.CstNode,
   spec : LanguageSpec[T, K],
@@ -144,7 +144,7 @@ fn[T, K] first_token_text(
 }
 
 ///|
-/// Return the first non-trivia token kind from a green node.
+/// Return the first non-trivia token kind from a CST node.
 fn[T, K] first_token_kind(
   node : @seam.CstNode,
   spec : LanguageSpec[T, K],
@@ -401,7 +401,7 @@ pub fn[T, K] ReuseCursor::try_reuse(
 }
 
 ///|
-/// True if a green node subtree contains any error token or error node.
+/// True if a CST node subtree contains any error token or error node.
 /// Traverses recursively but typically called on small sibling subtrees.
 fn[T, K] node_has_error(
   node : @seam.CstNode,

@@ -65,7 +65,7 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @ast.AstNode {
   let tree = try {
     let buffer = @lexer.TokenBuffer::new(self.source)
     self.token_buffer = Some(buffer)
-    // Parse through green tree for subtree reuse support
+    // Parse through CST for subtree reuse support
     let (cst, diagnostics) = @parse.parse_cst_recover(
       self.source,
       interner=Some(self.interner),
@@ -187,7 +187,7 @@ fn IncrementalParser::incremental_reparse(
     return adjusted_tree
   }
 
-  // Create cursor from old green tree for subtree reuse
+  // Create cursor from old CST for subtree reuse
   let cursor = match self.cst_tree {
     Some(old_green) =>
       Some(
@@ -210,7 +210,7 @@ fn IncrementalParser::incremental_reparse(
     interner=Some(self.interner),
   )
 
-  // Update stored green tree and reuse stats
+  // Update stored CST and reuse stats
   self.cst_tree = Some(new_green)
   self.last_reuse_count = reuse_count
   self.last_diagnostics = diagnostics

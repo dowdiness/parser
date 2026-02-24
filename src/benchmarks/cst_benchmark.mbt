@@ -1,4 +1,4 @@
-// Focused microbenchmarks for green-tree construction, equality/hash fast paths,
+// Focused microbenchmarks for CST construction, equality/hash fast paths,
 // and token interning (baseline for future node-interning evaluation).
 // Run with: moon bench --package dowdiness/parser/benchmarks --release
 

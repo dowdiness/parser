@@ -67,7 +67,7 @@ pub struct Diagnostic[T] {
 /// Create one instance at module init — it is reused across all parses.
 ///
 /// Fields:
-///   kind_to_raw     — maps your SyntaxKind to the green tree's RawKind (an Int)
+///   kind_to_raw     — maps your SyntaxKind to the CST's RawKind (an Int)
 ///   token_is_eof    — returns true for the end-of-input sentinel token
 ///   token_is_trivia — returns true for whitespace/trivia tokens to skip in peek
 ///   tokens_equal    — equality check (needed because T has no Eq constraint)
@@ -311,7 +311,7 @@ pub fn[T, K] ParserContext::flush_trivia(self : ParserContext[T, K]) -> Unit {
 }
 
 ///|
-/// Consume the current token and emit it as a leaf in the green tree.
+/// Consume the current token and emit it as a leaf in the CST.
 /// Automatically flushes leading trivia before the token.
 pub fn[T, K] ParserContext::emit_token(
   self : ParserContext[T, K],
@@ -440,7 +440,7 @@ pub fn[T, K] ParserContext::set_reuse_diagnostics(
 }
 
 ///|
-/// Try to reuse an old green node of `kind` at the current parse position.
+/// Try to reuse an old CST node of `kind` at the current parse position.
 ///
 /// byte_offset uses self.position directly (including any leading trivia) because
 /// seek_node_at matches nodes by their absolute start, and nodes store trivia as
@@ -474,7 +474,7 @@ fn[T, K] ParserContext::try_reuse(
 }
 
 ///|
-/// Recursively emit StartNode/Token/FinishNode events for a reused green node.
+/// Recursively emit StartNode/Token/FinishNode events for a reused CST node.
 /// Pure function — does not advance position. Must be followed by advance_past_reused.
 fn[T, K] ParserContext::emit_node_events(
   self : ParserContext[T, K],
@@ -516,7 +516,7 @@ priv struct ReusedErrorSpan {
 }
 
 ///|
-/// Collect error spans from a green subtree.
+/// Collect error spans from a CST subtree.
 /// Returns the number of spans added into `out`.
 fn[T, K] collect_reused_error_spans(
   node : @seam.CstNode,
@@ -861,7 +861,7 @@ test "at matches current token" {
 
 ///|
 /// Parse a source string using the given language spec and grammar function.
-/// Returns the immutable green tree and any parse diagnostics.
+/// Returns the immutable CST and any parse diagnostics.
 ///
 /// tokenize — converts source to a flat token array (including trivia tokens)
 /// grammar  — the entry-point parse function; calls ctx methods to build the tree

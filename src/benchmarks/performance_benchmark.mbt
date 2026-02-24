@@ -425,7 +425,7 @@ test "parse_cst_recover - warm interner, large" (b : @bench.T) {
   })
 }
 
-// --- Phase 3: cursor-based green-tree reuse ---
+// --- Phase 3: cursor-based CST reuse ---
 //
 // Directly measures the parser-level speedup from subtree reuse.
 // Uses parse_cst_recover_with_tokens (no cursor, cursor=None) as the
@@ -441,9 +441,9 @@ test "parse_cst_recover - warm interner, large" (b : @bench.T) {
 //   "1"  (first token): old source [0, 1)
 
 ///|
-/// Benchmark: full green reparse of 110-token input, no cursor (cursor reuse baseline).
+/// Benchmark: full CST reparse of 110-token input, no cursor (cursor reuse baseline).
 /// Same tokens passed directly — no tokenization cost in this measurement.
-test "phase3: full green reparse, no cursor - 110 tokens" (b : @bench.T) {
+test "phase3: full CST reparse, no cursor - 110 tokens" (b : @bench.T) {
   let source = make_token_source()
   let (old_tree, _) = @parse.parse_cst_recover(source) catch {
     _ => abort("setup failed")
