@@ -401,6 +401,45 @@ Not needed yet. When CI is added, required commands are:
 5. Phase 5 (docs/examples) — publish-grade README
 6. Phase 6 (CI) — deferred
 
+## Document Organization After Separation
+
+After Phase 3 (git submodule extraction), docs split as follows:
+
+**`dowdiness/seam` repo — minimal, user-facing:**
+```
+seam/
+  README.md        ← Phase 5 publish-grade doc (event model, API overview, examples)
+  CHANGELOG.md     ← version history starting at 0.1.0
+  moon.mod.json
+  *.mbt / *_wbtest.mbt
+```
+No `docs/plans/` in `seam`. External users do not need implementation history.
+
+**`dowdiness/parser` repo — keeps everything else:**
+```
+parser/
+  README.md                                      ← update to reference seam as dep
+  TODO.md
+  seam/                                          ← git submodule
+  docs/
+    plans/
+      2026-02-22-green-tree-publish-ready.md     ← stays (decision log for extraction)
+      2026-02-23-generic-parser-design.md        ← stays
+      2026-02-24-generic-incremental-reuse-design.md ← stays
+    benchmark_history.md                         ← stays (parser perf, seam is a dep)
+```
+
+| Doc | Location | Reason |
+|---|---|---|
+| This plan (`2026-02-22`) | `parser/docs/plans/` | Decision log for extraction; stays as archive |
+| Parser plans (`2026-02-23/24`) | `parser/docs/plans/` | Parser-layer concerns |
+| `benchmark_history.md` | `parser/docs/` | Measures parser performance; seam is a dep |
+| `TODO.md` | `parser/` | Parser work tracking |
+| `seam/README.md` | `seam/` | Written fresh in Phase 5; lives in seam repo |
+| `seam/CHANGELOG.md` | `seam/` | Belongs to seam's release history |
+
+---
+
 ## Risks
 
 - API leaks from permissive field visibility (`pub(all)` structs) can force
