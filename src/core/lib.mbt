@@ -882,8 +882,7 @@ pub fn[T, K] parse_with(
       " unclosed nodes",
     )
   }
-  let tree = @seam.build_tree(
-    ctx.events.to_events(),
+  let tree = ctx.events.build_tree(
     (spec.kind_to_raw)(spec.root_kind),
     trivia_kind=Some((spec.kind_to_raw)(spec.whitespace_kind)),
   )

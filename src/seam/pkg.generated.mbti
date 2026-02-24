@@ -51,11 +51,12 @@ pub impl Show for CstToken
 pub struct EventBuffer {
   // private fields
 }
+pub fn EventBuffer::build_tree(Self, RawKind, trivia_kind? : RawKind?) -> CstNode
+pub fn EventBuffer::build_tree_interned(Self, RawKind, Interner, trivia_kind? : RawKind?) -> CstNode
 pub fn EventBuffer::mark(Self) -> Int
 pub fn EventBuffer::new() -> Self
 pub fn EventBuffer::push(Self, ParseEvent) -> Unit
 pub fn EventBuffer::start_at(Self, Int, RawKind) -> Unit
-pub fn EventBuffer::to_events(Self) -> Array[ParseEvent]
 
 pub struct Interner {
   // private fields

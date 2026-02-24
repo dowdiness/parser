@@ -29,8 +29,8 @@ pub(all) enum ParseEvent {
 /// - `mark()` — reserve a `Tombstone` slot and return its index
 /// - `start_at(mark, kind)` — retroactively fill a `Tombstone` with `StartNode`
 ///
-/// After parsing, pass the events to `build_tree` or `build_tree_interned`
-/// via `EventBuffer::to_events()`. The raw backing array is private to
+/// After parsing, call `buf.build_tree(...)` or `buf.build_tree_interned(...)`
+/// directly on the buffer. The raw backing array is private to
 /// prevent callers from bypassing the mark/start_at contract.
 pub struct EventBuffer {
   priv events : Array[ParseEvent]
@@ -42,13 +42,30 @@ pub fn EventBuffer::new() -> EventBuffer {
 }
 
 ///|
-/// Return the accumulated events as an array slice.
+/// Build a CST from this buffer's accumulated events.
 ///
-/// Intended for passing to `build_tree` or `build_tree_interned` after
-/// the parse is complete. The returned array must not be mutated; doing
-/// so corrupts the event stream invariants.
-pub fn EventBuffer::to_events(self : EventBuffer) -> Array[ParseEvent] {
-  self.events
+/// Shorthand for `build_tree(buf, root_kind, ...)` that never exposes the
+/// backing array, preserving the push/mark/start_at write invariants.
+pub fn EventBuffer::build_tree(
+  self : EventBuffer,
+  root_kind : RawKind,
+  trivia_kind? : RawKind? = None,
+) -> CstNode {
+  build_tree(self.events, root_kind, trivia_kind~)
+}
+
+///|
+/// Build an interned CST from this buffer's accumulated events.
+///
+/// Shorthand for `build_tree_interned(buf, root_kind, interner, ...)` that
+/// never exposes the backing array.
+pub fn EventBuffer::build_tree_interned(
+  self : EventBuffer,
+  root_kind : RawKind,
+  interner : Interner,
+  trivia_kind? : RawKind? = None,
+) -> CstNode {
+  build_tree_interned(self.events, root_kind, interner, trivia_kind~)
 }
 
 ///|

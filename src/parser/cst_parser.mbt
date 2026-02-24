@@ -64,29 +64,19 @@ fn run_parse_incremental(
       " unclosed nodes",
     )
   }
-  (
-    select_build_tree(ctx.events.to_events(), interner),
-    ctx.errors,
-    ctx.reuse_count,
-  )
+  (select_build_tree(ctx.events, interner), ctx.errors, ctx.reuse_count)
 }
 
 ///|
 fn select_build_tree(
-  events : Array[@seam.ParseEvent],
+  buf : @seam.EventBuffer,
   interner : @seam.Interner?,
 ) -> @seam.CstNode {
   let ws = raw(@syntax.WhitespaceToken)
   match interner {
     Some(i) =>
-      @seam.build_tree_interned(
-        events,
-        raw(@syntax.SourceFile),
-        i,
-        trivia_kind=Some(ws),
-      )
-    None =>
-      @seam.build_tree(events, raw(@syntax.SourceFile), trivia_kind=Some(ws))
+      buf.build_tree_interned(raw(@syntax.SourceFile), i, trivia_kind=Some(ws))
+    None => buf.build_tree(raw(@syntax.SourceFile), trivia_kind=Some(ws))
   }
 }
 
@@ -130,7 +120,7 @@ fn run_parse(
       " unclosed nodes",
     )
   }
-  (select_build_tree(ctx.events.to_events(), interner), ctx.errors)
+  (select_build_tree(ctx.events, interner), ctx.errors)
 }
 
 ///|
