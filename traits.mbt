@@ -3,7 +3,8 @@
 ///
 /// This is the core trait that all incremental systems must implement.
 /// It connects user-defined database types to the incr runtime,
-/// enabling generic helper functions like `create_signal` and `create_memo`.
+/// enabling generic helper functions like `create_signal`, `create_memo`,
+/// and `create_memo_map`.
 ///
 /// This trait corresponds to Salsa's `#[salsa::db]` trait, but without
 /// macro magic — users implement it explicitly.
@@ -97,6 +98,29 @@ pub fn[Db : IncrDb, T : Eq] create_memo(
   label? : String,
 ) -> Memo[T] {
   Memo(db.runtime(), f, label?)
+}
+
+///|
+/// Creates a new keyed memoization map using the database's runtime.
+///
+/// Each key gets its own lazily-created memo. Repeated reads of the same
+/// key reuse that key's cached memoized value.
+///
+/// # Parameters
+///
+/// - `db`: Any type implementing `IncrDb`
+/// - `f`: The compute function for each key
+/// - `label`: An optional label applied to each per-key memo
+///
+/// # Returns
+///
+/// A new memo map associated with the database's runtime
+pub fn[Db : IncrDb, K, V] create_memo_map(
+  db : Db,
+  f : (K) -> V,
+  label? : String,
+) -> MemoMap[K, V] {
+  MemoMap(db.runtime(), f, label?)
 }
 
 ///|

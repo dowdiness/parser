@@ -228,6 +228,37 @@ Returns:
 
 ---
 
+## MemoMap[K, V]
+
+Keyed memoization map with one lazily-created `Memo[V]` per key.
+
+### `MemoMap::new[K, V](rt: Runtime, compute: (K) -> V, label? : String) -> MemoMap[K, V]`
+
+Creates an empty memo map. No per-key memo is allocated until first read of that key.
+
+```moonbit
+let by_id = MemoMap::new(rt, (id : Int) => id * 10)
+let named = MemoMap::new(rt, (id : Int) => id * 10, label="by_id")
+```
+
+### `MemoMap::get[K : Hash + Eq, V : Eq](self, key: K) -> V`
+
+Returns the value for `key`, creating and caching that key's memo on first access.
+
+### `MemoMap::get_result[K : Hash + Eq, V : Eq](self, key: K) -> Result[V, CycleError]`
+
+Result-returning variant of `get`, matching `Memo::get_result`.
+
+### `MemoMap::contains[K : Hash + Eq, V](self, key: K) -> Bool`
+
+Returns whether a memo entry for `key` has already been created.
+
+### `MemoMap::length(self) -> Int`
+
+Returns the number of memo entries created so far.
+
+---
+
 ## Revision
 
 Logical timestamp used by introspection APIs (`Memo::changed_at`, `Memo::verified_at`, and `CellInfo` fields).
@@ -560,6 +591,10 @@ create_signal(db, value, durability=High, label="cfg") // both
 
 Creates a memo using `db.runtime()`.
 
+### `create_memo_map[Db : IncrDb, K, V](db: Db, f: (K) -> V, label? : String) -> MemoMap[K, V]`
+
+Creates a memo map using `db.runtime()`. Each key is memoized independently.
+
 ### `create_tracked_cell`
 
 Creates a new `TrackedCell` using the database's runtime. Follows the same pattern as `create_signal`.
@@ -596,6 +631,8 @@ Runs a batch using `db.runtime()`.
 `Eq` is required only where value comparison is needed:
 
 - `Memo::new`, `Memo::get`, `Memo::get_result` require `T : Eq`
+- `MemoMap::get`, `MemoMap::get_result` require `K : Hash + Eq` and `V : Eq`
+- `MemoMap::contains` requires `K : Hash + Eq`
 - `Signal::set` requires `T : Eq`
 - `TrackedCell::set` requires `T : Eq`
 - `Signal::new`, `Signal::get`, `Signal::get_result`, `Signal::set_unconditional` do not require `Eq`

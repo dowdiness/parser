@@ -13,6 +13,8 @@ pub fn[Db : IncrDb] batch(Db, () -> Unit) -> Unit
 
 pub fn[Db : IncrDb, T : Eq] create_memo(Db, () -> T, label? : String) -> @internal.Memo[T]
 
+pub fn[Db : IncrDb, K, V] create_memo_map(Db, (K) -> V, label? : String) -> @internal.MemoMap[K, V]
+
 pub fn[Db : IncrDb, T] create_signal(Db, T, durability? : @types.Durability, label? : String) -> @internal.Signal[T]
 
 pub fn[Db : IncrDb, T] create_tracked_cell(Db, T, durability? : @types.Durability, label? : String) -> @internal.TrackedCell[T]
@@ -33,6 +35,8 @@ pub using @internal {type CycleError}
 pub using @types {type Durability}
 
 pub using @internal {type Memo}
+
+pub using @internal {type MemoMap}
 
 pub using @types {type Revision}
 

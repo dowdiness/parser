@@ -394,6 +394,29 @@ struct Doc {
 
 ---
 
+## Pattern: Keyed Queries with MemoMap
+
+Use `MemoMap[K, V]` when you want one memoized computation per key.
+
+```moonbit
+let rt = Runtime()
+let base = Signal(rt, 10)
+let by_id = MemoMap::new(rt, (id : Int) => base.get() + id)
+
+inspect(by_id.get(1), content="11")  // creates memo for key=1
+inspect(by_id.get(1), content="11")  // cache hit for key=1
+inspect(by_id.get(2), content="12")  // creates memo for key=2
+inspect(by_id.length(), content="2")
+
+base.set(20)
+inspect(by_id.get(1), content="21")  // key=1 recomputes lazily
+inspect(by_id.get(2), content="22")  // key=2 recomputes when read
+```
+
+For `IncrDb`-style code, use `create_memo_map(db, f, label?)`.
+
+---
+
 ## Anti-Pattern: Reading During Batch
 
 Avoid reading memos inside a batch — they see pre-batch values:

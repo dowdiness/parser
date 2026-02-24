@@ -6,6 +6,7 @@ A Salsa-inspired incremental recomputation library for [MoonBit](https://www.moo
 
 - **Signal[T]** — Input cells with same-value optimization and durability levels
 - **Memo[T]** — Derived computations with automatic dependency tracking and memoization
+- **MemoMap[K, V]** — Keyed memoization with one lazily-created memo per key
 - **Backdating** — Unchanged recomputed values preserve their old revision, preventing unnecessary downstream recomputation
 - **Durability** — Classify inputs by change frequency (Low/Medium/High) to skip verification of stable subgraphs
 - **Batch updates** — Atomic multi-signal updates with revert detection
@@ -94,6 +95,20 @@ source.set(2)
 inspect(config_derived.get(), content="200")
 ```
 
+### Keyed Queries
+
+Use `MemoMap` (or `create_memo_map`) when you want per-key memoization:
+
+```moonbit
+let app = MyApp()
+let base = create_signal(app, 10)
+let by_id = create_memo_map(app, (id : Int) => base.get() + id, label="by_id")
+
+inspect(by_id.get(1), content="11")
+inspect(by_id.get(1), content="11") // cache hit for key=1
+inspect(by_id.get(2), content="12") // independent key cache
+```
+
 ## Documentation
 
 | Document | Description |
@@ -119,7 +134,7 @@ inspect(config_derived.get(), content="200")
 ```bash
 moon check    # Type-check
 moon build    # Build
-moon test     # Run all tests (162 tests across all packages)
+moon test     # Run all tests
 ```
 
 ### Package Structure
@@ -130,7 +145,7 @@ The library is split into four MoonBit sub-packages:
 |---------|------|
 | `dowdiness/incr` | Public API facade — re-exports all types via `pub type` aliases |
 | `dowdiness/incr/types` | Pure value types: `Revision`, `Durability`, `CellId` |
-| `dowdiness/incr/internal` | Engine implementation: `Signal`, `Memo`, `Runtime`, verification algorithm |
+| `dowdiness/incr/internal` | Engine implementation: `Signal`, `Memo`, `MemoMap`, `Runtime`, verification algorithm |
 | `dowdiness/incr/pipeline` | Experimental pipeline traits: `Sourceable`, `Parseable`, `Checkable`, `Executable` |
 | `dowdiness/incr/tests` | Integration tests exercising the full `@incr` public API |
 

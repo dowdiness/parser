@@ -327,7 +327,7 @@ The library is split into four MoonBit sub-packages. The root package re-exports
 | File | Purpose |
 |------|---------|
 | `incr.mbt` | `pub type` re-exports — transparent aliases for all public types |
-| `traits.mbt` | `IncrDb`, `Readable` — core public traits; `create_signal`, `create_memo`, `batch` helpers |
+| `traits.mbt` | `IncrDb`, `Readable` — core public traits; `create_signal`, `create_memo`, `create_memo_map`, `batch` helpers |
 
 ### `types/` package (`dowdiness/incr/types`)
 
@@ -342,6 +342,7 @@ The library is split into four MoonBit sub-packages. The root package re-exports
 |------|---------|
 | `internal/signal.mbt` | `Signal[T]` — input cells with same-value optimization and durability |
 | `internal/memo.mbt` | `Memo[T]` — derived cells with memoization, backdating, and dependency tracking |
+| `internal/memo_map.mbt` | `MemoMap[K, V]` — keyed memoization via one memo per key |
 | `internal/runtime.mbt` | `Runtime` — central state, revision management, tracking stack, batch commit |
 | `internal/cell.mbt` | `CellMeta`, `CellKind` — type-erased cell metadata |
 | `internal/tracking.mbt` | `ActiveQuery` — dependency recording frame with deduplication |
@@ -361,6 +362,7 @@ Blackbox tests (`*_test.mbt`) live in the root package and test via the public A
 | File | What it covers |
 |------|----------------|
 | `memo_test.mbt` | Memo behavior, backdating, dependency tracking |
+| `internal/memo_map_test.mbt` | MemoMap keyed caching and lazy per-key recomputation |
 | `backdating_test.mbt` | Backdating (value-unchanged skips downstream recomputation) |
 | `fanout_test.mbt` | Wide dependency graphs (diamond, multi-level) |
 | `callback_test.mbt` | `Runtime::on_change` global callback |

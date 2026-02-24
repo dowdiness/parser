@@ -279,12 +279,30 @@ file.content.set("fn main { let x = 42 }")
 | Multiple related fields with independent consumers | `TrackedCell[T]` in a tracked struct |
 | Monolithic struct updated atomically | `Signal[MyStruct]` with batch |
 
+## Keyed Queries with MemoMap
+
+Sometimes the same logical query is asked for many keys (e.g. file ID, symbol ID, route ID). `MemoMap[K, V]` provides one memoized computation per key:
+
+```moonbit
+let by_id = MemoMap::new(rt, (id : Int) => expensive_lookup(id))
+```
+
+Key behavior:
+
+- The first `get(key)` creates that key's memo and computes it.
+- Subsequent `get(key)` calls reuse the same key-local memo cache.
+- Different keys are isolated from each other (independent memo instances).
+- When dependencies change, each key recomputes lazily on its next read.
+
+This is a lightweight parameterized-query pattern built on top of `Memo`; it does not change runtime verification internals.
+
 ## Summary
 
 | Concept | Purpose |
 |---------|---------|
 | Signal | Input values you control |
 | Memo | Derived values with automatic caching |
+| MemoMap | Per-key memoized derived values |
 | Revision | Global clock for tracking changes |
 | Backdating | Skip downstream work when values don't actually change |
 | Durability | Skip verification for stable subgraphs |

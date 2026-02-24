@@ -70,6 +70,13 @@ High-level future direction for the `incr` library, organized by phase. Each pha
 - ~~**Centralize cycle-path construction**: `CycleError::from_path(path, closing_id)` added~~ ✓ Implemented
 - ~~**Idiomatic loops**: C-style index loops converted to `for .. in` where semantics allow~~ ✓ Implemented
 
+### Phase 3E: Keyed Query Ergonomics ✓
+
+- ~~**`MemoMap[K, V]`**: Minimal parameterized-query helper with one memo per key~~ ✓ Implemented
+  - Lazy key instantiation: per-key memo created on first read
+  - API: `new`, `get`, `get_result`, `contains`, `length`
+- ~~**`create_memo_map` helper**: IncrDb-style constructor for keyed memo maps~~ ✓ Implemented
+
 ## Phase 4 — Advanced Features
 
 - **Subscriber (reverse) links**: Add bidirectional edges so cells know their dependents. This is a prerequisite for push-based invalidation, automatic cleanup, and the effect system. Inspired by [alien-signals](https://github.com/nicepkg/alien-signals) which uses subscriber links for efficient propagation.

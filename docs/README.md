@@ -64,6 +64,7 @@ All documentation for the `incr` incremental computation library.
 - **"What's a Signal/Memo?"** → [Core Concepts](concepts.md)
 - **"How do I use X method?"** → [API Reference](api-reference.md)
 - **"How do I implement pattern Y?"** → [Cookbook](cookbook.md)
+- **"How do I memoize per key?"** → [Cookbook](cookbook.md#pattern-keyed-queries-with-memomap)
 - **"Why does backdating work this way?"** → [Design](design.md)
 - **"What's planned for the future?"** → [Roadmap](roadmap.md)
 - **"What can I work on?"** → [TODO](todo.md)

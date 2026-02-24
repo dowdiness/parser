@@ -43,6 +43,17 @@ pub fn[T] Memo::on_change(Self[T], (T) -> Unit) -> Unit
 pub fn[T] Memo::verified_at(Self[T]) -> @types.Revision
 pub impl[T : @debug.Debug] @debug.Debug for Memo[T]
 
+pub(all) struct MemoMap[K, V] {
+  // private fields
+
+  fn[K, V] new(Runtime, (K) -> V, label? : String) -> MemoMap[K, V]
+}
+pub fn[K : Hash + Eq, V] MemoMap::contains(Self[K, V], K) -> Bool
+pub fn[K : Hash + Eq, V : Eq] MemoMap::get(Self[K, V], K) -> V
+pub fn[K : Hash + Eq, V : Eq] MemoMap::get_result(Self[K, V], K) -> Result[V, CycleError]
+pub fn[K, V] MemoMap::length(Self[K, V]) -> Int
+pub fn[K, V] MemoMap::new(Runtime, (K) -> V, label? : String) -> Self[K, V]
+
 pub(all) struct Runtime {
   // private fields
 

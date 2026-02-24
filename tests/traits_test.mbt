@@ -306,3 +306,17 @@ test "trait: create_memo with label" {
     None => abort("expected cell info")
   }
 }
+
+///|
+test "trait: create_memo_map via IncrDb" {
+  let db = TestDb()
+  let source = @incr.create_signal(db, 10)
+  let by_key = @incr.create_memo_map(
+    db,
+    (key : Int) => source.get() + key,
+    label="by_key",
+  )
+  inspect(by_key.get(1), content="11")
+  inspect(by_key.get(1), content="11")
+  inspect(by_key.get(2), content="12")
+}

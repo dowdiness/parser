@@ -1,5 +1,6 @@
 import {
   "dowdiness/incr/types" @incr_types,
+  "moonbitlang/core/hashmap",
   "moonbitlang/core/hashset",
 }
 // Suppress unused_mut (warning 15) for CellMeta.recompute_and_check:
