@@ -3,7 +3,7 @@ import {
   "dowdiness/parser/ast",
   "dowdiness/parser/lexer",
   "dowdiness/parser/syntax",
-  "dowdiness/parser/seam" @seam,
+  "dowdiness/seam" @seam,
   "dowdiness/parser/core" @core,
   "moonbitlang/core/strconv",
 }

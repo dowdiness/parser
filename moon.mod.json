@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "source": "src",
   "deps": {
-    "moonbitlang/quickcheck": "0.9.10"
+    "moonbitlang/quickcheck": "0.9.10",
+    "dowdiness/seam": { "path": "seam" }
   },
   "readme": "README.md",
   "repository": "https://github.com/dowdiness/parser",

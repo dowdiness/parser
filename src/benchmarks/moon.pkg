@@ -4,6 +4,6 @@ import {
   "dowdiness/parser/parser" @parse,
   "dowdiness/parser/incremental",
   "dowdiness/parser/crdt",
-  "dowdiness/parser/seam" @seam,
+  "dowdiness/seam" @seam,
   "moonbitlang/core/bench",
 }

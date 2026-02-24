@@ -1,0 +1,3 @@
+[submodule "seam"]
+	path = seam
+	url = https://github.com/dowdiness/seam.git
