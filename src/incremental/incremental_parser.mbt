@@ -189,10 +189,10 @@ fn IncrementalParser::incremental_reparse(
 
   // Create cursor from old CST for subtree reuse
   let cursor = match self.cst_tree {
-    Some(old_green) =>
+    Some(old_cst) =>
       Some(
         @parse.make_reuse_cursor(
-          old_green,
+          old_cst,
           damaged_range.start,
           damaged_range.end,
           tokens,
@@ -202,7 +202,7 @@ fn IncrementalParser::incremental_reparse(
   }
 
   // Parse with cursor-based reuse
-  let (new_green, diagnostics, reuse_count) = @parse.parse_cst_recover_with_tokens(
+  let (new_cst, diagnostics, reuse_count) = @parse.parse_cst_recover_with_tokens(
     source,
     tokens,
     cursor,
@@ -211,12 +211,12 @@ fn IncrementalParser::incremental_reparse(
   )
 
   // Update stored CST and reuse stats
-  self.cst_tree = Some(new_green)
+  self.cst_tree = Some(new_cst)
   self.last_reuse_count = reuse_count
   self.last_diagnostics = diagnostics
 
   // Convert to AstNode
-  @parse.cst_to_ast_node(new_green, 0, Ref::new(0))
+  @parse.cst_to_ast_node(new_cst, 0, Ref::new(0))
 }
 
 ///|

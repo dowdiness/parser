@@ -719,7 +719,7 @@ test "Reuse: trailing whitespace in source" {
 }
 
 ///|
-test "Reuse: tokenization error clears stale green tree state" {
+test "Reuse: tokenization error clears stale concrete syntax tree state" {
   let parser = IncrementalParser::new("1+1+1")
   let _ = parser.parse()
 

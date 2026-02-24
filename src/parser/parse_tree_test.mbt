@@ -108,7 +108,7 @@ test "parse_tree: lambda span excludes leading whitespace in application" {
 
 ///|
 test "parse_tree: if-expr span excludes leading whitespace" {
-  // IfExpr as body of lambda — space after "." is inside the IfExpr green node
+  // IfExpr as body of lambda — space after "." is inside the IfExpr concrete syntax node
   let node = parse_tree("\\x. if x then y else z")
   inspect(node.kind, content="Lam(\"x\")")
   let if_node = node.children[0]

@@ -2,13 +2,13 @@
 const MAX_ERRORS : Int = 50
 
 ///|
-/// Convert SyntaxKind to RawKind for green-tree events.
+/// Convert SyntaxKind to RawKind for concrete syntax tree events.
 fn raw(kind : @syntax.SyntaxKind) -> @seam.RawKind {
   kind.to_raw()
 }
 
 ///|
-/// Create a ReuseCursor from an old green tree and a pre-tokenized new stream.
+/// Create a ReuseCursor from an old concrete syntax tree and a pre-tokenized new stream.
 /// Bridges the @parse API to @core.ReuseCursor for callers (e.g. incremental).
 pub fn make_reuse_cursor(
   old_tree : @seam.CstNode,

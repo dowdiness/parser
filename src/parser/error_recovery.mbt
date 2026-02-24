@@ -1,5 +1,5 @@
 // Error recovery for parsing
-// Uses the integrated error-recovering green parser
+// Uses the integrated error-recovering CST parser
 
 ///|
 /// Parse with error recovery (returns partial tree with error nodes)

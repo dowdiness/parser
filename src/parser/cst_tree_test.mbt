@@ -222,10 +222,10 @@ test "cst: SyntaxNode child positions in application" {
 ///|
 test "cst: backward compatibility - simple integer" {
   let source = "42"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -233,10 +233,10 @@ test "cst: backward compatibility - simple integer" {
 ///|
 test "cst: backward compatibility - variable" {
   let source = "x"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -244,10 +244,10 @@ test "cst: backward compatibility - variable" {
 ///|
 test "cst: backward compatibility - lambda" {
   let source = "λx.x"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -255,10 +255,10 @@ test "cst: backward compatibility - lambda" {
 ///|
 test "cst: backward compatibility - lambda with body" {
   let source = "λx.x + 1"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -266,10 +266,10 @@ test "cst: backward compatibility - lambda with body" {
 ///|
 test "cst: backward compatibility - application" {
   let source = "f x"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -277,10 +277,10 @@ test "cst: backward compatibility - application" {
 ///|
 test "cst: backward compatibility - nested application" {
   let source = "f x y"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -288,10 +288,10 @@ test "cst: backward compatibility - nested application" {
 ///|
 test "cst: backward compatibility - binary operation" {
   let source = "1 + 2"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -299,13 +299,13 @@ test "cst: backward compatibility - binary operation" {
 ///|
 test "cst: backward compatibility - chained binary (same op)" {
   // Note: chained operations with different operators (e.g., "1 + 2 - 3")
-  // have a known limitation in green_convert - it uses the first operator for all.
+  // have a known limitation in parse_cst_to_ast_node - it uses the first operator for all.
   // This test uses same operator to verify the basic mechanism works.
   let source = "1 + 2 + 3"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -313,10 +313,10 @@ test "cst: backward compatibility - chained binary (same op)" {
 ///|
 test "cst: backward compatibility - if-then-else" {
   let source = "if x then 1 else 2"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -324,10 +324,10 @@ test "cst: backward compatibility - if-then-else" {
 ///|
 test "cst: backward compatibility - parenthesized expression" {
   let source = "(x)"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -335,10 +335,10 @@ test "cst: backward compatibility - parenthesized expression" {
 ///|
 test "cst: backward compatibility - complex expression" {
   let source = "λf.λx.f (f x)"
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   let term_direct = parse_tree(source)
   inspect(
-    @ast.print_ast_node(term_via_green),
+    @ast.print_ast_node(term_via_cst),
     content=@ast.print_ast_node(term_direct),
   )
 }
@@ -526,18 +526,18 @@ test "cst: CstElement text_len accessor" {
 test "cst: position comparison" {
   let source = "x + y"
   let term_direct = parse_tree(source)
-  let term_via_green = parse_cst_to_ast_node(source)
+  let term_via_cst = parse_cst_to_ast_node(source)
   inspect(term_direct.start, content="0")
   inspect(term_direct.end, content="5")
-  inspect(term_via_green.start, content="0")
-  inspect(term_via_green.end, content="5")
+  inspect(term_via_cst.start, content="0")
+  inspect(term_via_cst.end, content="5")
 }
 
 ///|
 test "cst: structural sharing - identical CstNodes are equal" {
-  let green1 = parse_cst("x")
+  let cst1 = parse_cst("x")
   let cst2 = parse_cst("x")
-  let node1 = match green1.children[0] {
+  let node1 = match cst1.children[0] {
     @seam.CstElement::Node(n) => n
     @seam.CstElement::Token(_) => abort("Expected node")
   }
@@ -553,7 +553,7 @@ test "cst: structural sharing - identical CstNodes are equal" {
 // ============================================================================
 
 ///|
-test "cst: has_green_errors on valid input" {
+test "cst: has_errors on valid input" {
   let cst = parse_cst("42")
   inspect(
     cst.has_errors(@syntax.ErrorNode.to_raw(), @syntax.ErrorToken.to_raw()),
@@ -562,7 +562,7 @@ test "cst: has_green_errors on valid input" {
 }
 
 ///|
-test "cst: has_green_errors on valid lambda" {
+test "cst: has_errors on valid lambda" {
   let cst = parse_cst("λx.x")
   inspect(
     cst.has_errors(@syntax.ErrorNode.to_raw(), @syntax.ErrorToken.to_raw()),

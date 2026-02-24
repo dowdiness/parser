@@ -20,7 +20,7 @@ fn make_flat_ident_node(count : Int) -> @seam.CstNode {
 
 ///|
 /// Benchmark: CstToken constructor (includes token hash computation).
-test "green-tree - token constructor" (b : @bench.T) {
+test "concrete-syntax-tree - token constructor" (b : @bench.T) {
   b.bench(fn() {
     let t = make_ident_token("identifier_123")
     b.keep(t)
@@ -29,7 +29,7 @@ test "green-tree - token constructor" (b : @bench.T) {
 
 ///|
 /// Benchmark: CstNode constructor over prebuilt children (hash fold cost).
-test "green-tree - node constructor from 32 children" (b : @bench.T) {
+test "concrete-syntax-tree - node constructor from 32 children" (b : @bench.T) {
   let children : Array[@seam.CstElement] = []
   for i = 0; i < 32; i = i + 1 {
     children.push(
@@ -44,7 +44,7 @@ test "green-tree - node constructor from 32 children" (b : @bench.T) {
 
 ///|
 /// Benchmark: Equality on identical trees (hash check + deep structural walk).
-test "green-tree - equality identical 32 children" (b : @bench.T) {
+test "concrete-syntax-tree - equality identical 32 children" (b : @bench.T) {
   let left = make_flat_ident_node(32)
   let right = make_flat_ident_node(32)
   b.bench(fn() {
@@ -55,7 +55,7 @@ test "green-tree - equality identical 32 children" (b : @bench.T) {
 
 ///|
 /// Benchmark: Equality on different trees (hash fast path should fail early).
-test "green-tree - equality mismatch hash fast path" (b : @bench.T) {
+test "concrete-syntax-tree - equality mismatch hash fast path" (b : @bench.T) {
   let left = make_flat_ident_node(32)
   let children : Array[@seam.CstElement] = []
   for i = 0; i < 32; i = i + 1 {

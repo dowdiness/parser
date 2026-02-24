@@ -156,7 +156,7 @@ test "parse_cst_recover returns diagnostics" {
   let (cst, diagnostics) = parse_cst_recover("λ.x")
   inspect(diagnostics.length(), content="1")
   inspect(diagnostics[0].message, content="Expected parameter after λ")
-  // Green tree should be a valid SourceFile
+  // Cst should be a valid SourceFile
   inspect(@syntax.SyntaxKind::from_raw(cst.kind), content="SourceFile")
 }
 
