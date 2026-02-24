@@ -106,6 +106,7 @@ pub(all) struct CellInfo {
   verified_at : Revision
   durability : Durability
   dependencies : Array[CellId]
+  subscribers : Array[CellId]
 }
 
 ///|
@@ -270,8 +271,51 @@ pub fn Runtime::cell_info(self : Runtime, id : CellId) -> CellInfo? {
         verified_at: meta.verified_at,
         durability: meta.durability,
         dependencies: meta.dependencies.copy(),
+        subscribers: snapshot_subscribers(meta.subscribers),
       })
     None => None
+  }
+}
+
+///|
+/// Snapshot a HashSet[CellId] into an Array[CellId].
+fn snapshot_subscribers(
+  subscribers : @hashset.HashSet[CellId],
+) -> Array[CellId] {
+  let result : Array[CellId] = []
+  for sub in subscribers {
+    result.push(sub)
+  }
+  result
+}
+
+///|
+/// Returns the cell IDs that depend on the given cell (reverse edges).
+///
+/// This enables introspection of the dependency graph in both directions.
+/// The returned array is a snapshot; modifying it does not affect the runtime.
+///
+/// Returns an empty array if the cell ID is invalid, out of bounds, or
+/// belongs to a different runtime — matching `cell_info` semantics.
+///
+/// # Parameters
+///
+/// - `id`: The cell to query
+///
+/// # Returns
+///
+/// Array of CellIds that have `id` in their dependency list, or empty
+/// array if the cell ID is not valid for this runtime
+pub fn Runtime::dependents(self : Runtime, id : CellId) -> Array[CellId] {
+  if id.runtime_id != self.runtime_id {
+    return []
+  }
+  if id.id < 0 || id.id >= self.cells.length() {
+    return []
+  }
+  match self.cells[id.id] {
+    Some(meta) => snapshot_subscribers(meta.subscribers)
+    None => []
   }
 }
 
