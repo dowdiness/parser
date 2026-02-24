@@ -1,7 +1,5 @@
 # Subscriber Links (Reverse Edges) Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Add reverse dependency edges (`subscribers`) to `CellMeta` so each cell knows which other cells depend on it. This is pure data structure work — the pull-based verification algorithm is unchanged.
 
 **Architecture:** Add a `HashSet[CellId]` subscriber set to each `CellMeta`. Maintain it incrementally during `Memo::force_recompute`, which already diffs old vs new dependency lists (see `memo.mbt:183-195` — the Phase 4 comments mark exactly where subscriber updates should go). Expose via `Runtime::dependents(CellId)` introspection API.

@@ -28,6 +28,25 @@ test "subscriber: chain dependencies tracked" {
 }
 
 ///|
+test "subscriber: dynamic deps update dependents via public API" {
+  let rt = Runtime::new()
+  let flag = Signal::new(rt, true)
+  let a = Signal::new(rt, 10)
+  let b = Signal::new(rt, 20)
+  let pick = Memo::new(rt, () => if flag.get() { a.get() } else { b.get() })
+  let _ = pick.get() // deps: flag, a
+  inspect(rt.dependents(a.id()).contains(pick.id()), content="true")
+  inspect(rt.dependents(b.id()).contains(pick.id()), content="false")
+  // Switch branch: deps become flag, b
+  flag.set(false)
+  let _ = pick.get()
+  inspect(rt.dependents(a.id()).contains(pick.id()), content="false")
+  inspect(rt.dependents(b.id()).contains(pick.id()), content="true")
+  // flag always has pick as a dependent
+  inspect(rt.dependents(flag.id()).contains(pick.id()), content="true")
+}
+
+///|
 test "subscriber: dependents returns empty for cross-runtime id" {
   let rt1 = Runtime::new()
   let rt2 = Runtime::new()

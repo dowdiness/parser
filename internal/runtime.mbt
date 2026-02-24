@@ -271,16 +271,22 @@ pub fn Runtime::cell_info(self : Runtime, id : CellId) -> CellInfo? {
         verified_at: meta.verified_at,
         durability: meta.durability,
         dependencies: meta.dependencies.copy(),
-        subscribers: {
-          let subs : Array[CellId] = []
-          for sub in meta.subscribers {
-            subs.push(sub)
-          }
-          subs
-        },
+        subscribers: snapshot_subscribers(meta.subscribers),
       })
     None => None
   }
+}
+
+///|
+/// Snapshot a HashSet[CellId] into an Array[CellId].
+fn snapshot_subscribers(
+  subscribers : @hashset.HashSet[CellId],
+) -> Array[CellId] {
+  let result : Array[CellId] = []
+  for sub in subscribers {
+    result.push(sub)
+  }
+  result
 }
 
 ///|
@@ -308,13 +314,7 @@ pub fn Runtime::dependents(self : Runtime, id : CellId) -> Array[CellId] {
     return []
   }
   match self.cells[id.id] {
-    Some(meta) => {
-      let result : Array[CellId] = []
-      for sub in meta.subscribers {
-        result.push(sub)
-      }
-      result
-    }
+    Some(meta) => snapshot_subscribers(meta.subscribers)
     None => []
   }
 }

@@ -181,7 +181,11 @@ fn[T : Eq] Memo::force_recompute(self : Memo[T]) -> Result[Unit, CycleError] {
   // We walk old_deps and check membership in new_seen; a length mismatch is a
   // fast-path indicator of change (avoids the loop when counts differ).
   let mut deps_changed = new_deps.length() != old_deps.length()
+  // Single pass over old_deps: detect changes, unsubscribe dropped deps,
+  // and build old_seen for the symmetric diff that follows.
+  let old_seen : @hashset.HashSet[CellId] = @hashset.new()
   for dep in old_deps {
+    old_seen.add(dep)
     if not(new_seen.contains(dep)) {
       deps_changed = true
     }
@@ -194,11 +198,6 @@ fn[T : Eq] Memo::force_recompute(self : Memo[T]) -> Result[Unit, CycleError] {
         let dep_meta = self.rt.get_cell(dep)
         dep_meta.subscribers.remove(self.cell_id)
       }
-    }
-    // Build old_seen for symmetric diff
-    let old_seen : @hashset.HashSet[CellId] = @hashset.new()
-    for dep in old_deps {
-      old_seen.add(dep)
     }
     // Add self to subscribers of newly added deps
     for dep in new_deps {

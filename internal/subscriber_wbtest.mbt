@@ -33,12 +33,11 @@ test "subscriber: dynamic dep change updates subscribers" {
   inspect(a_meta.subscribers.contains(pick.id()), content="true")
   inspect(b_meta.subscribers.contains(pick.id()), content="false")
   // Switch branch: deps become flag, b
+  // CellMeta has reference semantics — no need to re-fetch
   flag.set(false)
   let _ = pick.get()
-  let a_meta2 = rt.get_cell(a.id())
-  let b_meta2 = rt.get_cell(b.id())
-  inspect(a_meta2.subscribers.contains(pick.id()), content="false")
-  inspect(b_meta2.subscribers.contains(pick.id()), content="true")
+  inspect(a_meta.subscribers.contains(pick.id()), content="false")
+  inspect(b_meta.subscribers.contains(pick.id()), content="true")
 }
 
 ///|
@@ -63,6 +62,18 @@ test "subscriber: dependents returns empty for leaf memo" {
   let _ = m.get()
   let deps = rt.dependents(m.id())
   inspect(deps.length(), content="0")
+}
+
+///|
+test "subscriber: memo.get() is idempotent for subscribers" {
+  let rt = Runtime::new()
+  let a = Signal::new(rt, 1)
+  let m = Memo::new(rt, () => a.get() + 1)
+  let _ = m.get()
+  let _ = m.get()
+  let meta = rt.get_cell(a.id())
+  inspect(meta.subscribers.contains(m.id()), content="true")
+  inspect(meta.subscribers.length(), content="1")
 }
 
 ///|
