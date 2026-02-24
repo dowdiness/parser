@@ -46,17 +46,18 @@ Initial version: `0.1.0` (to be tagged and published separately)
    - Freeze must be method/field-level, not just top-level symbol names, so
      `pkg.generated.mbti` diffs are meaningful review gates.
 2. Deferred API decisions:
-   - Resolve include/defer for `RedNode::node_at(position : Int)` and
-     `GreenNode::width()` before release freeze.
+   - Resolve include/defer for `SyntaxNode::node_at(position : Int)` and
+     `CstNode::width()` before release freeze.
    - **Current status:** neither method exists; decision unrecorded. Must be
      recorded in Task 2.2 before Phase 3.
 3. Exposed implementation fields:
-   - `GreenNode`, `GreenToken`, `GreenElement`, `RawKind` are declared
-     `pub(all)` — every field is accessible externally. Fields `hash`,
-     `token_count`, and `GreenNode::children` are incremental-parser
-     implementation details that would be difficult to change post-release.
+   - `CstNode`, `CstToken`, `CstElement`, `RawKind` are declared
+     `pub(all)` — every field is accessible externally. Field
+     `CstNode.children` mutability is the main concern (see Task 1.1).
+     Fields `hash` and `token_count` are decided kept (see Task 3.2).
    - `EventBuffer.events : Array[ParseEvent]` is a public field; callers
      can bypass `push`/`mark`/`start_at` and corrupt the event stream.
+     **Decision: make private** (see Task 1.1).
    - Must be resolved in Task 1.1 before API freeze.
 4. Scope coordination:
    - These publish concerns are not blockers for starting `incr` integration
@@ -136,12 +137,12 @@ Audit items:
 - error messages for invalid state transitions (`EventBuffer`, `build_tree`)
 - stable semantics for equality/hash behavior
 
-**Current state:**
-- `GreenNode`, `GreenToken`, `GreenElement`, `RawKind` are all `pub(all)` —
+**Current state (pre-Phase-0 names):**
+- `CstNode`, `CstToken`, `CstElement`, `RawKind` are all `pub(all)` —
   implementation fields (`hash`, `token_count`, `children`) are exposed.
 - `EventBuffer.events` is a plain public field; the raw array is accessible
   without going through `push`/`mark`/`start_at`.
-- `GreenToken::Eq` and `GreenToken::Hash` use the cached `hash` field; this
+- `CstToken::Eq` and `CstToken::Hash` use the cached `hash` field; this
   behavior is implemented but not documented as a stability guarantee.
 - `RawKind::inner` is `#deprecated` — good, no action needed.
 
@@ -189,18 +190,18 @@ Acceptance criteria:
 
 ### Task 2.1: Freeze public API surface — ❌ Not done
 
-Target public symbols (all present in `pkg.generated.mbti` as of 2026-02-24):
-- `RawKind` ✅ (exists)
-- `GreenToken` ✅ (exists)
-- `GreenElement` ✅ (exists)
-- `GreenNode` ✅ (exists)
-- `RedNode` ✅ (exists)
-- `ParseEvent` ✅ (exists)
-- `EventBuffer` ✅ (exists)
-- `build_tree` ✅ (exists)
-- `build_tree_interned` ✅ (bonus: token deduplication for incremental use)
-- `Interner` ✅ (bonus: required by `build_tree_interned`)
-- hash utilities (`combine_hash`, `string_hash`) ✅ (exist)
+Target public symbols (post-Phase-0 names; currently exist under old names):
+- `RawKind` ✅
+- `CstToken` ✅ (currently `GreenToken`)
+- `CstElement` ✅ (currently `GreenElement`)
+- `CstNode` ✅ (currently `GreenNode`)
+- `SyntaxNode` ✅ (currently `RedNode`)
+- `ParseEvent` ✅
+- `EventBuffer` ✅
+- `build_tree` ✅
+- `build_tree_interned` ✅
+- `Interner` ✅
+- `combine_hash`, `string_hash` ✅
 
 **Remaining work:**
 - Resolve Task 1.1 field visibility before freezing — the surface area of
@@ -218,8 +219,8 @@ Acceptance criteria:
 ### Task 2.2: Decide deferred vs included APIs — ❌ Not done
 
 Decide now:
-- Include or defer `RedNode::node_at(position : Int)`
-- Include or defer `GreenNode::width()` alias for `text_len`
+- Include or defer `SyntaxNode::node_at(position : Int)`
+- Include or defer `CstNode::width()` alias for `text_len`
 
 **Current state:** neither method exists; no decision has been recorded.
 
@@ -275,9 +276,8 @@ Source set (all present in current `src/green-tree/`, will move to `seam/`):
 **Explicit inclusions decided:**
 - `Interner` + `build_tree_interned` — structural sharing/deduplication is core
   to the module's value; useful beyond incremental parsing
-- `GreenNode.token_count` (→ `CstNode.token_count`) — computed for free during
-  `GreenNode::new` children traversal; removing it forces O(subtree) recount
-  at use time; keep
+- `CstNode.token_count` — computed for free during `CstNode::new` children
+  traversal; removing forces O(subtree) recount at every use site; keep
 - `has_errors(error_node_kind, error_token_kind)` — language-agnostic via
   `RawKind` parameters; include
 
