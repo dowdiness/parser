@@ -6,11 +6,15 @@ import {
 }
 
 // Values
+pub fn[S : OffsetIndexed] lower_bound(S, Int) -> Int
+
 pub fn[T, K] parse_with(String, LanguageSpec[T, K], (String) -> Array[TokenInfo[T]], (ParserContext[T, K]) -> Unit) -> (@green-tree.GreenNode, Array[Diagnostic[T]])
 
 // Errors
 
 // Types and methods
+type CursorFrame
+
 pub struct Diagnostic[T] {
   message : String
   start : Int
@@ -29,8 +33,16 @@ pub struct LanguageSpec[T, K] {
   error_kind : K
   root_kind : K
   eof_token : T
+  raw_is_trivia : (@green-tree.RawKind) -> Bool
+  raw_is_error : (@green-tree.RawKind) -> Bool
+  green_token_matches : (@green-tree.RawKind, String, T) -> Bool
 }
-pub fn[T, K] LanguageSpec::new((K) -> @green-tree.RawKind, (T) -> Bool, (T) -> Bool, (T, T) -> Bool, (T) -> String, K, K, K, T) -> Self[T, K]
+pub fn[T, K] LanguageSpec::new((K) -> @green-tree.RawKind, (T) -> Bool, (T) -> Bool, (T, T) -> Bool, (T) -> String, K, K, K, T, raw_is_trivia? : (@green-tree.RawKind) -> Bool, raw_is_error? : (@green-tree.RawKind) -> Bool, green_token_matches? : (@green-tree.RawKind, String, T) -> Bool) -> Self[T, K]
+
+type OldToken
+pub impl Compare for OldToken
+pub impl Eq for OldToken
+pub impl Show for OldToken
 
 pub struct ParserContext[T, K] {
   spec : LanguageSpec[T, K]
@@ -63,6 +75,23 @@ pub fn[T, K] ParserContext::start_at(Self[T, K], Int, K) -> Unit
 pub fn[T, K] ParserContext::start_node(Self[T, K], K) -> Unit
 pub fn[T, K] ParserContext::token_text(Self[T, K], TokenInfo[T]) -> String
 
+pub struct ReuseCursor[T, K] {
+  stack : Array[CursorFrame]
+  mut current_offset : Int
+  damage_start : Int
+  damage_end : Int
+  old_tokens : Array[OldToken]
+  reuse_globally_disabled : Bool
+  token_count : Int
+  get_token : (Int) -> T
+  get_start : (Int) -> Int
+  spec : LanguageSpec[T, K]
+}
+pub fn[T, K] ReuseCursor::advance_past(Self[T, K], @green-tree.GreenNode) -> Unit
+pub fn[T, K] ReuseCursor::is_reuse_disabled(Self[T, K]) -> Bool
+pub fn[T, K] ReuseCursor::new(@green-tree.GreenNode, Int, Int, Int, (Int) -> T, (Int) -> Int, LanguageSpec[T, K]) -> Self[T, K]
+pub fn[T, K] ReuseCursor::try_reuse(Self[T, K], @green-tree.RawKind, Int, Int) -> @green-tree.GreenNode?
+
 pub struct TokenInfo[T] {
   token : T
   start : Int
@@ -74,4 +103,5 @@ pub impl[T : Show] Show for TokenInfo[T]
 // Type aliases
 
 // Traits
+trait OffsetIndexed
 

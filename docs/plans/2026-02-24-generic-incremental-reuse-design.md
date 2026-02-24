@@ -20,7 +20,6 @@ The generic `ParserContext[T, K]` migration (2026-02-23) established the framewo
 2. **Opt-out by configuration** — raw `start_node`/`finish_node` bypasses reuse
 3. **Zero overhead without cursor** — when `reuse_cursor` is `None`, no reuse checks run
 4. **Dictionary passing for language-specific behavior** — `LanguageSpec` closures, not traits (MoonBit's orphan rule prevents cross-package trait impl)
-5. **`Eq` trait bound where safe** — replaces `tokens_equal` closure (builtin, already derived)
 
 ---
 
@@ -38,7 +37,7 @@ Traits would force either `token` → `core` dependency (pollutes a leaf package
 
 Builtin trait bounds (`Eq`, `Show`) are safe — `Token` and `SyntaxKind` already derive them.
 
-Theoretically: `LanguageSpec` is dictionary passing (type-level constraint → record of functions). If profiling ever shows closure indirection matters in a hot loop, we can defunctionalize specific callbacks into tagged enums + apply. For now, dictionary passing is the correct abstraction level — the framework needs runtime flexibility for different languages.
+`LanguageSpec` is dictionary passing made explicit: a record of closures that carries language-specific behavior through the framework. If profiling ever shows closure indirection matters in a hot loop, specific callbacks can be defunctionalized into tagged enums. For now, dictionary passing is the correct abstraction level.
 
 ---
 
@@ -53,7 +52,7 @@ In an imperative parser, `start_node(kind)` is called inside the grammar functio
 Wrap the body in a closure. The framework decides whether to call it:
 
 ```moonbit
-pub fn[T : Eq, K] ParserContext::node(
+pub fn[T, K] ParserContext::node(
   self : ParserContext[T, K],
   kind : K,
   body : () -> Unit,
@@ -71,7 +70,7 @@ pub fn[T : Eq, K] ParserContext::node(
 
 When `reuse_cursor` is `None`, `try_reuse` returns `None` immediately — the closure is allocated but always called. This is the non-incremental path with minimal overhead (one small closure per node).
 
-When reuse succeeds, the closure is allocated but **never called** — the grammar body is skipped entirely, giving O(edit) performance.
+When reuse succeeds, the closure is **never called** — the grammar body is skipped entirely, giving O(edit) performance.
 
 ### Three Grammar Patterns
 
@@ -103,7 +102,7 @@ fn parse_binary_op(ctx) {
     Plus | Minus => ctx.wrap_at(mark, BinaryExpr, fn() {
       while ctx.error_count < MAX_ERRORS {
         match ctx.peek() {
-          Plus => { ctx.emit_token(PlusToken); parse_application(ctx) }
+          Plus  => { ctx.emit_token(PlusToken);  parse_application(ctx) }
           Minus => { ctx.emit_token(MinusToken); parse_application(ctx) }
           _ => break
         }
@@ -116,6 +115,21 @@ fn parse_binary_op(ctx) {
 
 Cannot reuse because the prefix (first child) is already parsed and emitted. Inner `parse_application` calls still benefit from `node()` reuse on their children.
 
+`wrap_at` is a thin wrapper — it does not exist yet in `core` and must be added:
+
+```moonbit
+pub fn[T, K] ParserContext::wrap_at(
+  self : ParserContext[T, K],
+  mark : Int,
+  kind : K,
+  body : () -> Unit,
+) -> Unit {
+  self.start_at(mark, kind)
+  body()
+  self.finish_node()
+}
+```
+
 **3. Raw `start_node`/`finish_node` — opt-out**
 
 ```moonbit
@@ -125,7 +139,7 @@ ctx.bump_error()
 ctx.finish_node()
 ```
 
-### Future Extension: `reusable(body)` (Option A)
+### Future Extension: `reusable(body)`
 
 For compound expressions built via retroactive wrapping, reuse at `node()` level misses the outer wrapper. A kind-agnostic `reusable()` combinator could check "any reusable node at current offset?" before descending:
 
@@ -135,7 +149,7 @@ fn parse_expression(ctx) {
 }
 ```
 
-This requires the cursor to support `seek_any_node_at(offset)` alongside `seek_node_at(offset, kind)`. Deferred — `node()` reuse covers leaf/simple nodes, which are the majority. `reusable()` is purely additive when needed.
+Deferred — `node()` reuse covers leaf/simple nodes, which are the majority. `reusable()` is purely additive when needed.
 
 ---
 
@@ -149,6 +163,7 @@ pub struct LanguageSpec[T, K] {
   kind_to_raw : (K) -> @green_tree.RawKind
   token_is_eof : (T) -> Bool
   token_is_trivia : (T) -> Bool
+  tokens_equal : (T, T) -> Bool
   print_token : (T) -> String
   whitespace_kind : K
   error_kind : K
@@ -166,22 +181,17 @@ pub struct LanguageSpec[T, K] {
 
 **`green_token_matches(raw, text, tok)`** — the core reuse primitive. "Does the old green leaf (RawKind + source text) correspond to this new token T?" This handles payload tokens (identifiers, integers) where kind alone is insufficient — the text/value must also match.
 
-**`tokens_equal` removed** — replaced by `T : Eq` trait bound on methods that need equality. `Token` already derives `Eq`.
-
 ### Lambda Implementation
 
 ```moonbit
 let lambda_spec = LanguageSpec::new(
-  // ... existing fields ...
+  // ... existing fields unchanged ...
   raw_is_trivia=fn(raw) { raw == @syntax.WhitespaceToken.to_raw() },
   raw_is_error=fn(raw) { raw == @syntax.ErrorToken.to_raw() },
   green_token_matches=fn(raw, text, tok) {
     match @syntax.SyntaxKind::from_raw(raw) {
       IdentToken => match tok { Identifier(name) => name == text; _ => false }
-      IntToken => match tok {
-        Integer(v) => v.to_string() == text
-        _ => false
-      }
+      IntToken   => match tok { Integer(v) => v.to_string() == text; _ => false }
       _ => match syntax_kind_to_token_kind(raw) {
         Some(expected) => tok == expected
         None => false
@@ -257,60 +267,86 @@ pub struct ParserContext[T, K] {
 }
 ```
 
-### Byte Offset Derivation
+### `try_reuse`
 
-`try_reuse` needs the byte offset of the current non-trivia token. This is derived from existing token accessors — no separate tracking:
+Uses `(self.get_start)(self.position)` — the absolute byte offset of the current token — as the seek anchor. This is the node's actual start including any leading trivia, which is what `seek_node_at` matches on:
 
 ```moonbit
-fn[T : Eq, K] ParserContext::current_byte_offset(self) -> Int {
-  let pos = self.next_non_trivia_pos()
-  if pos < self.token_count {
-    (self.get_start)(pos)
-  } else {
-    self.source.length()
+fn[T, K] ParserContext::try_reuse(
+  self : ParserContext[T, K],
+  kind : K,
+) -> @green_tree.GreenNode? {
+  if self.position >= self.token_count { return None }
+  let byte_offset = (self.get_start)(self.position)
+  match self.reuse_cursor {
+    None => None
+    Some(cursor) => cursor.try_reuse(
+      (self.spec.kind_to_raw)(kind),
+      byte_offset,
+      self.position,
+    )
   }
 }
 ```
 
+**Why `get_start(position)` not a non-trivia byte offset?** `seek_node_at` matches by a node's absolute start offset, which includes any leading trivia stored as first children (because `flush_trivia` runs inside `emit_token`, after `start_node`). Using the non-trivia offset would seek to the wrong position and miss valid nodes.
+
 ### `emit_reused`
 
-Walks the reused `GreenNode` recursively and pushes `StartNode`/`Token`/`FinishNode` events into the event buffer, then advances `position` past all tokens covered by the node:
+Event emission and position advancement are **separate concerns** and must not be mixed. Combining them in a single recursive function causes `position` to advance multiple times for a single node (once per child, once per intermediate node).
 
 ```moonbit
 fn[T, K] ParserContext::emit_reused(
   self : ParserContext[T, K],
   node : @green_tree.GreenNode,
 ) -> Unit {
-  self.events.push(StartNode(node.kind))
+  self.emit_node_events(node)       // recursive: only emits events
+  self.advance_past_reused(node)    // once: advances ParserContext.position
+  match self.reuse_cursor {
+    Some(cursor) => cursor.advance_past(node)  // keeps cursor.current_offset in sync
+    None => ()
+  }
+  self.reuse_count = self.reuse_count + 1
+}
+
+fn[T, K] ParserContext::emit_node_events(
+  self : ParserContext[T, K],
+  node : @green_tree.GreenNode,
+) -> Unit {
+  self.events.push(@green_tree.StartNode(node.kind))
   for child in node.children {
     match child {
-      Token(t) => self.events.push(ParseEvent::Token(t.kind, t.text))
-      Node(n) => self.emit_reused(n)
+      @green_tree.Token(t) => self.events.push(@green_tree.ParseEvent::Token(t.kind, t.text))
+      @green_tree.Node(n)  => self.emit_node_events(n)
     }
   }
-  self.events.push(FinishNode)
-  // advance position past all tokens in the reused node
-  self.advance_past_reused(node)
-  self.reuse_count = self.reuse_count + 1
+  self.events.push(@green_tree.FinishNode)
 }
 ```
 
 ### `advance_past_reused`
 
-Counts the tokens (including trivia) covered by the reused node's text span, advances `self.position` by that count:
+`GreenNode.token_count` already stores the non-trivia leaf count, specifically for this purpose (see `green_node.mbt` comment). Advance `position` by counting down `token_count` non-trivia tokens, skipping trivia as encountered:
 
 ```moonbit
 fn[T, K] ParserContext::advance_past_reused(
   self : ParserContext[T, K],
   node : @green_tree.GreenNode,
 ) -> Unit {
-  let node_end = self.current_byte_offset() + node.text_len
-  while self.position < self.token_count &&
-        (self.get_start)(self.position) < node_end {
+  let mut remaining = node.token_count
+  while remaining > 0 && self.position < self.token_count {
+    let tok = (self.get_token)(self.position)
     self.position = self.position + 1
+    if not (self.spec.token_is_trivia)(tok) {
+      remaining = remaining - 1
+    }
   }
 }
 ```
+
+**Why `token_count` not byte arithmetic?** Leading trivia is stored inside nodes (emitted by `flush_trivia` inside `emit_token`, which runs after `start_node`). So `node.token_count` non-trivia tokens plus any interleaved trivia exactly covers the node's full token span. No byte offset computation needed.
+
+**Why not `position += node.token_count`?** `ParserContext.position` is a raw index including trivia. `token_count` is non-trivia only. The forward scan naturally handles both.
 
 ---
 
@@ -318,11 +354,10 @@ fn[T, K] ParserContext::advance_past_reused(
 
 ### Phase 1: Extend `LanguageSpec` and `ParserContext`
 
-1. Add `raw_is_trivia`, `raw_is_error`, `green_token_matches` to `LanguageSpec`
-2. Replace `tokens_equal` with `T : Eq` bound
-3. Add `reuse_cursor` and `reuse_count` fields to `ParserContext`
-4. Implement `node()`, `wrap_at()`, `try_reuse()`, `emit_reused()`
-5. Update `lambda_spec` with reuse callbacks
+1. Add `raw_is_trivia`, `raw_is_error`, `green_token_matches` to `LanguageSpec` and `LanguageSpec::new`
+2. Add `reuse_cursor` and `reuse_count` fields to `ParserContext`
+3. Implement `node()`, `wrap_at()`, `try_reuse()`, `emit_reused()`, `emit_node_events()`, `advance_past_reused()`
+4. Update `lambda_spec` with new reuse callbacks
 
 ### Phase 2: Move `ReuseCursor` to `core`
 
@@ -352,7 +387,9 @@ fn[T, K] ParserContext::advance_past_reused(
 
 - **`node()` combinator over transparent `start_node`**: Closure enables skipping the grammar body entirely on reuse hit — true O(edit). Transparent `start_node` can only suppress events while still running grammar code — O(N) with constant reduction.
 - **Dictionary passing over traits**: MoonBit's orphan rule prevents `impl @core.Trait for @token.Type` in the `parser` package. `LanguageSpec` closures avoid dependency pollution.
-- **`Eq` bound instead of `tokens_equal` closure**: Builtin trait, already derived. One fewer closure, compile-time checked.
-- **Byte offset derived, not tracked**: `(get_start)(next_non_trivia_pos())` gives the byte offset on demand. No additional mutable state.
 - **Damage range as `(Int, Int)`, not `@range.Range`**: Avoids adding `range` package as dependency to `core`.
-- **Start with exact-kind reuse (B), add kind-agnostic (A) later**: `node(kind, body)` covers leaf/simple nodes. `reusable(body)` is additive when needed for compound expressions.
+- **Seek by absolute position, not non-trivia byte offset**: `seek_node_at` matches nodes by their absolute start offset. Leading trivia belongs inside nodes (placed there by `flush_trivia` inside `emit_token`). Using `get_start(position)` gives the correct anchor; a non-trivia offset would miss valid nodes.
+- **`token_count` forward scan, not byte arithmetic**: `GreenNode.token_count` exists precisely for advancing position after reuse. The forward scan handles mixed trivia/non-trivia correctly without byte offset computation.
+- **`emit_node_events` and `advance_past_reused` are separate**: Combining them recursively would advance `position` once per child node, corrupting the token stream position. Event emission is pure and recursive; position advancement happens once at the top level.
+- **`cursor.advance_past(node)` after reuse**: Keeps `ReuseCursor.current_offset` in sync so subsequent seeks correctly detect backward movement and reset if needed.
+- **Start with exact-kind reuse, add kind-agnostic later**: `node(kind, body)` covers leaf/simple nodes. `reusable(body)` is additive when needed for compound expressions.

@@ -83,6 +83,17 @@ let test_spec : LanguageSpec[TestTok, TestKind] = {
   error_kind: KErr,
   root_kind: KRoot,
   eof_token: TestTok::TokEof,
+  raw_is_trivia: fn(raw) { raw == test_kind_raw(KWs) },
+  raw_is_error: fn(raw) { raw == test_kind_raw(KErr) },
+  green_token_matches: fn(raw, text, tok) {
+    if raw != test_kind_raw(KNum) {
+      return false
+    }
+    match tok {
+      Num(n) => n.to_string() == text
+      _ => false
+    }
+  },
 }
 
 ///|
@@ -137,4 +148,210 @@ test "parse_with: records errors on bad input" {
   let (_, errors) = parse_with("+", test_spec, test_tokenize, test_grammar)
   inspect(errors.length(), content="1")
   inspect(errors[0].message, content="expected number")
+}
+
+///|
+// ─── ReuseCursor[T, K] tests ─────────────────────────────────────────────────
+
+///|
+test "ReuseCursor::new: globally disabled when damage covers root" {
+  let (tree, _) = parse_with("42", test_spec, test_tokenize, test_grammar)
+  let toks = test_tokenize("42")
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    tree,
+    0,
+    tree.text_len,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  inspect(cursor.is_reuse_disabled(), content="true")
+}
+
+///|
+test "ReuseCursor::new: not globally disabled with partial damage" {
+  let (tree, _) = parse_with("1 + 2", test_spec, test_tokenize, test_grammar)
+  let toks = test_tokenize("1 + 2")
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    tree,
+    2,
+    3,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  inspect(cursor.is_reuse_disabled(), content="false")
+}
+
+///|
+test "ReuseCursor::try_reuse: returns Some for undamaged node" {
+  let src = "1 + 2"
+  let (old_tree, _) = parse_with(src, test_spec, test_tokenize, test_grammar)
+  let toks = test_tokenize(src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let result = cursor.try_reuse(test_kind_raw(KExpr), 0, 0)
+  inspect(result is Some(_), content="true")
+}
+
+///|
+test "ReuseCursor::try_reuse: returns None when globally disabled" {
+  let src = "1 + 2"
+  let (old_tree, _) = parse_with(src, test_spec, test_tokenize, test_grammar)
+  let toks = test_tokenize(src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    0,
+    old_tree.text_len,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let result = cursor.try_reuse(test_kind_raw(KExpr), 0, 0)
+  inspect(result is Some(_), content="false")
+}
+
+///|
+test "ReuseCursor::try_reuse: returns None when node overlaps damage" {
+  let src = "1 + 2"
+  let (old_tree, _) = parse_with(src, test_spec, test_tokenize, test_grammar)
+  let toks = test_tokenize(src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    1,
+    3,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let result = cursor.try_reuse(test_kind_raw(KExpr), 0, 0)
+  inspect(result is Some(_), content="false")
+}
+
+///|
+test "ReuseCursor::advance_past: updates current_offset" {
+  let src = "1 + 2"
+  let (old_tree, _) = parse_with(src, test_spec, test_tokenize, test_grammar)
+  let toks = test_tokenize(src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  cursor.advance_past(old_tree)
+  inspect(cursor.current_offset, content="5")
+}
+
+///|
+test "new_follow_token: finds first non-trivia token at or after offset" {
+  let src = "1 + 2"
+  let (tree, _) = parse_with(src, test_spec, test_tokenize, test_grammar)
+  let toks = test_tokenize(src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let result = new_follow_token(cursor, 2)
+  inspect(result, content="Some(Plus)")
+}
+
+///|
+test "new_follow_token: skips leading trivia" {
+  let src = "1 + 2"
+  let (tree, _) = parse_with(src, test_spec, test_tokenize, test_grammar)
+  let toks = test_tokenize(src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let result = new_follow_token(cursor, 1)
+  inspect(result, content="Some(Plus)")
+}
+
+///|
+test "new_follow_token: returns None past end of tokens" {
+  let src = "1 + 2"
+  let (tree, _) = parse_with(src, test_spec, test_tokenize, test_grammar)
+  let toks = test_tokenize(src)
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let result = new_follow_token(cursor, 5)
+  inspect(result, content="None")
+}
+
+///|
+test "LanguageSpec reuse callbacks are stored and callable" {
+  let ws_raw = test_kind_raw(KWs)
+  let err_raw = test_kind_raw(KErr)
+  let num_raw = test_kind_raw(KNum)
+  let spec = LanguageSpec::new(
+    test_kind_raw,
+    fn(t) { t == TestTok::TokEof },
+    fn(t) { t == TestTok::Ws },
+    fn(a, b) { a == b },
+    fn(t) { t.to_string() },
+    KWs,
+    KErr,
+    KRoot,
+    TestTok::TokEof,
+    raw_is_trivia=fn(raw) { raw == ws_raw },
+    raw_is_error=fn(raw) { raw == err_raw },
+    green_token_matches=fn(raw, text, tok) {
+      if raw != num_raw {
+        return false
+      }
+      match tok {
+        Num(n) => n.to_string() == text
+        _ => false
+      }
+    },
+  )
+  inspect((spec.raw_is_trivia)(ws_raw), content="true")
+  inspect((spec.raw_is_trivia)(num_raw), content="false")
+  inspect((spec.raw_is_error)(err_raw), content="true")
+  inspect((spec.raw_is_error)(ws_raw), content="false")
+  inspect(
+    (spec.green_token_matches)(num_raw, "42", TestTok::Num(42)),
+    content="true",
+  )
+  inspect(
+    (spec.green_token_matches)(num_raw, "42", TestTok::Num(99)),
+    content="false",
+  )
+  inspect(
+    (spec.green_token_matches)(num_raw, "42", TestTok::Plus),
+    content="false",
+  )
 }

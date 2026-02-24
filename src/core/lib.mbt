@@ -1,6 +1,50 @@
 // Generic parser infrastructure — ParserContext[T, K]
 
 ///|
+/// A sorted sequence addressable by integer offset.
+/// Implement this trait to make a type searchable with lower_bound.
+///
+/// Design note: uses a trait instead of a closure pair (count, get_key) so the
+/// same lower_bound function works on both Array[OldToken] (searched by .start)
+/// and ReuseCursor[T,K] (searched by get_start closure) without threading extra
+/// arguments. Two impls suffice — no stdlib binary_search is available in
+/// MoonBit, and stdlib exact-match search would require Compare on full elements
+/// rather than on an extracted key field.
+trait OffsetIndexed {
+  /// Total number of elements in the sorted sequence.
+  length(Self) -> Int
+  /// The sort key (byte offset) at index i. Must be non-decreasing in i.
+  offset_at(Self, Int) -> Int
+}
+
+///|
+/// Lower-bound binary search over any OffsetIndexed source.
+///
+/// Returns the first index i where offset_at(i) >= target, or source.length()
+/// if every element is smaller (i.e. "would insert at end").
+///
+/// Invariant maintained throughout:
+///   - Every index < lo has offset_at < target  (definitely too small)
+///   - Every index >= hi has offset_at >= target (candidate or answer)
+/// When lo == hi the loop exits and lo is the answer.
+///
+/// Note: uses < rather than subtraction for comparison to avoid integer
+/// overflow on large byte offsets.
+pub fn[S : OffsetIndexed] lower_bound(source : S, target : Int) -> Int {
+  let mut lo = 0
+  let mut hi = source.length()
+  while lo < hi {
+    let mid = (lo + hi) / 2
+    if source.offset_at(mid) < target {
+      lo = mid + 1 // mid is too small; exclude it
+    } else {
+      hi = mid // mid is a candidate; keep it
+    }
+  }
+  lo
+}
+
+///|
 /// Generic token with source position. T is the language-specific token type.
 pub struct TokenInfo[T] {
   token : T
@@ -42,6 +86,10 @@ pub struct LanguageSpec[T, K] {
   error_kind : K
   root_kind : K
   eof_token : T
+  // reuse support: classify old-tree RawKind values and match old leaves to new tokens
+  raw_is_trivia : (@green_tree.RawKind) -> Bool
+  raw_is_error : (@green_tree.RawKind) -> Bool
+  green_token_matches : (@green_tree.RawKind, String, T) -> Bool
 }
 
 ///|
@@ -62,6 +110,15 @@ pub fn[T, K] LanguageSpec::new(
   error_kind : K,
   root_kind : K,
   eof_token : T,
+  raw_is_trivia? : (@green_tree.RawKind) -> Bool = fn(_) { false },
+  raw_is_error? : (@green_tree.RawKind) -> Bool = fn(_) { false },
+  green_token_matches? : (@green_tree.RawKind, String, T) -> Bool = fn(
+    _,
+    _,
+    _,
+  ) {
+    false
+  },
 ) -> LanguageSpec[T, K] {
   {
     kind_to_raw,
@@ -73,6 +130,9 @@ pub fn[T, K] LanguageSpec::new(
     error_kind,
     root_kind,
     eof_token,
+    raw_is_trivia,
+    raw_is_error,
+    green_token_matches,
   }
 }
 
@@ -216,9 +276,7 @@ fn[T, K] ParserContext::text_at(
 ) -> String {
   let start = (self.get_start)(pos)
   let end = (self.get_end)(pos)
-  let slice : StringView = self.source[start:end] catch {
-      _ => return ""
-    }
+  let slice : StringView = self.source[start:end] catch { _ => return "" }
   slice.to_string()
 }
 
@@ -391,6 +449,9 @@ fn make_test_fixtures() -> (LanguageSpec[String, Int], Array[TokenInfo[String]])
     error_kind: 1,
     root_kind: 2,
     eof_token: "EOF",
+    raw_is_trivia: fn(_) { false },
+    raw_is_error: fn(_) { false },
+    green_token_matches: fn(_, _, _) { false },
   }
   let tokens = [
     { token: "a", start: 0, end: 1 },
@@ -432,6 +493,9 @@ test "peek skips trivia tokens" {
     error_kind: 1,
     root_kind: 2,
     eof_token: "EOF",
+    raw_is_trivia: fn(_) { false },
+    raw_is_error: fn(_) { false },
+    green_token_matches: fn(_, _, _) { false },
   }
   let tokens = [
     { token: " ", start: 0, end: 1 },

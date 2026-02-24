@@ -76,6 +76,7 @@ pub impl Show for ParseEvent
 pub(all) struct RawKind(Int)
 #deprecated
 pub fn RawKind::inner(Self) -> Int
+pub impl Compare for RawKind
 pub impl Eq for RawKind
 pub impl Hash for RawKind
 pub impl Show for RawKind

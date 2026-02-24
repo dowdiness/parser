@@ -1,7 +1,7 @@
 ///|
 /// Language-independent node kind (equivalent to rowan's RawSyntaxKind).
 /// Each language defines its own enum and converts to/from RawKind via to_raw()/from_raw().
-pub(all) struct RawKind(Int) derive(Eq, Show, Hash)
+pub(all) struct RawKind(Int) derive(Eq, Show, Hash, Compare)
 
 ///|
 pub(all) struct GreenToken {
