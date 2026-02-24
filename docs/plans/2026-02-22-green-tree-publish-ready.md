@@ -117,9 +117,13 @@ Acceptance criteria:
 
 ### Task 0.3: Rename `term-tree` to `ast` — ❌ Not done
 
+**Scope note:** `TermNode` lives in `src/parser/` (the lambda grammar layer),
+not in `src/green-tree/`. This rename is a `dowdiness/parser` concern and does
+not block any `seam` phase. Do it for naming consistency across the codebase,
+but it is independent of `seam` publish-readiness.
+
 Scope:
-- Rename package `src/term-tree/` (if it exists as a directory) or the
-  relevant source files
+- Rename relevant source files in `src/parser/`
 - Rename `TermNode` → `AstNode` and related types
 - Update all callers
 
