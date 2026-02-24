@@ -253,7 +253,7 @@ The `seam` module is deliberately language-agnostic. It does not know about lamb
 
 ### Generic Parser Core (`src/core/`)
 
-The `dowdiness/parser/core` package exposes a language-agnostic parsing infrastructure. Any MoonBit project can define a new parser by providing token and syntax-kind types — no need to reimplement the green tree, error recovery, or incremental subtree-reuse logic.
+The `dowdiness/parser/core` package exposes a language-agnostic parsing infrastructure. Any MoonBit project can define a new parser by providing token and syntax-kind types — no need to reimplement the CST, error recovery, or incremental subtree-reuse logic.
 
 **Three types:**
 
