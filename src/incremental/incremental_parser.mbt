@@ -182,9 +182,16 @@ fn IncrementalParser::incremental_reparse(
   }
 
   // Create cursor from old green tree for subtree reuse
-  let cursor : @parse.ReuseCursor? = match self.green_tree {
+  let cursor = match self.green_tree {
     Some(old_green) =>
-      Some(@parse.make_reuse_cursor(old_green, damaged_range, tokens))
+      Some(
+        @parse.make_reuse_cursor(
+          old_green,
+          damaged_range.start,
+          damaged_range.end,
+          tokens,
+        ),
+      )
     None => None
   }
 

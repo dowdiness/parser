@@ -8,13 +8,23 @@ fn raw(kind : @syntax.SyntaxKind) -> @green_tree.RawKind {
 }
 
 ///|
-/// Create a ReuseCursor from a @green_tree.GreenNode.
+/// Create a ReuseCursor from an old green tree and a pre-tokenized new stream.
+/// Bridges the @parse API to @core.ReuseCursor for callers (e.g. incremental).
 pub fn make_reuse_cursor(
   old_tree : @green_tree.GreenNode,
-  damaged_range : @range.Range,
+  damage_start : Int,
+  damage_end : Int,
   tokens : Array[@token.TokenInfo],
-) -> ReuseCursor {
-  ReuseCursor::new(old_tree, damaged_range, tokens)
+) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind] {
+  @core.ReuseCursor::new(
+    old_tree,
+    damage_start,
+    damage_end,
+    tokens.length(),
+    fn(i) { tokens[i].token },
+    fn(i) { tokens[i].start },
+    lambda_spec,
+  )
 }
 
 ///|
@@ -107,7 +117,7 @@ pub fn parse_green_recover(
 pub fn parse_green_with_cursor(
   source : String,
   tokens : Array[@token.TokenInfo],
-  _cursor : ReuseCursor,
+  _cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind],
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
   let (tree, errors) = run_parse(tokens, source, None)
   (tree, errors, 0)
@@ -123,7 +133,7 @@ pub fn parse_green_with_cursor(
 pub fn parse_green_recover_with_tokens(
   source : String,
   tokens : Array[@token.TokenInfo],
-  _cursor : ReuseCursor?,
+  _cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
   interner? : @green_tree.Interner? = None,
 ) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
   let (tree, errors) = run_parse(tokens, source, interner)

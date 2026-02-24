@@ -64,10 +64,14 @@ test "parse_green_with_cursor: uses supplied tokens, not re-tokenization" {
   // Same regression guard for parse_green_with_cursor.
   let source = "x + y"
   let tokens = @lexer.tokenize(source)
-  let cursor = make_reuse_cursor(
+  let cursor = @core.ReuseCursor::new(
     parse_green_recover(source).0,
-    @range.Range::new(0, 0),
-    tokens,
+    0,
+    0,
+    tokens.length(),
+    fn(i) { tokens[i].token },
+    fn(i) { tokens[i].start },
+    lambda_spec,
   )
   let (_, errors, reuse_count) = parse_green_with_cursor(
     "@invalid", tokens, cursor,

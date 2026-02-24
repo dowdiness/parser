@@ -5,7 +5,7 @@ import {
   "dowdiness/parser/core",
   "dowdiness/parser/green-tree",
   "dowdiness/parser/lexer",
-  "dowdiness/parser/range",
+  "dowdiness/parser/syntax",
   "dowdiness/parser/term",
   "dowdiness/parser/token",
 }
@@ -19,7 +19,7 @@ pub fn green_to_term_node(@green-tree.GreenNode, Int, Ref[Int]) -> @term.TermNod
 
 pub fn has_errors(@term.TermNode) -> Bool
 
-pub fn make_reuse_cursor(@green-tree.GreenNode, @range.Range, Array[@token.TokenInfo]) -> ReuseCursor
+pub fn make_reuse_cursor(@green-tree.GreenNode, Int, Int, Array[@token.TokenInfo]) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]
 
 pub fn parse(String) -> @term.Term raise
 
@@ -27,11 +27,11 @@ pub fn parse_green(String) -> @green-tree.GreenNode raise
 
 pub fn parse_green_recover(String, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError
 
-pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], ReuseCursor?, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
+pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
 
 pub fn parse_green_to_term_node(String) -> @term.TermNode raise
 
-pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], ReuseCursor) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
+pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
 
 pub fn parse_tree(String) -> @term.TermNode raise
 
@@ -49,23 +49,6 @@ pub suberror ParseError {
 }
 
 // Types and methods
-type CursorFrame
-
-type OldToken
-
-pub struct ReuseCursor {
-  stack : Array[CursorFrame]
-  mut current_offset : Int
-  damaged_range : @range.Range
-  tokens : Array[@token.TokenInfo]
-  old_tokens : Array[OldToken]
-  reuse_globally_disabled : Bool
-}
-pub fn ReuseCursor::advance_past(Self, @green-tree.GreenNode) -> Unit
-pub fn ReuseCursor::is_reuse_disabled(Self) -> Bool
-pub fn ReuseCursor::new(@green-tree.GreenNode, @range.Range, Array[@token.TokenInfo]) -> Self
-pub fn ReuseCursor::old_tree(Self) -> @green-tree.GreenNode
-pub fn ReuseCursor::try_reuse(Self, @green-tree.RawKind, Int, Int) -> @green-tree.GreenNode?
 
 // Type aliases
 
