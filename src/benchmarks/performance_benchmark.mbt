@@ -424,3 +424,71 @@ test "parse_green_recover - warm interner, large" (b : @bench.T) {
     b.keep(tree)
   })
 }
+
+// --- Phase 3: cursor-based green-tree reuse ---
+//
+// Directly measures the parser-level speedup from subtree reuse.
+// Uses parse_green_recover_with_tokens (no cursor, cursor=None) as the
+// baseline — same pre-tokenized input, pure parse overhead, no lexing cost.
+// parse_green_with_cursor uses a live ReuseCursor so ctx.node() can skip
+// unchanged subtrees.  The 110-token corpus (55 integers + 54 plus signs)
+// gives 54 reusable IntLiteral nodes for the "edit at end" case and ~54
+// reusable nodes for "edit at start" (everything after position 1).
+//
+// Byte offsets match the Phase 1 token benchmarks above:
+//   "55" (last token) : old source [261, 263)
+//   "1"  (first token): old source [0, 1)
+
+///|
+/// Benchmark: full green reparse of 110-token input, no cursor (cursor reuse baseline).
+/// Same tokens passed directly — no tokenization cost in this measurement.
+test "phase3: full green reparse, no cursor - 110 tokens" (b : @bench.T) {
+  let source = make_token_source()
+  let tokens = @lexer.tokenize(source) catch {
+    _ => abort("setup failed")
+  }
+  b.bench(fn() {
+    let (tree, _, _) = @parse.parse_green_recover_with_tokens(source, tokens, None)
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: cursor reuse — edit at end of 110-token input.
+/// "... + 55" → "... + 99": damage covers only the last integer [261, 263).
+/// 54 of 55 IntLiteral nodes are outside the damage window → reused via ctx.node().
+test "phase3: cursor reuse, edit at end - 110 tokens" (b : @bench.T) {
+  let old_source = make_token_source()
+  let new_source = make_token_source_replace(55)
+  let (old_tree, _) = @parse.parse_green_recover(old_source) catch {
+    _ => abort("setup failed")
+  }
+  let new_tokens = @lexer.tokenize(new_source) catch {
+    _ => abort("setup failed")
+  }
+  b.bench(fn() {
+    let cursor = @parse.make_reuse_cursor(old_tree, 261, 263, new_tokens)
+    let (tree, _, _) = @parse.parse_green_with_cursor(new_source, new_tokens, cursor)
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: cursor reuse — edit at start of 110-token input.
+/// "1 + 2 + ..." → "99 + 2 + ...": damage covers only the first integer [0, 1).
+/// 54 of 55 IntLiteral nodes start after the damage window → reused via ctx.node().
+test "phase3: cursor reuse, edit at start - 110 tokens" (b : @bench.T) {
+  let old_source = make_token_source()
+  let new_source = make_token_source_replace(1)
+  let (old_tree, _) = @parse.parse_green_recover(old_source) catch {
+    _ => abort("setup failed")
+  }
+  let new_tokens = @lexer.tokenize(new_source) catch {
+    _ => abort("setup failed")
+  }
+  b.bench(fn() {
+    let cursor = @parse.make_reuse_cursor(old_tree, 0, 1, new_tokens)
+    let (tree, _, _) = @parse.parse_green_with_cursor(new_source, new_tokens, cursor)
+    b.keep(tree)
+  })
+}
