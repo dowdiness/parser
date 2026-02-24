@@ -1,7 +1,8 @@
 # Green-Tree Publish-Readiness Plan (Standalone Module)
 
-**Date:** 2026-02-22  
-**Status:** Draft
+**Date:** 2026-02-22
+**Updated:** 2026-02-24
+**Status:** In Progress — Phases 1–2 partially complete; Phases 3–6 not started
 
 ## Goal
 
@@ -23,7 +24,7 @@ Out of scope:
 
 ## Release Target
 
-Module name: `dowdiness/green-tree`  
+Module name: `dowdiness/green-tree`
 Initial version: `0.1.0`
 
 ## Definition Of Done
@@ -42,31 +43,61 @@ Initial version: `0.1.0`
 2. Deferred API decisions:
    - Resolve include/defer for `RedNode::node_at(position : Int)` and
      `GreenNode::width()` before release freeze.
-3. Scope coordination:
+   - **Current status:** neither method exists; decision unrecorded. Must be
+     recorded in Task 2.2 before Phase 3.
+3. Exposed implementation fields:
+   - `GreenNode`, `GreenToken`, `GreenElement`, `RawKind` are declared
+     `pub(all)` — every field is accessible externally. Fields `hash`,
+     `token_count`, and `GreenNode::children` are incremental-parser
+     implementation details that would be difficult to change post-release.
+   - `EventBuffer.events : Array[ParseEvent]` is a public field; callers
+     can bypass `push`/`mark`/`start_at` and corrupt the event stream.
+   - Must be resolved in Task 1.1 before API freeze.
+4. Scope coordination:
    - These publish concerns are not blockers for starting `incr` integration
      implementation in this repository.
 
 ---
 
-## Phase 1: API Hardening
+## Phase 1: API Hardening — ⚠️ Partial
 
-### Task 1.1: Visibility and invariants audit
+### Task 1.1: Visibility and invariants audit — ❌ Not done
 
 Audit items:
 - mutable/public fields that should be private or method-based
 - error messages for invalid state transitions (`EventBuffer`, `build_tree`)
 - stable semantics for equality/hash behavior
 
+**Current state:**
+- `GreenNode`, `GreenToken`, `GreenElement`, `RawKind` are all `pub(all)` —
+  implementation fields (`hash`, `token_count`, `children`) are exposed.
+- `EventBuffer.events` is a plain public field; the raw array is accessible
+  without going through `push`/`mark`/`start_at`.
+- `GreenToken::Eq` and `GreenToken::Hash` use the cached `hash` field; this
+  behavior is implemented but not documented as a stability guarantee.
+- `RawKind::inner` is `#deprecated` — good, no action needed.
+
+**Remaining work:**
+- Decide which fields to make private (breaking change — must happen before
+  standalone module is published).
+- Add invariant docs to each public type: what the cached `hash` represents,
+  what `token_count` counts, what `EventBuffer` balancing requires.
+- Document `Eq`/`Hash` fast-path semantics as a stability guarantee.
+
 Acceptance criteria:
 - each public type/method has concise docs for invariants
 - trait impl behavior (`Eq`, `Hash`) is documented and tested
 
-### Task 1.2: Rowan-model documentation
+### Task 1.2: Rowan-model documentation — ❌ Not done
 
 Document mapping:
 - `RawKind` ~ rowan raw kind
 - green tree vs red tree responsibilities
 - event stream to tree construction model
+
+**Current state:** no Rowan-model documentation exists anywhere in the
+codebase. External users cannot understand the event-stream → tree model
+without reading the source.
 
 Acceptance criteria:
 - section included in README
@@ -74,34 +105,43 @@ Acceptance criteria:
 
 ---
 
-## Phase 2: Contract And API Freeze
+## Phase 2: Contract And API Freeze — ❌ Not started
 
-### Task 2.1: Freeze public API surface
+### Task 2.1: Freeze public API surface — ❌ Not done
 
-Target public symbols:
-- `RawKind`
-- `GreenToken`
-- `GreenElement`
-- `GreenNode`
-- `RedNode`
-- `ParseEvent`
-- `EventBuffer`
-- `build_tree`
-- hash utilities (`combine_hash`, `string_hash`)
+Target public symbols (all present in `pkg.generated.mbti` as of 2026-02-24):
+- `RawKind` ✅ (exists)
+- `GreenToken` ✅ (exists)
+- `GreenElement` ✅ (exists)
+- `GreenNode` ✅ (exists)
+- `RedNode` ✅ (exists)
+- `ParseEvent` ✅ (exists)
+- `EventBuffer` ✅ (exists)
+- `build_tree` ✅ (exists)
+- `build_tree_interned` ✅ (bonus: token deduplication for incremental use)
+- `Interner` ✅ (bonus: required by `build_tree_interned`)
+- hash utilities (`combine_hash`, `string_hash`) ✅ (exist)
 
-Deliverables:
-- API contract section in this plan (or separate `docs/api-contract.md`)
-- explicit notes for any deferred API
+**Remaining work:**
+- Resolve Task 1.1 field visibility before freezing — the surface area of
+  `pub(all)` structs is currently larger than intended.
+- Write an explicit API contract document (or section in this plan) listing
+  every public symbol, its invariants, and stability level.
+- Verify `pkg.generated.mbti` matches contract exactly after freeze.
 
 Acceptance criteria:
+- API contract section in this plan (or separate `docs/api-contract.md`)
+- explicit notes for any deferred API
 - `pkg.generated.mbti` matches contract exactly
 - no accidental exports remain
 
-### Task 2.2: Decide deferred vs included APIs
+### Task 2.2: Decide deferred vs included APIs — ❌ Not done
 
 Decide now:
 - Include or defer `RedNode::node_at(position : Int)`
 - Include or defer `GreenNode::width()` alias for `text_len`
+
+**Current state:** neither method exists; no decision has been recorded.
 
 Acceptance criteria:
 - decision recorded in docs
@@ -109,9 +149,13 @@ Acceptance criteria:
 
 ---
 
-## Phase 3: Standalone Module Bootstrap
+## Phase 3: Standalone Module Bootstrap — ❌ Not started
 
-### Task 3.1: Create module skeleton
+**Current state:** `green-tree` lives at `src/green-tree/` inside the
+`dowdiness/parser` module (`moon.mod.json` name = `"dowdiness/parser"`).
+It cannot be added as a standalone dependency today.
+
+### Task 3.1: Create module skeleton — ❌ Not done
 
 Files:
 - `moon.mod.json`
@@ -132,13 +176,14 @@ Acceptance criteria:
 - module builds without project-local dependencies
 - package imports are minimal and intentional
 
-### Task 3.2: Move/copy core implementation
+### Task 3.2: Move/copy core implementation — ❌ Not done
 
-Source set:
-- `green_node.mbt`
-- `red_node.mbt`
-- `event.mbt`
-- `hash.mbt`
+Source set (all present in current `src/green-tree/`):
+- `green_node.mbt` ✅
+- `red_node.mbt` ✅
+- `event.mbt` ✅
+- `hash.mbt` ✅
+- `interner.mbt` ✅ (not in original plan — include in standalone)
 
 Acceptance criteria:
 - behavior matches current internal `green-tree`
@@ -146,27 +191,40 @@ Acceptance criteria:
 
 ---
 
-## Phase 4: Test Completion
+## Phase 4: Test Completion — ⚠️ Partial
 
-### Task 4.1: Unit + panic tests
+**Current state:** unit tests exist in `*_wbtest.mbt` files for green node,
+red node, event buffer, hash, and interner. No panic/abort path tests and no
+property-style tests exist.
+
+### Task 4.1: Unit + panic tests — ⚠️ Partial
 
 Required coverage:
-- constructor correctness (`text_len`, hash derivation)
-- equality/hash fast-path behavior
-- event balancing invariants
-- red-node offsets and traversal
-- deferred/included API behavior (`node_at`, `width`) per Phase 2
+- constructor correctness (`text_len`, hash derivation) ✅ covered
+- equality/hash fast-path behavior ✅ covered (hash_test.mbt)
+- event balancing invariants ✅ partially covered (event_wbtest.mbt)
+- red-node offsets and traversal ✅ covered (red_node_wbtest.mbt)
+- deferred/included API behavior (`node_at`, `width`) per Phase 2 ❌ pending decision
+
+**Remaining work:**
+- Add explicit panic/abort tests for:
+  - `EventBuffer::start_at` on out-of-bounds mark index
+  - `EventBuffer::start_at` on non-Tombstone slot
+  - `build_tree` with unbalanced StartNode/FinishNode
 
 Acceptance criteria:
 - all tests pass with `moon test`
 - panic/abort paths are explicitly tested
 
-### Task 4.2: Property-style confidence checks
+### Task 4.2: Property-style confidence checks — ❌ Not done
 
 Suggested properties:
 - deterministic structural hash for identical trees
 - `build_tree` preserves concatenated text length
 - red node child offsets are monotonic and contiguous
+
+**Current state:** `moonbitlang/quickcheck` is already a dependency of the
+`dowdiness/parser` module, so property tests can be added without new deps.
 
 Acceptance criteria:
 - property tests added where practical
@@ -174,9 +232,13 @@ Acceptance criteria:
 
 ---
 
-## Phase 5: Documentation And Examples
+## Phase 5: Documentation And Examples — ❌ Not started
 
-### Task 5.1: Publish-grade README
+**Current state:** a parser-focused `README.md` exists at the repo root but
+covers the full parser module, not `green-tree` in isolation. No Rowan-model
+mapping, no standalone examples.
+
+### Task 5.1: Publish-grade README — ❌ Not done
 
 README sections:
 - quick start
@@ -189,11 +251,15 @@ Acceptance criteria:
 - README examples are checked and run by test workflow
 - no stale references to parser-internal packages
 
-### Task 5.2: API reference generation workflow
+### Task 5.2: API reference generation workflow — ⚠️ Partial
 
 Steps:
-- run `moon info`
-- review/commit `pkg.generated.mbti`
+- run `moon info` ✅ (already part of standard workflow)
+- review/commit `pkg.generated.mbti` ✅ (already committed and up to date)
+
+**Remaining work:**
+- No undocumented public symbol check is automated; must be done manually
+  after Task 1.1 reduces the surface area.
 
 Acceptance criteria:
 - generated API file matches intended surface
@@ -201,20 +267,23 @@ Acceptance criteria:
 
 ---
 
-## Phase 6: CI And Release
+## Phase 6: CI And Release — ❌ Not started
 
-### Task 6.1: CI gates
+### Task 6.1: CI gates — ❌ Not done
 
 Required CI commands:
 - `moon check --target all`
 - `moon test`
 - `moon info`
 
+**Current state:** no CI exists for the standalone `green-tree` module
+(CI would be set up after Phase 3 standalone bootstrap).
+
 Acceptance criteria:
 - all gates enforced on default branch
 - failures block release
 
-### Task 6.2: Release checklist
+### Task 6.2: Release checklist — ❌ Not done
 
 Release steps:
 1. verify clean CI
@@ -234,18 +303,21 @@ Acceptance criteria:
 
 ## Execution Order
 
-1. Phase 1 (API hardening)  
-2. Phase 2 (contract decisions + API freeze)  
-3. Phase 3 (standalone module bootstrap)  
-4. Phase 4 (tests)  
-5. Phase 5 (docs/examples)  
+1. Phase 1 (API hardening) — resolve `pub(all)` field visibility, add invariant docs
+2. Phase 2 (contract decisions + API freeze) — record `node_at`/`width` decision
+3. Phase 3 (standalone module bootstrap) — extract to independent module/repo
+4. Phase 4 (tests) — panic tests + property tests in standalone module
+5. Phase 5 (docs/examples) — publish-grade README
 6. Phase 6 (CI + publish)
 
 ## Risks
 
-- API leaks from permissive field visibility can force unnecessary follow-up releases.
+- API leaks from permissive field visibility (`pub(all)` structs) can force
+  unnecessary follow-up releases. **High risk — must fix before Phase 3.**
 - Deferred API decisions (`node_at`, `width`) can create documentation/code drift.
 - Hash/equality semantics are easy to regress without dedicated tests.
+- `token_count` (incremental-parser detail) exposed on `GreenNode` — may be
+  wrong to include in a language-agnostic standalone module.
 
 ## Success Metric
 
