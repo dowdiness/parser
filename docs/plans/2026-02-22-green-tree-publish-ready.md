@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-22
 **Updated:** 2026-02-25
-**Status:** In Progress — Phase 0 complete; Phase 1 complete; Phases 2–5 not started; Phase 6 (CI) deferred
+**Status:** In Progress — Phases 0–2 complete; Phases 3–5 not started; Phase 6 (CI) deferred
 
 ## Goal
 
@@ -190,9 +190,9 @@ Acceptance criteria:
 
 ---
 
-## Phase 2: Contract And API Freeze — ❌ Not started
+## Phase 2: Contract And API Freeze — ✅ Complete
 
-### Task 2.1: Freeze public API surface — ❌ Not done
+### Task 2.1: Freeze public API surface — ✅ Done
 
 Target public symbols (post-Phase-0 names; currently exist under old names):
 - `RawKind` ✅
@@ -220,13 +220,15 @@ Acceptance criteria:
 - `pkg.generated.mbti` matches contract exactly
 - no accidental exports remain
 
-### Task 2.2: Decide deferred vs included APIs — ❌ Not done
+### Task 2.2: Decide deferred vs included APIs — ✅ Done
 
 Decide now:
 - Include or defer `SyntaxNode::node_at(position : Int)`
 - Include or defer `CstNode::width()` alias for `text_len`
 
-**Current state:** neither method exists; no decision has been recorded.
+**Decision recorded:**
+- `SyntaxNode::node_at` — **deferred**. No current callers; position-on-boundary and trivia semantics need explicit design before freeze.
+- `CstNode::width()` — **deferred**. Redundant alias; `text_len` is already a public field on `pub(all) CstNode`.
 
 Acceptance criteria:
 - decision recorded in docs

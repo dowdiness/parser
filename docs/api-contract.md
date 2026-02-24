@@ -1,0 +1,203 @@
+# `seam` API Contract
+
+**Module:** `dowdiness/parser/seam` (will become `dowdiness/seam` after Phase 3)
+**Version target:** `0.1.0`
+**Generated from:** `src/seam/pkg.generated.mbti`
+
+Every public symbol is listed below with its stability level and key invariants.
+Symbols not listed here are package-private and subject to change without notice.
+
+---
+
+## Stability levels
+
+- **Stable** — frozen for the 0.x series; breaking changes require a major version bump
+- **Deprecated** — present for compatibility; will be removed in a future version
+- **Deferred** — not included in 0.1.0; may be added in a later release
+
+---
+
+## `RawKind`
+
+```moonbit
+pub(all) struct RawKind(Int)
+```
+
+**Stable.** Language-agnostic node/token kind. Newtype over `Int`; each language defines its own kind enum and converts via its own `to_raw()`/`from_raw()`.
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `RawKind(Int)` constructor | Stable | Direct construction; value is opaque to `seam` |
+| `Eq`, `Hash`, `Compare`, `Show` | Stable | Delegated to the inner `Int` |
+| `RawKind::inner(Self) -> Int` | **Deprecated** | Access the inner `Int` via pattern `let RawKind(n) = kind` |
+
+---
+
+## `CstToken`
+
+```moonbit
+pub(all) struct CstToken { kind : RawKind; text : String; hash : Int }
+```
+
+**Stable.** Immutable leaf token. All three fields are public for read access.
+
+**Invariant:** `hash` equals `combine_hash(kind.inner, string_hash(text))` and is frozen at construction. Never mutate fields directly; doing so invalidates `Eq` and `Hash` semantics.
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `CstToken::new(RawKind, String) -> Self` | Stable | Computes and caches `hash` |
+| `CstToken::text_len(Self) -> Int` | Stable | Returns `text.length()` |
+| `Eq` | Stable | Hash fast-path rejection, then `kind` + `text` deep check |
+| `Hash` | Stable | Feeds cached `hash` field into hasher |
+| `Show` | Stable | Debug representation; format not guaranteed stable |
+
+---
+
+## `CstElement`
+
+```moonbit
+pub(all) enum CstElement { Token(CstToken); Node(CstNode) }
+```
+
+**Stable.** Union of a leaf token and an interior node.
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `Token(CstToken)` / `Node(CstNode)` | Stable | |
+| `CstElement::kind(Self) -> RawKind` | Stable | |
+| `CstElement::text_len(Self) -> Int` | Stable | |
+| `Eq`, `Hash`, `Show` | Stable | `Hash` adds a variant tag to reduce cross-variant collisions |
+
+---
+
+## `CstNode`
+
+```moonbit
+pub(all) struct CstNode {
+  kind        : RawKind
+  children    : Array[CstElement]
+  text_len    : Int
+  hash        : Int
+  token_count : Int
+}
+```
+
+**Stable.** Immutable interior node. All five fields are public for read access.
+
+**Invariants:**
+- `children` is **frozen after construction**. Mutating it externally invalidates `text_len`, `hash`, and `token_count`, which are all cached at construction time and never recomputed.
+- `hash` is a structural content hash derived recursively from `kind` and each child's hash via `combine_hash`. Stable as long as `combine_hash` is stable.
+- `text_len` equals the sum of `child.text_len()` for all children.
+- `token_count` equals the number of non-trivia leaf tokens (see `CstNode::new` for `trivia_kind` semantics).
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `CstNode::new(RawKind, Array[CstElement], trivia_kind? : RawKind?) -> Self` | Stable | `trivia_kind` controls what counts as trivia for `token_count` |
+| `CstNode::kind(Self) -> RawKind` | Stable | Accessor for the `kind` field |
+| `CstNode::has_errors(Self, RawKind, RawKind) -> Bool` | Stable | Language-agnostic; caller supplies error kind values |
+| `Eq` | Stable | Hash fast-path rejection, then deep structural check |
+| `Hash` | Stable | Feeds cached `hash` field into hasher |
+| `Show` | Stable | Debug representation; format not guaranteed stable |
+| `CstNode::width()` | **Deferred** | Alias for `text_len`; redundant while `text_len` is a public field |
+
+---
+
+## `ParseEvent`
+
+```moonbit
+pub(all) enum ParseEvent {
+  StartNode(RawKind)
+  FinishNode
+  Token(RawKind, String)
+  Tombstone
+}
+```
+
+**Stable.** Event stream type consumed by `build_tree` / `build_tree_interned`.
+
+**Invariant:** A valid event stream is balanced — every `StartNode` has a matching `FinishNode`. `Tombstone` slots are silently skipped.
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| All four variants | Stable | |
+| `Eq`, `Show` | Stable | |
+
+---
+
+## `EventBuffer`
+
+```moonbit
+pub struct EventBuffer { /* private fields */ }
+```
+
+**Stable.** Accumulates parse events; exposes `mark`/`start_at` for retroactive node wrapping. The backing array is private.
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `EventBuffer::new() -> Self` | Stable | |
+| `EventBuffer::push(Self, ParseEvent) -> Unit` | Stable | Append any event directly |
+| `EventBuffer::mark(Self) -> Int` | Stable | Reserve a `Tombstone` slot; returns its index |
+| `EventBuffer::start_at(Self, Int, RawKind) -> Unit` | Stable | Fill a `Tombstone` with `StartNode`; aborts if out-of-bounds or non-Tombstone |
+| `EventBuffer::build_tree(Self, RawKind, trivia_kind? : RawKind?) -> CstNode` | Stable | Builds CST from accumulated events; equivalent to calling `build_tree(events, ...)` |
+| `EventBuffer::build_tree_interned(Self, RawKind, Interner, trivia_kind? : RawKind?) -> CstNode` | Stable | Interned variant |
+
+---
+
+## `Interner`
+
+```moonbit
+pub struct Interner { /* private fields */ }
+```
+
+**Stable.** Session-scoped token intern table. Deduplicates `CstToken` by `(kind, text)`.
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `Interner::new() -> Self` | Stable | |
+| `Interner::intern_token(Self, RawKind, String) -> CstToken` | Stable | Returns cached token on repeat calls |
+| `Interner::size(Self) -> Int` | Stable | Count of distinct `(kind, text)` pairs |
+| `Interner::clear(Self) -> Unit` | Stable | Reset; safe to reuse after clear |
+
+---
+
+## `SyntaxNode`
+
+```moonbit
+pub struct SyntaxNode { cst : CstNode; parent : SyntaxNode?; offset : Int }
+```
+
+**Stable.** Ephemeral positioned view over a `CstNode`. Fields are public and read-only (no `mut`).
+
+**Invariant:** `offset` is the absolute byte offset of this node's start in the source. `cst.text_len` gives the span width; `offset + cst.text_len` is the end.
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `SyntaxNode::from_cst(CstNode) -> Self` | Stable | Creates a root node (offset = 0, no parent) |
+| `SyntaxNode::new(CstNode, Self?, Int) -> Self` | Stable | Full constructor; `parent` may be `None` for roots |
+| `SyntaxNode::start(Self) -> Int` | Stable | Returns `offset` |
+| `SyntaxNode::end(Self) -> Int` | Stable | Returns `offset + cst.text_len` |
+| `SyntaxNode::kind(Self) -> RawKind` | Stable | Returns `cst.kind` |
+| `SyntaxNode::children(Self) -> Array[Self]` | Stable | Returns child `SyntaxNode`s with computed offsets; skips leaf tokens |
+| `SyntaxNode::node_at(Int) -> Self?` | **Deferred** | Find deepest node at a byte position; edge-case semantics (boundary, trivia) unresolved |
+
+---
+
+## Standalone functions
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `build_tree(Array[ParseEvent], RawKind, trivia_kind? : RawKind?) -> CstNode` | Stable | Use `EventBuffer::build_tree` when building through `EventBuffer` |
+| `build_tree_interned(Array[ParseEvent], RawKind, Interner, trivia_kind? : RawKind?) -> CstNode` | Stable | Interned variant |
+| `combine_hash(Int, Int) -> Int` | Stable | FNV-based mixing function used for structural hashes |
+| `string_hash(String) -> Int` | Stable | FNV hash of a string; used by `CstToken::new` |
+
+---
+
+## Deferred API summary
+
+Both decisions recorded here; may be revisited for `0.2.0`:
+
+| Symbol | Reason deferred |
+|---|---|
+| `CstNode::width()` | Redundant alias for the already-public `text_len` field |
+| `SyntaxNode::node_at(Int) -> Self?` | No current callers; position-on-boundary and trivia semantics need design before freeze |
