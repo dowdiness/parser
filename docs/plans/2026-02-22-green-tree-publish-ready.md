@@ -1,4 +1,4 @@
-# Green-Tree Publish-Readiness Plan (Standalone Module)
+# `seam` Publish-Readiness Plan (Standalone Module)
 
 **Date:** 2026-02-22
 **Updated:** 2026-02-24
@@ -6,7 +6,8 @@
 
 ## Goal
 
-Make `green-tree` publish-ready as an independent MoonBit module: hardened API,
+Make `seam` (the standalone CST/syntax-tree infrastructure, currently at
+`src/green-tree/`) publish-ready as an independent MoonBit module: hardened API,
 complete tests, standalone module packaging, and documentation sufficient for a
 first public release. Actual publishing (`v0.1.0` tag, mooncakes upload) is out
 of scope for this plan.
@@ -15,7 +16,7 @@ of scope for this plan.
 
 In scope:
 - Standalone module packaging and metadata
-- API hardening for `green-tree` core types
+- API hardening for `seam` core types
 - Test coverage and documentation for external users
 - CI and release checklist
 
@@ -27,12 +28,12 @@ Out of scope:
 
 ## Release Target
 
-Module name: `dowdiness/green-tree`
+Module name: `dowdiness/seam`
 Initial version: `0.1.0` (to be tagged and published separately)
 
 ## Definition Of Done
 
-- Module can be used via a path dependency (`"dowdiness/green-tree": { "path": "..." }`)
+- Module can be used via a path dependency (`"dowdiness/seam": { "path": "..." }`)
   and built in a clean project without being published to mooncakes.
 - Public API is intentional, documented, and frozen.
 - `moon check --target all`, `moon test`, and `moon info` pass cleanly.
@@ -61,8 +62,8 @@ Initial version: `0.1.0` (to be tagged and published separately)
    - These publish concerns are not blockers for starting `incr` integration
      implementation in this repository.
    - Once Phase 3 (standalone module) is complete, the `crdt` monorepo can
-     reference `green-tree` via a path dependency — no mooncakes publish needed.
-     Path dep syntax: `"dowdiness/green-tree": { "path": "../green-tree" }` in
+     reference `seam` via a path dependency — no mooncakes publish needed.
+     Path dep syntax: `"dowdiness/seam": { "path": "../seam" }` in
      `moon.mod.json`.
 
 ---
@@ -81,8 +82,8 @@ opaque to newcomers. Proposed replacements:
 
 | Current | New | Why |
 |---|---|---|
-| `green-tree` / `GreenNode` / `GreenToken` | `cst` / `CstNode` / `CstToken` | "CST" (concrete syntax tree) signals full-fidelity trivia-preserving tree; also captures the immutable structurally-shared property |
-| `red-tree` / `RedNode` | `SyntaxNode` (module stays `cst` or separate `syntax`) | rust-analyzer convention; implies "positioned view", not a separate tree layer |
+| `green-tree` / `GreenNode` / `GreenToken` | `seam` module / `CstNode` / `CstToken` | "CST" signals full-fidelity trivia-preserving tree; `seam` as the module name evokes the join between old and new structure in incremental parsing |
+| `red-tree` / `RedNode` | `SyntaxNode` (lives inside `seam`) | rust-analyzer convention; implies "positioned view", not a separate tree layer |
 | `term-tree` / `TermNode` | `ast` / `AstNode` | Universally understood; lambda-specific semantic layer |
 
 **Note on "ST" (syntax tree):** rejected — too ambiguous (used for both CST
@@ -92,7 +93,7 @@ is the preferred convention.
 ### Task 0.1: Rename `green-tree` package and types — ❌ Not done
 
 Scope:
-- Rename package directory `src/green-tree/` and module path accordingly
+- Rename package directory `src/green-tree/` → `src/seam/`
 - Rename `GreenNode` → `CstNode`, `GreenToken` → `CstToken`,
   `GreenElement` → `CstElement`
 - Update all callers in `src/core/`, `src/parser/`, `src/lexer/`,
@@ -218,8 +219,8 @@ Acceptance criteria:
 
 ## Phase 3: Standalone Module Bootstrap — ❌ Not started
 
-**Current state:** `green-tree` lives at `src/green-tree/` inside the
-`dowdiness/parser` module (`moon.mod.json` name = `"dowdiness/parser"`).
+**Current state:** `seam` (currently `green-tree`) lives at `src/green-tree/`
+inside the `dowdiness/parser` module (`moon.mod.json` name = `"dowdiness/parser"`).
 It cannot be added as a standalone dependency today.
 
 ### Task 3.1: Create module skeleton — ❌ Not done
@@ -232,7 +233,7 @@ Files:
 - source files under package root
 
 Required metadata in `moon.mod.json`:
-- `name: "dowdiness/green-tree"`
+- `name: "dowdiness/seam"`
 - `version: "0.1.0"`
 - `repository`
 - `license`
@@ -245,7 +246,7 @@ Acceptance criteria:
 
 ### Task 3.2: Move/copy core implementation — ❌ Not done
 
-Source set (all present in current `src/green-tree/`):
+Source set (all present in current `src/green-tree/`, will move to `src/seam/`):
 - `green_node.mbt` ✅
 - `red_node.mbt` ✅
 - `event.mbt` ✅
@@ -253,7 +254,7 @@ Source set (all present in current `src/green-tree/`):
 - `interner.mbt` ✅ (not in original plan — include in standalone)
 
 Acceptance criteria:
-- behavior matches current internal `green-tree`
+- behavior matches current internal `green-tree` / `seam`
 - no parser/language-specific code in standalone module
 
 ---
@@ -302,7 +303,7 @@ Acceptance criteria:
 ## Phase 5: Documentation And Examples — ❌ Not started
 
 **Current state:** a parser-focused `README.md` exists at the repo root but
-covers the full parser module, not `green-tree` in isolation. No Rowan-model
+covers the full parser module, not `seam` in isolation. No Rowan-model
 mapping, no standalone examples.
 
 ### Task 5.1: Publish-grade README — ❌ Not done
@@ -343,7 +344,7 @@ Required CI commands:
 - `moon test`
 - `moon info`
 
-**Current state:** no CI exists for the standalone `green-tree` module
+**Current state:** no CI exists for the standalone `seam` module
 (CI would be set up after Phase 3 standalone bootstrap).
 
 Acceptance criteria:
@@ -373,6 +374,6 @@ Acceptance criteria:
 
 ## Success Metric
 
-External user can add `dowdiness/green-tree` (or its renamed successor), build
-a small CST via events, traverse with `SyntaxNode`, and pass
-`moon check`/`moon test` with no knowledge of this parser repository.
+External user can add `dowdiness/seam`, build a small CST via events, traverse
+with `SyntaxNode`, and pass `moon check`/`moon test` with no knowledge of this
+parser repository.
