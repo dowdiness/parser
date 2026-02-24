@@ -23,6 +23,7 @@ Out of scope:
 - Migration from current internal import paths
 - Backward-compatibility shims
 - Breaking-change mitigation for existing consumers
+- Publishing to mooncakes (path-dep local use is sufficient; `v0.1.0` tag is a separate step)
 
 ## Release Target
 
@@ -31,7 +32,8 @@ Initial version: `0.1.0` (to be tagged and published separately)
 
 ## Definition Of Done
 
-- Module can be added by dependency and built in a clean project.
+- Module can be used via a path dependency (`"dowdiness/green-tree": { "path": "..." }`)
+  and built in a clean project without being published to mooncakes.
 - Public API is intentional, documented, and frozen.
 - `moon check --target all`, `moon test`, and `moon info` pass cleanly.
 - README examples are self-contained and illustrate the event-stream → tree model.
@@ -58,6 +60,10 @@ Initial version: `0.1.0` (to be tagged and published separately)
 4. Scope coordination:
    - These publish concerns are not blockers for starting `incr` integration
      implementation in this repository.
+   - Once Phase 3 (standalone module) is complete, the `crdt` monorepo can
+     reference `green-tree` via a path dependency — no mooncakes publish needed.
+     Path dep syntax: `"dowdiness/green-tree": { "path": "../green-tree" }` in
+     `moon.mod.json`.
 
 ---
 
