@@ -77,7 +77,7 @@ pub struct Diagnostic[T] {
 ///   root_kind       — the SyntaxKind for the root node (e.g. SourceFile)
 ///   eof_token       — the T value returned when past end of input
 pub struct LanguageSpec[T, K] {
-  kind_to_raw : (K) -> @green_tree.RawKind
+  kind_to_raw : (K) -> @seam.RawKind
   token_is_eof : (T) -> Bool
   token_is_trivia : (T) -> Bool
   tokens_equal : (T, T) -> Bool
@@ -87,9 +87,9 @@ pub struct LanguageSpec[T, K] {
   root_kind : K
   eof_token : T
   // reuse support: classify old-tree RawKind values and match old leaves to new tokens
-  raw_is_trivia : (@green_tree.RawKind) -> Bool
-  raw_is_error : (@green_tree.RawKind) -> Bool
-  green_token_matches : (@green_tree.RawKind, String, T) -> Bool
+  raw_is_trivia : (@seam.RawKind) -> Bool
+  raw_is_error : (@seam.RawKind) -> Bool
+  green_token_matches : (@seam.RawKind, String, T) -> Bool
 }
 
 ///|
@@ -101,7 +101,7 @@ pub fn[T] TokenInfo::new(token : T, start : Int, end : Int) -> TokenInfo[T] {
 ///|
 /// Construct a LanguageSpec. Use this from outside the core package.
 pub fn[T, K] LanguageSpec::new(
-  kind_to_raw : (K) -> @green_tree.RawKind,
+  kind_to_raw : (K) -> @seam.RawKind,
   token_is_eof : (T) -> Bool,
   token_is_trivia : (T) -> Bool,
   tokens_equal : (T, T) -> Bool,
@@ -110,13 +110,9 @@ pub fn[T, K] LanguageSpec::new(
   error_kind : K,
   root_kind : K,
   eof_token : T,
-  raw_is_trivia? : (@green_tree.RawKind) -> Bool = fn(_) { false },
-  raw_is_error? : (@green_tree.RawKind) -> Bool = fn(_) { false },
-  green_token_matches? : (@green_tree.RawKind, String, T) -> Bool = fn(
-    _,
-    _,
-    _,
-  ) {
+  raw_is_trivia? : (@seam.RawKind) -> Bool = fn(_) { false },
+  raw_is_error? : (@seam.RawKind) -> Bool = fn(_) { false },
+  green_token_matches? : (@seam.RawKind, String, T) -> Bool = fn(_, _, _) {
     false
   },
 ) -> LanguageSpec[T, K] {
@@ -150,7 +146,7 @@ pub struct ParserContext[T, K] {
   get_end : (Int) -> Int
   source : String
   mut position : Int
-  events : @green_tree.EventBuffer
+  events : @seam.EventBuffer
   errors : Array[Diagnostic[T]]
   mut error_count : Int
   mut open_nodes : Int
@@ -178,7 +174,7 @@ pub fn[T, K] ParserContext::new(
     get_end: fn(i) { tokens[i].end },
     source,
     position: 0,
-    events: @green_tree.EventBuffer::new(),
+    events: @seam.EventBuffer::new(),
     errors: [],
     error_count: 0,
     open_nodes: 0,
@@ -208,7 +204,7 @@ pub fn[T, K] ParserContext::new_indexed(
     get_end,
     source,
     position: 0,
-    events: @green_tree.EventBuffer::new(),
+    events: @seam.EventBuffer::new(),
     errors: [],
     error_count: 0,
     open_nodes: 0,
@@ -302,7 +298,7 @@ pub fn[T, K] ParserContext::flush_trivia(self : ParserContext[T, K]) -> Unit {
     if (self.spec.token_is_trivia)(token) {
       let text = self.text_at(self.position)
       self.events.push(
-        @green_tree.ParseEvent::Token(
+        @seam.ParseEvent::Token(
           (self.spec.kind_to_raw)(self.spec.whitespace_kind),
           text,
         ),
@@ -328,9 +324,7 @@ pub fn[T, K] ParserContext::emit_token(
   }
   self.flush_trivia()
   let text = self.text_at(self.position)
-  self.events.push(
-    @green_tree.ParseEvent::Token((self.spec.kind_to_raw)(kind), text),
-  )
+  self.events.push(@seam.ParseEvent::Token((self.spec.kind_to_raw)(kind), text))
   self.position = self.position + 1
 }
 
@@ -341,7 +335,7 @@ pub fn[T, K] ParserContext::start_node(
   kind : K,
 ) -> Unit {
   self.open_nodes = self.open_nodes + 1
-  self.events.push(@green_tree.StartNode((self.spec.kind_to_raw)(kind)))
+  self.events.push(@seam.StartNode((self.spec.kind_to_raw)(kind)))
 }
 
 ///|
@@ -351,7 +345,7 @@ pub fn[T, K] ParserContext::finish_node(self : ParserContext[T, K]) -> Unit {
     abort("finish_node: no matching start_node")
   }
   self.open_nodes = self.open_nodes - 1
-  self.events.push(@green_tree.FinishNode)
+  self.events.push(@seam.FinishNode)
 }
 
 ///|
@@ -397,10 +391,7 @@ pub fn[T, K] ParserContext::bump_error(self : ParserContext[T, K]) -> Unit {
   self.flush_trivia()
   let text = self.text_at(self.position)
   self.events.push(
-    @green_tree.ParseEvent::Token(
-      (self.spec.kind_to_raw)(self.spec.error_kind),
-      text,
-    ),
+    @seam.ParseEvent::Token((self.spec.kind_to_raw)(self.spec.error_kind), text),
   )
   self.position = self.position + 1
 }
@@ -413,9 +404,7 @@ pub fn[T, K] ParserContext::emit_zero_width(
   self : ParserContext[T, K],
   kind : K,
 ) -> Unit {
-  self.events.push(
-    @green_tree.ParseEvent::Token((self.spec.kind_to_raw)(kind), ""),
-  )
+  self.events.push(@seam.ParseEvent::Token((self.spec.kind_to_raw)(kind), ""))
 }
 
 ///|
@@ -466,7 +455,7 @@ pub fn[T, K] ParserContext::set_reuse_diagnostics(
 fn[T, K] ParserContext::try_reuse(
   self : ParserContext[T, K],
   kind : K,
-) -> @green_tree.GreenNode? {
+) -> @seam.CstNode? {
   if self.position >= self.token_count {
     return None
   }
@@ -489,17 +478,17 @@ fn[T, K] ParserContext::try_reuse(
 /// Pure function — does not advance position. Must be followed by advance_past_reused.
 fn[T, K] ParserContext::emit_node_events(
   self : ParserContext[T, K],
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
 ) -> Unit {
-  self.events.push(@green_tree.ParseEvent::StartNode(node.kind))
+  self.events.push(@seam.ParseEvent::StartNode(node.kind))
   for child in node.children {
     match child {
-      @green_tree.GreenElement::Token(t) =>
-        self.events.push(@green_tree.ParseEvent::Token(t.kind, t.text))
-      @green_tree.GreenElement::Node(n) => self.emit_node_events(n)
+      @seam.CstElement::Token(t) =>
+        self.events.push(@seam.ParseEvent::Token(t.kind, t.text))
+      @seam.CstElement::Node(n) => self.emit_node_events(n)
     }
   }
-  self.events.push(@green_tree.ParseEvent::FinishNode)
+  self.events.push(@seam.ParseEvent::FinishNode)
 }
 
 ///|
@@ -508,7 +497,7 @@ fn[T, K] ParserContext::emit_node_events(
 /// zero-width non-trivia leaves (e.g. error placeholders).
 fn[T, K] ParserContext::advance_past_reused(
   self : ParserContext[T, K],
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
 ) -> Unit {
   if self.position >= self.token_count {
     return
@@ -530,7 +519,7 @@ priv struct ReusedErrorSpan {
 /// Collect error spans from a green subtree.
 /// Returns the number of spans added into `out`.
 fn[T, K] collect_reused_error_spans(
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
   node_start : Int,
   spec : LanguageSpec[T, K],
   out : Array[ReusedErrorSpan],
@@ -539,7 +528,7 @@ fn[T, K] collect_reused_error_spans(
   let mut added = 0
   for child in node.children {
     match child {
-      @green_tree.GreenElement::Token(t) => {
+      @seam.CstElement::Token(t) => {
         let end = offset + t.text_len()
         if (spec.raw_is_error)(t.kind) {
           out.push({ start: offset, end })
@@ -547,7 +536,7 @@ fn[T, K] collect_reused_error_spans(
         }
         offset = end
       }
-      @green_tree.GreenElement::Node(n) => {
+      @seam.CstElement::Node(n) => {
         let child_added = collect_reused_error_spans(n, offset, spec, out)
         if child_added == 0 && (spec.raw_is_error)(n.kind) {
           out.push({ start: offset, end: offset + n.text_len })
@@ -688,7 +677,7 @@ fn[T, K] ParserContext::synthesize_reused_diagnostics(
 /// handled defensively to keep the match exhaustive.
 fn[T, K] ParserContext::emit_reused(
   self : ParserContext[T, K],
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
 ) -> Unit {
   let node_start = if self.position < self.token_count {
     (self.get_start)(self.position)
@@ -794,7 +783,7 @@ test "Diagnostic stores message, position, and token" {
 ///|
 fn make_test_fixtures() -> (LanguageSpec[String, Int], Array[TokenInfo[String]]) {
   let spec : LanguageSpec[String, Int] = {
-    kind_to_raw: fn(k) { @green_tree.RawKind(k) },
+    kind_to_raw: fn(k) { @seam.RawKind(k) },
     token_is_eof: fn(t) { t == "EOF" },
     token_is_trivia: fn(_) { false },
     tokens_equal: fn(a, b) { a == b },
@@ -838,7 +827,7 @@ test "peek returns eof when past end" {
 ///|
 test "peek skips trivia tokens" {
   let spec : LanguageSpec[String, Int] = {
-    kind_to_raw: fn(k) { @green_tree.RawKind(k) },
+    kind_to_raw: fn(k) { @seam.RawKind(k) },
     token_is_eof: fn(t) { t == "EOF" },
     token_is_trivia: fn(t) { t == " " },
     tokens_equal: fn(a, b) { a == b },
@@ -881,7 +870,7 @@ pub fn[T, K] parse_with(
   spec : LanguageSpec[T, K],
   tokenize : (String) -> Array[TokenInfo[T]],
   grammar : (ParserContext[T, K]) -> Unit,
-) -> (@green_tree.GreenNode, Array[Diagnostic[T]]) {
+) -> (@seam.CstNode, Array[Diagnostic[T]]) {
   let tokens = tokenize(source)
   let ctx = ParserContext::new(tokens, source, spec)
   grammar(ctx)
@@ -893,7 +882,7 @@ pub fn[T, K] parse_with(
       " unclosed nodes",
     )
   }
-  let tree = @green_tree.build_tree(
+  let tree = @seam.build_tree(
     ctx.events.events,
     (spec.kind_to_raw)(spec.root_kind),
     trivia_kind=Some((spec.kind_to_raw)(spec.whitespace_kind)),

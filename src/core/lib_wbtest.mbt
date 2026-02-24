@@ -21,7 +21,7 @@ enum TestKind {
 } derive(Show)
 
 ///|
-fn test_kind_raw(k : TestKind) -> @green_tree.RawKind {
+fn test_kind_raw(k : TestKind) -> @seam.RawKind {
   let n = match k {
     KNum => 0
     KPlus => 1
@@ -30,7 +30,7 @@ fn test_kind_raw(k : TestKind) -> @green_tree.RawKind {
     KWs => 4
     KErr => 5
   }
-  @green_tree.RawKind(n)
+  @seam.RawKind(n)
 }
 
 ///|

@@ -18,8 +18,8 @@ test "build_tree: nested StartNode/FinishNode" {
   inspect(root.kind == RawKind(22), content="true")
   inspect(root.children.length(), content="1")
   let child = match root.children[0] {
-    GreenElement::Node(n) => n
-    GreenElement::Token(_) => abort("expected node")
+    CstElement::Node(n) => n
+    CstElement::Token(_) => abort("expected node")
   }
   inspect(child.kind == RawKind(19), content="true")
   inspect(child.text_len, content="1")

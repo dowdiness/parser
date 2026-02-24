@@ -1,3 +1,3 @@
 import {
-  "dowdiness/parser/green-tree" @green_tree,
+  "dowdiness/parser/seam" @seam,
 }

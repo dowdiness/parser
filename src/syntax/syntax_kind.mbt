@@ -47,7 +47,7 @@ pub fn SyntaxKind::is_token(self : SyntaxKind) -> Bool {
 }
 
 ///|
-pub fn SyntaxKind::to_raw(self : SyntaxKind) -> @green_tree.RawKind {
+pub fn SyntaxKind::to_raw(self : SyntaxKind) -> @seam.RawKind {
   let n : Int = match self {
     LambdaToken => 0
     DotToken => 1
@@ -73,12 +73,12 @@ pub fn SyntaxKind::to_raw(self : SyntaxKind) -> @green_tree.RawKind {
     ErrorNode => 21
     SourceFile => 22
   }
-  @green_tree.RawKind(n)
+  @seam.RawKind(n)
 }
 
 ///|
-pub fn SyntaxKind::from_raw(raw : @green_tree.RawKind) -> SyntaxKind {
-  let @green_tree.RawKind(n) = raw
+pub fn SyntaxKind::from_raw(raw : @seam.RawKind) -> SyntaxKind {
+  let @seam.RawKind(n) = raw
   match n {
     0 => LambdaToken
     1 => DotToken

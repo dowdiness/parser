@@ -93,7 +93,7 @@ pub fn perf_report() -> String {
 ///|
 /// Instrumented version of count_tokens_in_node for profiling.
 /// Uses the cached `token_count` field (O(1)) rather than a recursive traversal.
-pub fn count_tokens_in_node_instrumented(node : @green_tree.GreenNode) -> Int {
+pub fn count_tokens_in_node_instrumented(node : @seam.CstNode) -> Int {
   if perf_stats.enabled.val {
     perf_stats.count_tokens_calls.val = perf_stats.count_tokens_calls.val + 1
   }

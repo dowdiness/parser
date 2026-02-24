@@ -12,7 +12,7 @@
 ///|
 /// Frame in the cursor stack, tracking position within a node.
 struct CursorFrame {
-  node : @green_tree.GreenNode
+  node : @seam.CstNode
   mut child_index : Int
   start_offset : Int
 }
@@ -21,7 +21,7 @@ struct CursorFrame {
 /// Flattened non-trivia, non-error token from the old green tree.
 /// Used for trailing-context matching during reuse checks.
 struct OldToken {
-  kind : @green_tree.RawKind
+  kind : @seam.RawKind
   text : String
   start : Int
 } derive(Show, Eq, Compare)
@@ -59,7 +59,7 @@ impl OffsetIndexed for Array[OldToken] with offset_at(self, i) {
 ///|
 /// Flatten non-trivia, non-error leaves from old tree into out array.
 fn[T, K] collect_old_tokens(
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
   node_start : Int,
   out : Array[OldToken],
   spec : LanguageSpec[T, K],
@@ -67,13 +67,13 @@ fn[T, K] collect_old_tokens(
   let mut offset = node_start
   for child in node.children {
     match child {
-      @green_tree.GreenElement::Token(t) => {
+      @seam.CstElement::Token(t) => {
         if not((spec.raw_is_trivia)(t.kind)) && not((spec.raw_is_error)(t.kind)) {
           out.push({ kind: t.kind, text: t.text, start: offset })
         }
         offset = offset + t.text_len()
       }
-      @green_tree.GreenElement::Node(n) => {
+      @seam.CstElement::Node(n) => {
         collect_old_tokens(n, offset, out, spec)
         offset = offset + n.text_len
       }
@@ -85,7 +85,7 @@ fn[T, K] collect_old_tokens(
 /// Create a new reuse cursor positioned at the start of the old tree.
 /// damage_start/damage_end are byte offsets (exclusive-end) of the edited region.
 pub fn[T, K] ReuseCursor::new(
-  old_tree : @green_tree.GreenNode,
+  old_tree : @seam.CstNode,
   damage_start : Int,
   damage_end : Int,
   token_count : Int,
@@ -123,16 +123,16 @@ pub fn[T, K] ReuseCursor::is_reuse_disabled(self : ReuseCursor[T, K]) -> Bool {
 ///|
 /// Return the first non-trivia token text from a green node.
 fn[T, K] first_token_text(
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
   spec : LanguageSpec[T, K],
 ) -> String? {
   for child in node.children {
     match child {
-      @green_tree.GreenElement::Token(t) =>
+      @seam.CstElement::Token(t) =>
         if not((spec.raw_is_trivia)(t.kind)) {
           return Some(t.text)
         }
-      @green_tree.GreenElement::Node(n) => {
+      @seam.CstElement::Node(n) => {
         let result = first_token_text(n, spec)
         if result is Some(_) {
           return result
@@ -146,16 +146,16 @@ fn[T, K] first_token_text(
 ///|
 /// Return the first non-trivia token kind from a green node.
 fn[T, K] first_token_kind(
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
   spec : LanguageSpec[T, K],
-) -> @green_tree.RawKind? {
+) -> @seam.RawKind? {
   for child in node.children {
     match child {
-      @green_tree.GreenElement::Token(t) =>
+      @seam.CstElement::Token(t) =>
         if not((spec.raw_is_trivia)(t.kind)) {
           return Some(t.kind)
         }
-      @green_tree.GreenElement::Node(n) => {
+      @seam.CstElement::Node(n) => {
         let result = first_token_kind(n, spec)
         if result is Some(_) {
           return result
@@ -183,7 +183,7 @@ fn is_outside_damage(
 ///|
 /// True if the first non-trivia leaf of node matches the new token at token_pos.
 fn[T, K] leading_token_matches(
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
   cursor : ReuseCursor[T, K],
   token_pos : Int,
 ) -> Bool {
@@ -266,10 +266,10 @@ fn[T, K] trailing_context_matches(
 }
 
 ///|
-fn element_width(elem : @green_tree.GreenElement) -> Int {
+fn element_width(elem : @seam.CstElement) -> Int {
   match elem {
-    @green_tree.GreenElement::Token(t) => t.text_len()
-    @green_tree.GreenElement::Node(n) => n.text_len
+    @seam.CstElement::Token(t) => t.text_len()
+    @seam.CstElement::Node(n) => n.text_len
   }
 }
 
@@ -279,8 +279,8 @@ fn element_width(elem : @green_tree.GreenElement) -> Int {
 fn[T, K] ReuseCursor::seek_node_at(
   self : ReuseCursor[T, K],
   target_offset : Int,
-  expected_kind : @green_tree.RawKind,
-) -> (@green_tree.GreenNode, Int)? {
+  expected_kind : @seam.RawKind,
+) -> (@seam.CstNode, Int)? {
   // If target is before current position, reset to root
   if target_offset < self.current_offset {
     let root_frame = self.stack[0]
@@ -322,7 +322,7 @@ fn[T, K] ReuseCursor::seek_node_at(
       }
       if target_offset < child_end {
         match child {
-          @green_tree.GreenElement::Node(child_node) => {
+          @seam.CstElement::Node(child_node) => {
             if child_offset == target_offset && child_node.kind == expected_kind {
               self.current_offset = child_offset
               return Some((child_node, child_offset))
@@ -335,7 +335,7 @@ fn[T, K] ReuseCursor::seek_node_at(
             found_child = true
             break
           }
-          @green_tree.GreenElement::Token(_) => {
+          @seam.CstElement::Token(_) => {
             self.current_offset = child_offset
             return None
           }
@@ -367,10 +367,10 @@ fn[T, K] ReuseCursor::seek_node_at(
 ///   6. Follow token after the node matches between old and new streams
 pub fn[T, K] ReuseCursor::try_reuse(
   self : ReuseCursor[T, K],
-  expected_kind : @green_tree.RawKind,
+  expected_kind : @seam.RawKind,
   byte_offset : Int,
   token_pos : Int,
-) -> @green_tree.GreenNode? {
+) -> @seam.CstNode? {
   if self.reuse_globally_disabled ||
     (byte_offset >= self.damage_start && byte_offset < self.damage_end) {
     return None
@@ -404,16 +404,16 @@ pub fn[T, K] ReuseCursor::try_reuse(
 /// True if a green node subtree contains any error token or error node.
 /// Traverses recursively but typically called on small sibling subtrees.
 fn[T, K] node_has_error(
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
   spec : LanguageSpec[T, K],
 ) -> Bool {
   for child in node.children {
     match child {
-      @green_tree.GreenElement::Token(t) =>
+      @seam.CstElement::Token(t) =>
         if (spec.raw_is_error)(t.kind) {
           return true
         }
-      @green_tree.GreenElement::Node(n) =>
+      @seam.CstElement::Node(n) =>
         if (spec.raw_is_error)(n.kind) || node_has_error(n, spec) {
           return true
         }
@@ -449,9 +449,9 @@ pub fn[T, K] ReuseCursor::next_sibling_has_error(
     return false
   }
   match frame.node.children[next_idx] {
-    @green_tree.GreenElement::Node(n) =>
+    @seam.CstElement::Node(n) =>
       (self.spec.raw_is_error)(n.kind) || node_has_error(n, self.spec)
-    @green_tree.GreenElement::Token(t) => (self.spec.raw_is_error)(t.kind)
+    @seam.CstElement::Token(t) => (self.spec.raw_is_error)(t.kind)
   }
 }
 
@@ -460,7 +460,7 @@ pub fn[T, K] ReuseCursor::next_sibling_has_error(
 /// with ParserContext.position so subsequent seeks detect backward movement.
 pub fn[T, K] ReuseCursor::advance_past(
   self : ReuseCursor[T, K],
-  node : @green_tree.GreenNode,
+  node : @seam.CstNode,
 ) -> Unit {
   self.current_offset = self.current_offset + node.text_len
 }

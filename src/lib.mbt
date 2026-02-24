@@ -8,7 +8,7 @@
 //   dowdiness/parser/edit         - Edit
 //   dowdiness/parser/term         - Term, TermNode, TermKind, Bop
 //   dowdiness/parser/lexer        - tokenize, TokenBuffer
-//   dowdiness/parser/syntax       - GreenNode, GreenToken, SyntaxKind
+//   dowdiness/parser/syntax       - CstNode, CstToken, SyntaxKind
 //   dowdiness/parser/parser       - parse, parse_tree, parse_with_error_recovery
 //   dowdiness/parser/incremental  - IncrementalParser, DamageTracker
 //   dowdiness/parser/crdt         - CRDTNode, ParsedDocument

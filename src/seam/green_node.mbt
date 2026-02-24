@@ -4,27 +4,27 @@
 pub(all) struct RawKind(Int) derive(Eq, Show, Hash, Compare)
 
 ///|
-pub(all) struct GreenToken {
+pub(all) struct CstToken {
   kind : RawKind
   text : String
   hash : Int
 } derive(Show)
 
 ///|
-/// Create a GreenToken. Hash is computed from kind and text.
-pub fn GreenToken::new(kind : RawKind, text : String) -> GreenToken {
+/// Create a CstToken. Hash is computed from kind and text.
+pub fn CstToken::new(kind : RawKind, text : String) -> CstToken {
   let RawKind(k) = kind
   let h = combine_hash(k, string_hash(text))
   { kind, text, hash: h }
 }
 
 ///|
-pub fn GreenToken::text_len(self : GreenToken) -> Int {
+pub fn CstToken::text_len(self : CstToken) -> Int {
   self.text.length()
 }
 
 ///|
-pub impl Eq for GreenToken with equal(self, other) {
+pub impl Eq for CstToken with equal(self, other) {
   if self.hash != other.hash {
     return false
   }
@@ -33,18 +33,18 @@ pub impl Eq for GreenToken with equal(self, other) {
 
 ///|
 /// Hash implementation reuses the cached structural hash.
-pub impl Hash for GreenToken with hash_combine(self, hasher) {
+pub impl Hash for CstToken with hash_combine(self, hasher) {
   hasher.combine_int(self.hash)
 }
 
 ///|
-pub(all) enum GreenElement {
-  Token(GreenToken)
-  Node(GreenNode)
+pub(all) enum CstElement {
+  Token(CstToken)
+  Node(CstNode)
 } derive(Show)
 
 ///|
-pub fn GreenElement::text_len(self : GreenElement) -> Int {
+pub fn CstElement::text_len(self : CstElement) -> Int {
   match self {
     Token(t) => t.text_len()
     Node(n) => n.text_len
@@ -52,7 +52,7 @@ pub fn GreenElement::text_len(self : GreenElement) -> Int {
 }
 
 ///|
-pub fn GreenElement::kind(self : GreenElement) -> RawKind {
+pub fn CstElement::kind(self : CstElement) -> RawKind {
   match self {
     Token(t) => t.kind
     Node(n) => n.kind
@@ -60,7 +60,7 @@ pub fn GreenElement::kind(self : GreenElement) -> RawKind {
 }
 
 ///|
-pub impl Eq for GreenElement with equal(self, other) {
+pub impl Eq for CstElement with equal(self, other) {
   match (self, other) {
     (Token(a), Token(b)) => a == b
     (Node(a), Node(b)) => a == b
@@ -71,9 +71,9 @@ pub impl Eq for GreenElement with equal(self, other) {
 ///|
 /// Include a variant tag to reduce cross-variant collisions.
 /// This is intentionally different from child_hash():
-/// - child_hash() is used only for internal cached structural hashing in GreenNode::new
+/// - child_hash() is used only for internal cached structural hashing in CstNode::new
 /// - Hash trait output adds a variant tag for safer external hash-table usage
-pub impl Hash for GreenElement with hash_combine(self, hasher) {
+pub impl Hash for CstElement with hash_combine(self, hasher) {
   let h = match self {
     Token(t) => combine_hash(1, t.hash)
     Node(n) => combine_hash(2, n.hash)
@@ -82,13 +82,13 @@ pub impl Hash for GreenElement with hash_combine(self, hasher) {
 }
 
 ///|
-pub(all) struct GreenNode {
+pub(all) struct CstNode {
   kind : RawKind
-  children : Array[GreenElement]
+  children : Array[CstElement]
   text_len : Int
   hash : Int
   /// Non-trivia leaf token count. Equals the number of leaf tokens whose kind
-  /// is NOT equal to `trivia_kind` (when provided to `GreenNode::new`).
+  /// is NOT equal to `trivia_kind` (when provided to `CstNode::new`).
   /// Equals the total leaf token count when no `trivia_kind` is given.
   /// Used by the incremental parser to advance `position` (whitespace-free
   /// token index) without an O(subtree) traversal on every reuse.
@@ -96,17 +96,17 @@ pub(all) struct GreenNode {
 } derive(Show)
 
 ///|
-/// Create a GreenNode. text_len, hash, and token_count are computed from children.
+/// Create a CstNode. text_len, hash, and token_count are computed from children.
 ///
 /// `trivia_kind`: when provided, leaf tokens with this kind are excluded from
 /// `token_count`.  Pass `Some(whitespace_raw_kind)` from the language layer to
 /// get a non-whitespace token count.  Pass nothing (or `None`) for a
 /// language-agnostic total leaf token count.
-pub fn GreenNode::new(
+pub fn CstNode::new(
   kind : RawKind,
-  children : Array[GreenElement],
+  children : Array[CstElement],
   trivia_kind? : RawKind? = None,
-) -> GreenNode {
+) -> CstNode {
   let RawKind(k) = kind
   let mut text_len = 0
   let mut h = k
@@ -127,7 +127,7 @@ pub fn GreenNode::new(
 }
 
 ///|
-fn child_hash(elem : GreenElement) -> Int {
+fn child_hash(elem : CstElement) -> Int {
   match elem {
     Token(t) => t.hash
     Node(n) => n.hash
@@ -135,12 +135,12 @@ fn child_hash(elem : GreenElement) -> Int {
 }
 
 ///|
-pub fn GreenNode::kind(self : GreenNode) -> RawKind {
+pub fn CstNode::kind(self : CstNode) -> RawKind {
   self.kind
 }
 
 ///|
-pub impl Eq for GreenNode with equal(self, other) {
+pub impl Eq for CstNode with equal(self, other) {
   if self.hash != other.hash {
     return false
   }
@@ -158,15 +158,15 @@ pub impl Eq for GreenNode with equal(self, other) {
 
 ///|
 /// Hash implementation reuses the cached structural hash.
-pub impl Hash for GreenNode with hash_combine(self, hasher) {
+pub impl Hash for CstNode with hash_combine(self, hasher) {
   hasher.combine_int(self.hash)
 }
 
 ///|
 /// Check if this green tree contains any error nodes or error tokens.
 /// error_node_kind and error_token_kind are language-specific RawKind values.
-pub fn GreenNode::has_errors(
-  self : GreenNode,
+pub fn CstNode::has_errors(
+  self : CstNode,
   error_node_kind : RawKind,
   error_token_kind : RawKind,
 ) -> Bool {

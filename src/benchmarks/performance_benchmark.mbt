@@ -374,7 +374,7 @@ test "parse_green_recover - no interner, small" (b : @bench.T) {
 /// Benchmark: parse_green_recover with interner, cold (first parse of session).
 test "parse_green_recover - cold interner, small" (b : @bench.T) {
   b.bench(fn() {
-    let interner = @green_tree.Interner::new()
+    let interner = @seam.Interner::new()
     let (tree, _) = @parse.parse_green_recover("x + 1", interner=Some(interner)) catch {
       _ => abort("benchmark failed")
     }
@@ -385,7 +385,7 @@ test "parse_green_recover - cold interner, small" (b : @bench.T) {
 ///|
 /// Benchmark: parse_green_recover with interner, warm (subsequent parses of same session).
 test "parse_green_recover - warm interner, small" (b : @bench.T) {
-  let interner = @green_tree.Interner::new()
+  let interner = @seam.Interner::new()
   let _ = @parse.parse_green_recover("x + 1", interner=Some(interner)) catch {
     _ => abort("benchmark failed")
   }
@@ -413,7 +413,7 @@ test "parse_green_recover - no interner, large" (b : @bench.T) {
 /// Benchmark: parse_green_recover with warm interner - larger input.
 test "parse_green_recover - warm interner, large" (b : @bench.T) {
   let src = "λf.λx.if f x then (λy.y + 1) x else (λz.z - 1) (f x)"
-  let interner = @green_tree.Interner::new()
+  let interner = @seam.Interner::new()
   let _ = @parse.parse_green_recover(src, interner=Some(interner)) catch {
     _ => abort("benchmark failed")
   }

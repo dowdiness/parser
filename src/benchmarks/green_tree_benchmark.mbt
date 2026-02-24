@@ -3,23 +3,23 @@
 // Run with: moon bench --package dowdiness/parser/benchmarks --release
 
 ///|
-fn make_ident_token(text : String) -> @green_tree.GreenToken {
-  @green_tree.GreenToken::new(@green_tree.RawKind(9), text)
+fn make_ident_token(text : String) -> @seam.CstToken {
+  @seam.CstToken::new(@seam.RawKind(9), text)
 }
 
 ///|
-fn make_flat_ident_node(count : Int) -> @green_tree.GreenNode {
-  let children : Array[@green_tree.GreenElement] = []
+fn make_flat_ident_node(count : Int) -> @seam.CstNode {
+  let children : Array[@seam.CstElement] = []
   for i = 0; i < count; i = i + 1 {
     children.push(
-      @green_tree.GreenElement::Token(make_ident_token("x" + i.to_string())),
+      @seam.CstElement::Token(make_ident_token("x" + i.to_string())),
     )
   }
-  @green_tree.GreenNode::new(@green_tree.RawKind(20), children)
+  @seam.CstNode::new(@seam.RawKind(20), children)
 }
 
 ///|
-/// Benchmark: GreenToken constructor (includes token hash computation).
+/// Benchmark: CstToken constructor (includes token hash computation).
 test "green-tree - token constructor" (b : @bench.T) {
   b.bench(fn() {
     let t = make_ident_token("identifier_123")
@@ -28,16 +28,16 @@ test "green-tree - token constructor" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: GreenNode constructor over prebuilt children (hash fold cost).
+/// Benchmark: CstNode constructor over prebuilt children (hash fold cost).
 test "green-tree - node constructor from 32 children" (b : @bench.T) {
-  let children : Array[@green_tree.GreenElement] = []
+  let children : Array[@seam.CstElement] = []
   for i = 0; i < 32; i = i + 1 {
     children.push(
-      @green_tree.GreenElement::Token(make_ident_token("x" + i.to_string())),
+      @seam.CstElement::Token(make_ident_token("x" + i.to_string())),
     )
   }
   b.bench(fn() {
-    let n = @green_tree.GreenNode::new(@green_tree.RawKind(20), children)
+    let n = @seam.CstNode::new(@seam.RawKind(20), children)
     b.keep(n)
   })
 }
@@ -57,12 +57,12 @@ test "green-tree - equality identical 32 children" (b : @bench.T) {
 /// Benchmark: Equality on different trees (hash fast path should fail early).
 test "green-tree - equality mismatch hash fast path" (b : @bench.T) {
   let left = make_flat_ident_node(32)
-  let children : Array[@green_tree.GreenElement] = []
+  let children : Array[@seam.CstElement] = []
   for i = 0; i < 32; i = i + 1 {
     let text = if i == 31 { "changed_tail" } else { "x" + i.to_string() }
-    children.push(@green_tree.GreenElement::Token(make_ident_token(text)))
+    children.push(@seam.CstElement::Token(make_ident_token(text)))
   }
-  let right = @green_tree.GreenNode::new(@green_tree.RawKind(20), children)
+  let right = @seam.CstNode::new(@seam.RawKind(20), children)
   b.bench(fn() {
     let same = left == right
     b.keep(same)
@@ -81,41 +81,41 @@ test "green-tree - equality mismatch hash fast path" (b : @bench.T) {
 
 ///|
 /// Events for "x + 1": BinaryExpr(VarRef(x), +, IntLiteral(1)) under SourceFile root.
-fn make_x_plus_1_events() -> Array[@green_tree.ParseEvent] {
+fn make_x_plus_1_events() -> Array[@seam.ParseEvent] {
   [
-    @green_tree.ParseEvent::StartNode(@green_tree.RawKind(16)), // BinaryExpr
-    @green_tree.ParseEvent::StartNode(@green_tree.RawKind(20)), // VarRef
-    @green_tree.ParseEvent::Token(@green_tree.RawKind(9), "x"),
-    @green_tree.ParseEvent::FinishNode,
-    @green_tree.ParseEvent::Token(@green_tree.RawKind(11), " "),
-    @green_tree.ParseEvent::Token(@green_tree.RawKind(4), "+"),
-    @green_tree.ParseEvent::Token(@green_tree.RawKind(11), " "),
-    @green_tree.ParseEvent::StartNode(@green_tree.RawKind(19)), // IntLiteral
-    @green_tree.ParseEvent::Token(@green_tree.RawKind(10), "1"),
-    @green_tree.ParseEvent::FinishNode,
-    @green_tree.ParseEvent::FinishNode,
+    @seam.ParseEvent::StartNode(@seam.RawKind(16)), // BinaryExpr
+    @seam.ParseEvent::StartNode(@seam.RawKind(20)), // VarRef
+    @seam.ParseEvent::Token(@seam.RawKind(9), "x"),
+    @seam.ParseEvent::FinishNode,
+    @seam.ParseEvent::Token(@seam.RawKind(11), " "),
+    @seam.ParseEvent::Token(@seam.RawKind(4), "+"),
+    @seam.ParseEvent::Token(@seam.RawKind(11), " "),
+    @seam.ParseEvent::StartNode(@seam.RawKind(19)), // IntLiteral
+    @seam.ParseEvent::Token(@seam.RawKind(10), "1"),
+    @seam.ParseEvent::FinishNode,
+    @seam.ParseEvent::FinishNode,
   ]
 }
 
 ///|
 /// Benchmark: Interner::intern_token - cold miss path (token not yet in table).
-/// Measures HashMap insert + key string alloc + GreenToken::new.
+/// Measures HashMap insert + key string alloc + CstToken::new.
 test "interner - intern_token cold miss" (b : @bench.T) {
   b.bench(fn() {
-    let interner = @green_tree.Interner::new()
-    let t = interner.intern_token(@green_tree.RawKind(9), "identifier_123")
+    let interner = @seam.Interner::new()
+    let t = interner.intern_token(@seam.RawKind(9), "identifier_123")
     b.keep(t)
   })
 }
 
 ///|
 /// Benchmark: Interner::intern_token - warm hit path (token already cached).
-/// Measures only HashMap lookup + key string alloc; no GreenToken allocation.
+/// Measures only HashMap lookup + key string alloc; no CstToken allocation.
 test "interner - intern_token warm hit" (b : @bench.T) {
-  let interner = @green_tree.Interner::new()
-  let _ = interner.intern_token(@green_tree.RawKind(9), "identifier_123")
+  let interner = @seam.Interner::new()
+  let _ = interner.intern_token(@seam.RawKind(9), "identifier_123")
   b.bench(fn() {
-    let t = interner.intern_token(@green_tree.RawKind(9), "identifier_123")
+    let t = interner.intern_token(@seam.RawKind(9), "identifier_123")
     b.keep(t)
   })
 }
@@ -125,7 +125,7 @@ test "interner - intern_token warm hit" (b : @bench.T) {
 test "build_tree - x + 1" (b : @bench.T) {
   let events = make_x_plus_1_events()
   b.bench(fn() {
-    let tree = @green_tree.build_tree(events, @green_tree.RawKind(22))
+    let tree = @seam.build_tree(events, @seam.RawKind(22))
     b.keep(tree)
   })
 }
@@ -136,12 +136,8 @@ test "build_tree - x + 1" (b : @bench.T) {
 test "build_tree_interned - x + 1, cold interner" (b : @bench.T) {
   let events = make_x_plus_1_events()
   b.bench(fn() {
-    let interner = @green_tree.Interner::new()
-    let tree = @green_tree.build_tree_interned(
-      events,
-      @green_tree.RawKind(22),
-      interner,
-    )
+    let interner = @seam.Interner::new()
+    let tree = @seam.build_tree_interned(events, @seam.RawKind(22), interner)
     b.keep(tree)
   })
 }
@@ -151,38 +147,30 @@ test "build_tree_interned - x + 1, cold interner" (b : @bench.T) {
 /// Models steady-state: all tokens already cached, every Token event is a hit.
 test "build_tree_interned - x + 1, warm interner" (b : @bench.T) {
   let events = make_x_plus_1_events()
-  let interner = @green_tree.Interner::new()
-  let _ = @green_tree.build_tree_interned(
-    events,
-    @green_tree.RawKind(22),
-    interner,
-  )
+  let interner = @seam.Interner::new()
+  let _ = @seam.build_tree_interned(events, @seam.RawKind(22), interner)
   b.bench(fn() {
-    let tree = @green_tree.build_tree_interned(
-      events,
-      @green_tree.RawKind(22),
-      interner,
-    )
+    let tree = @seam.build_tree_interned(events, @seam.RawKind(22), interner)
     b.keep(tree)
   })
 }
 
 ///|
-fn make_repeated_ident_events(count : Int) -> Array[@green_tree.ParseEvent] {
-  let events : Array[@green_tree.ParseEvent] = []
+fn make_repeated_ident_events(count : Int) -> Array[@seam.ParseEvent] {
+  let events : Array[@seam.ParseEvent] = []
   for i = 0; i < count; i = i + 1 {
-    events.push(@green_tree.ParseEvent::Token(@green_tree.RawKind(9), "x"))
+    events.push(@seam.ParseEvent::Token(@seam.RawKind(9), "x"))
   }
   events
 }
 
 ///|
-/// Benchmark: build_tree with 100 identical ident tokens (100 GreenToken::new calls).
+/// Benchmark: build_tree with 100 identical ident tokens (100 CstToken::new calls).
 /// Upper bound on token-level savings from interning when all tokens are identical.
 test "build_tree - 100 identical ident tokens" (b : @bench.T) {
   let events = make_repeated_ident_events(100)
   b.bench(fn() {
-    let tree = @green_tree.build_tree(events, @green_tree.RawKind(22))
+    let tree = @seam.build_tree(events, @seam.RawKind(22))
     b.keep(tree)
   })
 }
@@ -192,18 +180,10 @@ test "build_tree - 100 identical ident tokens" (b : @bench.T) {
 /// 1 miss + 99 hits; shows maximum deduplication benefit for tokens.
 test "build_tree_interned - 100 identical tokens, warm interner" (b : @bench.T) {
   let events = make_repeated_ident_events(100)
-  let interner = @green_tree.Interner::new()
-  let _ = @green_tree.build_tree_interned(
-    events,
-    @green_tree.RawKind(22),
-    interner,
-  )
+  let interner = @seam.Interner::new()
+  let _ = @seam.build_tree_interned(events, @seam.RawKind(22), interner)
   b.bench(fn() {
-    let tree = @green_tree.build_tree_interned(
-      events,
-      @green_tree.RawKind(22),
-      interner,
-    )
+    let tree = @seam.build_tree_interned(events, @seam.RawKind(22), interner)
     b.keep(tree)
   })
 }

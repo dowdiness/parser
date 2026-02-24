@@ -44,12 +44,12 @@ test "Interner: clear resets size to zero" {
 }
 
 ///|
-test "Interner: intern_token result matches GreenToken::new structurally" {
+test "Interner: intern_token result matches CstToken::new structurally" {
   let interner = Interner::new()
   let k = RawKind(7)
   let text = "lambda"
   let interned = interner.intern_token(k, text)
-  let direct = GreenToken::new(k, text)
+  let direct = CstToken::new(k, text)
   inspect(interned == direct, content="true")
 }
 

@@ -1,14 +1,14 @@
 ///|
 /// Collect token text from all children of an ErrorNode.
-fn extract_error_text(green : @green_tree.GreenNode) -> String {
+fn extract_error_text(green : @seam.CstNode) -> String {
   let parts : Array[String] = []
   for elem in green.children {
     match elem {
-      @green_tree.GreenElement::Token(t) =>
+      @seam.CstElement::Token(t) =>
         if t.kind != @syntax.WhitespaceToken.to_raw() && t.text != "" {
           parts.push(t.text)
         }
-      @green_tree.GreenElement::Node(_) => ()
+      @seam.CstElement::Node(_) => ()
     }
   }
   parts.join("")
@@ -16,12 +16,12 @@ fn extract_error_text(green : @green_tree.GreenNode) -> String {
 
 ///|
 fn extract_token_text(
-  green : @green_tree.GreenNode,
-  token_kind : @green_tree.RawKind,
+  green : @seam.CstNode,
+  token_kind : @seam.RawKind,
 ) -> String? {
   for elem in green.children {
     match elem {
-      @green_tree.GreenElement::Token(t) =>
+      @seam.CstElement::Token(t) =>
         if t.kind == token_kind {
           return Some(t.text)
         }
@@ -34,7 +34,7 @@ fn extract_token_text(
 ///|
 /// Compute tight start/end positions for a green node, skipping leading and
 /// trailing whitespace tokens. Returns (start, end) relative to the given offset.
-fn tight_span(green : @green_tree.GreenNode, offset : Int) -> (Int, Int) {
+fn tight_span(green : @seam.CstNode, offset : Int) -> (Int, Int) {
   let mut pos = offset
   let mut tight_start = offset
   let mut tight_end = offset + green.text_len
@@ -42,7 +42,7 @@ fn tight_span(green : @green_tree.GreenNode, offset : Int) -> (Int, Int) {
   for elem in green.children {
     let len = elem.text_len()
     match elem {
-      @green_tree.GreenElement::Token(t) =>
+      @seam.CstElement::Token(t) =>
         if t.kind != @syntax.WhitespaceToken.to_raw() {
           if not(found_start) {
             tight_start = pos
@@ -50,7 +50,7 @@ fn tight_span(green : @green_tree.GreenNode, offset : Int) -> (Int, Int) {
           }
           tight_end = pos + len
         }
-      @green_tree.GreenElement::Node(_) => {
+      @seam.CstElement::Node(_) => {
         if not(found_start) {
           tight_start = pos
           found_start = true
@@ -64,11 +64,11 @@ fn tight_span(green : @green_tree.GreenNode, offset : Int) -> (Int, Int) {
 }
 
 ///|
-fn collect_binary_ops(green : @green_tree.GreenNode) -> Array[@term.Bop] {
+fn collect_binary_ops(green : @seam.CstNode) -> Array[@term.Bop] {
   let ops : Array[@term.Bop] = []
   for elem in green.children {
     match elem {
-      @green_tree.GreenElement::Token(t) =>
+      @seam.CstElement::Token(t) =>
         if t.kind == @syntax.PlusToken.to_raw() {
           ops.push(@term.Bop::Plus)
         } else if t.kind == @syntax.MinusToken.to_raw() {
@@ -154,9 +154,9 @@ fn convert_source_file_children(
 }
 
 ///|
-/// Convert a RedNode to a TermNode. Uses RedNode's offset-based position
+/// Convert a SyntaxNode to a TermNode. Uses SyntaxNode's offset-based position
 /// computation instead of manual offset tracking.
-fn convert_red(red : @green_tree.RedNode, counter : Ref[Int]) -> @term.TermNode {
+fn convert_red(red : @seam.SyntaxNode, counter : Ref[Int]) -> @term.TermNode {
   fn next_id() -> Int {
     let id = counter.val
     counter.val = id + 1
@@ -338,28 +338,28 @@ fn convert_red(red : @green_tree.RedNode, counter : Ref[Int]) -> @term.TermNode 
 }
 
 ///|
-/// Convert a RedNode (position-aware CST facade) to a TermNode.
+/// Convert a SyntaxNode (position-aware CST facade) to a TermNode.
 pub fn red_to_term_node(
-  red : @green_tree.RedNode,
+  red : @seam.SyntaxNode,
   node_id_counter : Ref[Int],
 ) -> @term.TermNode {
   convert_red(red, node_id_counter)
 }
 
 ///|
-/// Convert a GreenNode to a TermNode. Preserved for backward compatibility.
-/// Internally creates a RedNode and delegates to convert_red.
+/// Convert a CstNode to a TermNode. Preserved for backward compatibility.
+/// Internally creates a SyntaxNode and delegates to convert_red.
 pub fn green_to_term_node(
-  green : @green_tree.GreenNode,
+  green : @seam.CstNode,
   offset : Int,
   node_id_counter : Ref[Int],
 ) -> @term.TermNode {
-  let red = @green_tree.RedNode::new(green, None, offset)
+  let red = @seam.SyntaxNode::new(green, None, offset)
   convert_red(red, node_id_counter)
 }
 
 ///|
-pub fn green_to_term(green : @green_tree.GreenNode) -> @term.Term {
+pub fn green_to_term(green : @seam.CstNode) -> @term.Term {
   let node = green_to_term_node(green, 0, Ref::new(0))
   @term.node_to_term(node)
 }

@@ -10,8 +10,8 @@ test "green tree: simple integer" {
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   inspect(green.children.length() > 0, content="true")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="IntLiteral")
 }
@@ -21,8 +21,8 @@ test "green tree: simple variable" {
   let green = parse_green("x")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="VarRef")
 }
@@ -32,8 +32,8 @@ test "green tree: lambda expression" {
   let green = parse_green("λx.x")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="LambdaExpr")
 }
@@ -43,8 +43,8 @@ test "green tree: application" {
   let green = parse_green("f x")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="AppExpr")
 }
@@ -54,8 +54,8 @@ test "green tree: binary operation" {
   let green = parse_green("1 + 2")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="BinaryExpr")
 }
@@ -65,8 +65,8 @@ test "green tree: if-then-else" {
   let green = parse_green("if x then 1 else 2")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="IfExpr")
 }
@@ -80,8 +80,8 @@ test "green tree: ParenExpr is present" {
   let green = parse_green("(x)")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   // (x) should have ParenExpr as the outer node
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="ParenExpr")
@@ -92,12 +92,12 @@ test "green tree: x vs (x) have different structure" {
   let green_bare = parse_green("x")
   let green_paren = parse_green("(x)")
   let bare_child = match green_bare.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   let paren_child = match green_paren.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   // bare x is VarRef, (x) is ParenExpr
   inspect(@syntax.SyntaxKind::from_raw(bare_child.kind), content="VarRef")
@@ -110,20 +110,20 @@ test "green tree: x vs (x) have different structure" {
 test "green tree: nested parentheses ((x))" {
   let green = parse_green("((x))")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="ParenExpr")
   // The inner expression should also be a ParenExpr
   let mut inner_paren_found = false
   for elem in child.children {
     match elem {
-      @green_tree.GreenElement::Node(n) =>
+      @seam.CstElement::Node(n) =>
         match @syntax.SyntaxKind::from_raw(n.kind) {
           @syntax.ParenExpr => inner_paren_found = true
           _ => ()
         }
-      @green_tree.GreenElement::Token(_) => continue
+      @seam.CstElement::Token(_) => continue
     }
   }
   inspect(inner_paren_found, content="true")
@@ -134,13 +134,13 @@ test "green tree: deeply nested parentheses (((1)))" {
   let green = parse_green("(((1)))")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   // Count the nesting depth of ParenExpr
-  fn count_paren_depth(node : @green_tree.GreenNode) -> Int {
+  fn count_paren_depth(node : @seam.CstNode) -> Int {
     match @syntax.SyntaxKind::from_raw(node.kind) {
       @syntax.ParenExpr => {
         for elem in node.children {
           match elem {
-            @green_tree.GreenElement::Node(n) => return 1 + count_paren_depth(n)
-            @green_tree.GreenElement::Token(_) => continue
+            @seam.CstElement::Node(n) => return 1 + count_paren_depth(n)
+            @seam.CstElement::Token(_) => continue
           }
         }
         1
@@ -150,44 +150,44 @@ test "green tree: deeply nested parentheses (((1)))" {
   }
 
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(count_paren_depth(child), content="3")
 }
 
 // ============================================================================
-// 3. Position correctness via RedNode
+// 3. Position correctness via SyntaxNode
 // ============================================================================
 
 ///|
-test "green tree: RedNode positions for simple expression" {
+test "green tree: SyntaxNode positions for simple expression" {
   let green = parse_green("x + y")
-  let red = @green_tree.RedNode::from_green(green)
+  let red = @seam.SyntaxNode::from_green(green)
   inspect(red.start(), content="0")
   inspect(red.end(), content="5")
 }
 
 ///|
-test "green tree: RedNode positions for integer" {
+test "green tree: SyntaxNode positions for integer" {
   let green = parse_green("42")
-  let red = @green_tree.RedNode::from_green(green)
+  let red = @seam.SyntaxNode::from_green(green)
   inspect(red.start(), content="0")
   inspect(red.end(), content="2")
 }
 
 ///|
-test "green tree: RedNode positions for lambda" {
+test "green tree: SyntaxNode positions for lambda" {
   let green = parse_green("λx.x")
-  let red = @green_tree.RedNode::from_green(green)
+  let red = @seam.SyntaxNode::from_green(green)
   inspect(red.start(), content="0")
   inspect(red.end(), content="4")
 }
 
 ///|
-test "green tree: RedNode children positions" {
+test "green tree: SyntaxNode children positions" {
   let green = parse_green("1 + 2")
-  let red = @green_tree.RedNode::from_green(green)
+  let red = @seam.SyntaxNode::from_green(green)
   let children = red.children()
   inspect(children.length(), content="1")
   let binary_expr = children[0]
@@ -200,9 +200,9 @@ test "green tree: RedNode children positions" {
 }
 
 ///|
-test "green tree: RedNode child positions in application" {
+test "green tree: SyntaxNode child positions in application" {
   let green = parse_green("f x")
-  let red = @green_tree.RedNode::from_green(green)
+  let red = @seam.SyntaxNode::from_green(green)
   let children = red.children()
   inspect(children.length(), content="1")
   let app_expr = children[0]
@@ -350,16 +350,15 @@ test "green tree: backward compatibility - complex expression" {
 ///|
 test "green tree: identical integer tokens have same text" {
   let green = parse_green("1 + 1")
-  fn collect_int_tokens(node : @green_tree.GreenNode) -> Array[String] {
+  fn collect_int_tokens(node : @seam.CstNode) -> Array[String] {
     let tokens : Array[String] = []
     for elem in node.children {
       match elem {
-        @green_tree.GreenElement::Token(t) =>
+        @seam.CstElement::Token(t) =>
           if t.kind == @syntax.IntToken.to_raw() {
             tokens.push(t.text)
           }
-        @green_tree.GreenElement::Node(n) =>
-          tokens.append(collect_int_tokens(n))
+        @seam.CstElement::Node(n) => tokens.append(collect_int_tokens(n))
       }
     }
     tokens
@@ -375,16 +374,15 @@ test "green tree: identical integer tokens have same text" {
 ///|
 test "green tree: identical identifier tokens have same text" {
   let green = parse_green("x + x")
-  fn collect_ident_tokens(node : @green_tree.GreenNode) -> Array[String] {
+  fn collect_ident_tokens(node : @seam.CstNode) -> Array[String] {
     let tokens : Array[String] = []
     for elem in node.children {
       match elem {
-        @green_tree.GreenElement::Token(t) =>
+        @seam.CstElement::Token(t) =>
           if t.kind == @syntax.IdentToken.to_raw() {
             tokens.push(t.text)
           }
-        @green_tree.GreenElement::Node(n) =>
-          tokens.append(collect_ident_tokens(n))
+        @seam.CstElement::Node(n) => tokens.append(collect_ident_tokens(n))
       }
     }
     tokens
@@ -400,16 +398,16 @@ test "green tree: identical identifier tokens have same text" {
 ///|
 test "green tree: token text is preserved correctly" {
   let green = parse_green("abc + 123")
-  fn find_first_ident(node : @green_tree.GreenNode) -> String? {
+  fn find_first_ident(node : @seam.CstNode) -> String? {
     for elem in node.children {
       match elem {
-        @green_tree.GreenElement::Token(t) =>
+        @seam.CstElement::Token(t) =>
           if t.kind == @syntax.IdentToken.to_raw() {
             return Some(t.text)
           } else {
             continue
           }
-        @green_tree.GreenElement::Node(n) => {
+        @seam.CstElement::Node(n) => {
           let result = find_first_ident(n)
           match result {
             Some(s) => return Some(s)
@@ -421,16 +419,16 @@ test "green tree: token text is preserved correctly" {
     None
   }
 
-  fn find_first_int(node : @green_tree.GreenNode) -> String? {
+  fn find_first_int(node : @seam.CstNode) -> String? {
     for elem in node.children {
       match elem {
-        @green_tree.GreenElement::Token(t) =>
+        @seam.CstElement::Token(t) =>
           if t.kind == @syntax.IntToken.to_raw() {
             return Some(t.text)
           } else {
             continue
           }
-        @green_tree.GreenElement::Node(n) => {
+        @seam.CstElement::Node(n) => {
           let result = find_first_int(n)
           match result {
             Some(s) => return Some(s)
@@ -455,8 +453,8 @@ test "green tree: lambda with application body" {
   let green = parse_green("λf.f x")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="LambdaExpr")
 }
@@ -466,8 +464,8 @@ test "green tree: nested if-then-else" {
   let green = parse_green("if x then if y then 1 else 2 else 3")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="IfExpr")
 }
@@ -476,8 +474,8 @@ test "green tree: nested if-then-else" {
 test "green tree: parenthesized lambda" {
   let green = parse_green("(λx.x)")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="ParenExpr")
 }
@@ -486,8 +484,8 @@ test "green tree: parenthesized lambda" {
 test "green tree: application with parenthesized argument" {
   let green = parse_green("f (x)")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="AppExpr")
 }
@@ -496,8 +494,8 @@ test "green tree: application with parenthesized argument" {
 test "green tree: binary with parenthesized operands" {
   let green = parse_green("(1) + (2)")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="BinaryExpr")
 }
@@ -511,14 +509,14 @@ test "green tree: text_len is computed correctly" {
 }
 
 ///|
-test "green tree: GreenElement kind accessor" {
+test "green tree: CstElement kind accessor" {
   let green = parse_green("42")
   let elem = green.children[0]
   inspect(@syntax.SyntaxKind::from_raw(elem.kind()), content="IntLiteral")
 }
 
 ///|
-test "green tree: GreenElement text_len accessor" {
+test "green tree: CstElement text_len accessor" {
   let green = parse_green("42")
   let elem = green.children[0]
   inspect(elem.text_len(), content="2")
@@ -536,16 +534,16 @@ test "green tree: position comparison" {
 }
 
 ///|
-test "green tree: structural sharing - identical GreenNodes are equal" {
+test "green tree: structural sharing - identical CstNodes are equal" {
   let green1 = parse_green("x")
   let green2 = parse_green("x")
   let node1 = match green1.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node")
   }
   let node2 = match green2.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node")
   }
   inspect(node1 == node2, content="true")
 }
@@ -583,8 +581,8 @@ test "green tree: error recovery - missing param produces ErrorToken" {
   // Should still have SourceFile > LambdaExpr structure
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="LambdaExpr")
 }
@@ -598,13 +596,13 @@ test "green tree: error recovery - extra tokens wrapped in ErrorNode" {
   let mut found_error = false
   for elem in green.children {
     match elem {
-      @green_tree.GreenElement::Node(n) =>
+      @seam.CstElement::Node(n) =>
         match @syntax.SyntaxKind::from_raw(n.kind) {
           @syntax.IntLiteral => found_int = true
           @syntax.ErrorNode => found_error = true
           _ => ()
         }
-      @green_tree.GreenElement::Token(_) => ()
+      @seam.CstElement::Token(_) => ()
     }
   }
   inspect(found_int, content="true")
@@ -617,8 +615,8 @@ test "green tree: error recovery - missing else in if" {
   inspect(diagnostics.length() > 0, content="true")
   inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
   let child = match green.children[0] {
-    @green_tree.GreenElement::Node(n) => n
-    @green_tree.GreenElement::Token(_) => abort("Expected node, got token")
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
   }
   inspect(@syntax.SyntaxKind::from_raw(child.kind), content="IfExpr")
 }
@@ -652,13 +650,13 @@ test "green tree: error recovery preserves valid input" {
 
 ///|
 /// Collect the text of all leaf tokens in a green tree (depth-first).
-fn collect_leaf_texts(node : @green_tree.GreenNode) -> String {
+fn collect_leaf_texts(node : @seam.CstNode) -> String {
   let parts : Array[String] = []
-  fn walk(n : @green_tree.GreenNode) -> Unit {
+  fn walk(n : @seam.CstNode) -> Unit {
     for elem in n.children {
       match elem {
-        @green_tree.GreenElement::Token(t) => parts.push(t.text)
-        @green_tree.GreenElement::Node(child) => walk(child)
+        @seam.CstElement::Token(t) => parts.push(t.text)
+        @seam.CstElement::Node(child) => walk(child)
       }
     }
   }

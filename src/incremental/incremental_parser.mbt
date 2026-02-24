@@ -21,11 +21,11 @@
 pub struct IncrementalParser {
   mut source : String // Current source text
   mut tree : @term.TermNode? // Current parse tree
-  mut green_tree : @green_tree.GreenNode? // Current green tree (for subtree reuse)
+  mut green_tree : @seam.CstNode? // Current green tree (for subtree reuse)
   mut token_buffer : @lexer.TokenBuffer? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]] // Prior parse diagnostics for reuse replay
-  priv interner : @green_tree.Interner // session-scoped token intern table
+  priv interner : @seam.Interner // session-scoped token intern table
 }
 
 ///|
@@ -38,7 +38,7 @@ pub fn IncrementalParser::new(source : String) -> IncrementalParser {
     token_buffer: None,
     last_reuse_count: 0,
     last_diagnostics: [],
-    interner: @green_tree.Interner::new(),
+    interner: @seam.Interner::new(),
   }
 }
 

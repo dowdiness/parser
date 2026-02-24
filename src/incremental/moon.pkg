@@ -6,7 +6,7 @@ import {
   "dowdiness/parser/lexer",
   "dowdiness/parser/core" @core,
   "dowdiness/parser/parser" @parse,
-  "dowdiness/parser/green-tree" @green_tree,
+  "dowdiness/parser/seam" @seam,
 }
 
 import {

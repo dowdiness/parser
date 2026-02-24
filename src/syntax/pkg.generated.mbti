@@ -2,7 +2,7 @@
 package "dowdiness/parser/syntax"
 
 import {
-  "dowdiness/parser/green-tree",
+  "dowdiness/parser/seam",
 }
 
 // Values
@@ -35,9 +35,9 @@ pub(all) enum SyntaxKind {
   ErrorNode
   SourceFile
 }
-pub fn SyntaxKind::from_raw(@green-tree.RawKind) -> Self
+pub fn SyntaxKind::from_raw(@seam.RawKind) -> Self
 pub fn SyntaxKind::is_token(Self) -> Bool
-pub fn SyntaxKind::to_raw(Self) -> @green-tree.RawKind
+pub fn SyntaxKind::to_raw(Self) -> @seam.RawKind
 pub impl Eq for SyntaxKind
 pub impl Show for SyntaxKind
 

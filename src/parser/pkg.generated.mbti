@@ -3,8 +3,8 @@ package "dowdiness/parser/parser"
 
 import {
   "dowdiness/parser/core",
-  "dowdiness/parser/green-tree",
   "dowdiness/parser/lexer",
+  "dowdiness/parser/seam",
   "dowdiness/parser/syntax",
   "dowdiness/parser/term",
   "dowdiness/parser/token",
@@ -13,25 +13,25 @@ import {
 // Values
 pub fn collect_errors(@term.TermNode) -> Array[String]
 
-pub fn green_to_term(@green-tree.GreenNode) -> @term.Term
+pub fn green_to_term(@seam.CstNode) -> @term.Term
 
-pub fn green_to_term_node(@green-tree.GreenNode, Int, Ref[Int]) -> @term.TermNode
+pub fn green_to_term_node(@seam.CstNode, Int, Ref[Int]) -> @term.TermNode
 
 pub fn has_errors(@term.TermNode) -> Bool
 
-pub fn make_reuse_cursor(@green-tree.GreenNode, Int, Int, Array[@token.TokenInfo]) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]
+pub fn make_reuse_cursor(@seam.CstNode, Int, Int, Array[@token.TokenInfo]) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]
 
 pub fn parse(String) -> @term.Term raise
 
-pub fn parse_green(String) -> @green-tree.GreenNode raise
+pub fn parse_green(String) -> @seam.CstNode raise
 
-pub fn parse_green_recover(String, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError
+pub fn parse_green_recover(String, interner? : @seam.Interner?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError
 
-pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?, prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?, interner? : @green-tree.Interner?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
+pub fn parse_green_recover_with_tokens(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?, prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?, interner? : @seam.Interner?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int)
 
 pub fn parse_green_to_term_node(String) -> @term.TermNode raise
 
-pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind], prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?) -> (@green-tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int)
+pub fn parse_green_with_cursor(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind], prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int)
 
 pub fn parse_tree(String) -> @term.TermNode raise
 
@@ -41,7 +41,7 @@ pub fn parse_with_error_recovery(String) -> (@term.TermNode, Array[String])
 
 pub fn parse_with_error_recovery_tokens(Array[@token.TokenInfo]) -> (@term.TermNode, Array[String])
 
-pub fn red_to_term_node(@green-tree.RedNode, Ref[Int]) -> @term.TermNode
+pub fn red_to_term_node(@seam.SyntaxNode, Ref[Int]) -> @term.TermNode
 
 // Errors
 pub suberror ParseError {

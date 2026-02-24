@@ -3,7 +3,7 @@ const MAX_ERRORS : Int = 50
 
 ///|
 /// Convert SyntaxKind to RawKind for green-tree events.
-fn raw(kind : @syntax.SyntaxKind) -> @green_tree.RawKind {
+fn raw(kind : @syntax.SyntaxKind) -> @seam.RawKind {
   kind.to_raw()
 }
 
@@ -11,7 +11,7 @@ fn raw(kind : @syntax.SyntaxKind) -> @green_tree.RawKind {
 /// Create a ReuseCursor from an old green tree and a pre-tokenized new stream.
 /// Bridges the @parse API to @core.ReuseCursor for callers (e.g. incremental).
 pub fn make_reuse_cursor(
-  old_tree : @green_tree.GreenNode,
+  old_tree : @seam.CstNode,
   damage_start : Int,
   damage_end : Int,
   tokens : Array[@token.TokenInfo],
@@ -33,10 +33,10 @@ pub fn make_reuse_cursor(
 fn run_parse_incremental(
   tokens : Array[@token.TokenInfo],
   source : String,
-  interner : @green_tree.Interner?,
+  interner : @seam.Interner?,
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
   prev_diagnostics : Array[@core.Diagnostic[@token.Token]]?,
-) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
+) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int) {
   let ctx = @core.ParserContext::new_indexed(
     tokens.length(),
     fn(i) { tokens[i].token },
@@ -69,24 +69,20 @@ fn run_parse_incremental(
 
 ///|
 fn select_build_tree(
-  events : Array[@green_tree.ParseEvent],
-  interner : @green_tree.Interner?,
-) -> @green_tree.GreenNode {
+  events : Array[@seam.ParseEvent],
+  interner : @seam.Interner?,
+) -> @seam.CstNode {
   let ws = raw(@syntax.WhitespaceToken)
   match interner {
     Some(i) =>
-      @green_tree.build_tree_interned(
+      @seam.build_tree_interned(
         events,
         raw(@syntax.SourceFile),
         i,
         trivia_kind=Some(ws),
       )
     None =>
-      @green_tree.build_tree(
-        events,
-        raw(@syntax.SourceFile),
-        trivia_kind=Some(ws),
-      )
+      @seam.build_tree(events, raw(@syntax.SourceFile), trivia_kind=Some(ws))
   }
 }
 
@@ -95,7 +91,7 @@ fn select_build_tree(
 /// The ParseError token field comes directly from the diagnostic's got_token.
 /// Prefer parse_green_recover for new code; this function is retained for
 /// callers that depend on the raising contract.
-pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
+pub fn parse_green(source : String) -> @seam.CstNode raise {
   let (green, errors) = parse_green_recover(source)
   if errors.length() > 0 {
     let diag = errors[0]
@@ -111,8 +107,8 @@ pub fn parse_green(source : String) -> @green_tree.GreenNode raise {
 fn run_parse(
   tokens : Array[@token.TokenInfo],
   source : String,
-  interner : @green_tree.Interner?,
-) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) {
+  interner : @seam.Interner?,
+) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) {
   let ctx = @core.ParserContext::new_indexed(
     tokens.length(),
     fn(i) { tokens[i].token },
@@ -138,8 +134,8 @@ fn run_parse(
 /// Only raises for TokenizationError (unrecoverable).
 pub fn parse_green_recover(
   source : String,
-  interner? : @green_tree.Interner? = None,
-) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError {
+  interner? : @seam.Interner? = None,
+) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError {
   let tokens = @lexer.tokenize(source)
   run_parse(tokens, source, interner)
 }
@@ -156,7 +152,7 @@ pub fn parse_green_with_cursor(
   tokens : Array[@token.TokenInfo],
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind],
   prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]? = None,
-) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
+) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int) {
   run_parse_incremental(tokens, source, None, Some(cursor), prev_diagnostics)
 }
 
@@ -174,8 +170,8 @@ pub fn parse_green_recover_with_tokens(
   tokens : Array[@token.TokenInfo],
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
   prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]? = None,
-  interner? : @green_tree.Interner? = None,
-) -> (@green_tree.GreenNode, Array[@core.Diagnostic[@token.Token]], Int) {
+  interner? : @seam.Interner? = None,
+) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int) {
   run_parse_incremental(tokens, source, interner, cursor, prev_diagnostics)
 }
 

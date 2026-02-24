@@ -2,7 +2,7 @@
 
 ///|
 /// Map RawKind to the corresponding Token for structural token comparison.
-fn syntax_kind_to_token_kind(kind : @green_tree.RawKind) -> @token.Token? {
+fn syntax_kind_to_token_kind(kind : @seam.RawKind) -> @token.Token? {
   match @syntax.SyntaxKind::from_raw(kind) {
     @syntax.LambdaToken => Some(@token.Lambda)
     @syntax.DotToken => Some(@token.Dot)
