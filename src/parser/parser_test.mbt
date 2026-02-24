@@ -6,56 +6,56 @@
 ///|
 test "parse simple integer" {
   let expr = parse("42")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="42")
 }
 
 ///|
 test "parse simple variable" {
   let expr = parse("x")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="x")
 }
 
 ///|
 test "parse identity function" {
   let expr = parse("λx.x")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="(λx. x)")
 }
 
 ///|
 test "parse plus binary operator" {
   let expr = parse("1 + 2")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="(1 + 2)")
 }
 
 ///|
 test "parse minus binary operator" {
   let expr = parse("5 - 2")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="(5 - 2)")
 }
 
 ///|
 test "parse complex binary operators" {
   let expr = parse("10 - 5 + 2")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="((10 - 5) + 2)")
 }
 
 ///|
 test "parse parenthesized expression" {
   let expr = parse("(x)")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="x")
 }
 
 ///|
 test "parse nested lambda" {
   let expr = parse("λf.λx.x")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed.contains("λf"), content="true")
   inspect(printed.contains("λx"), content="true")
 }
@@ -63,28 +63,28 @@ test "parse nested lambda" {
 ///|
 test "parse simple application" {
   let expr = parse("f x")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="(f x)")
 }
 
 ///|
 test "parse multiple applications" {
   let expr = parse("f x y")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="((f x) y)")
 }
 
 ///|
 test "parse if-then-else" {
   let expr = parse("if x then y else z")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="if x then y else z")
 }
 
 ///|
 test "parse complex if expression" {
   let expr = parse("if 1 + 2 then 3 else 4")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed.contains("if"), content="true")
   inspect(printed.contains("then"), content="true")
   inspect(printed.contains("else"), content="true")
@@ -93,7 +93,7 @@ test "parse complex if expression" {
 ///|
 test "parse lambda with binary operation in body" {
   let expr = parse("λx.x + 1")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed.contains("λx"), content="true")
   inspect(printed.contains("+"), content="true")
 }
@@ -101,7 +101,7 @@ test "parse lambda with binary operation in body" {
 ///|
 test "parse application with lambda" {
   let expr = parse("(λx.x) y")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed.contains("λx"), content="true")
   inspect(printed.contains("y"), content="true")
 }
@@ -109,14 +109,14 @@ test "parse application with lambda" {
 ///|
 test "parse nested parentheses" {
   let expr = parse("((x))")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="x")
 }
 
 ///|
 test "parse complex nested expression" {
   let expr = parse("(λf.(λx.(f (f x))))")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed.contains("λf"), content="true")
   inspect(printed.contains("λx"), content="true")
 }
@@ -194,49 +194,49 @@ test "parse error - missing else in if" {
 ///|
 test "parse single character identifier" {
   let expr = parse("a")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="a")
 }
 
 ///|
 test "parse long identifier" {
   let expr = parse("variableName123")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="variableName123")
 }
 
 ///|
 test "parse zero" {
   let expr = parse("0")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="0")
 }
 
 ///|
 test "parse large integer" {
   let expr = parse("999999")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="999999")
 }
 
 ///|
 test "parse lambda with backslash" {
   let expr = parse("\\x.x")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="(λx. x)")
 }
 
 ///|
 test "parse application chain" {
   let expr = parse("a b c d")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed, content="(((a b) c) d)")
 }
 
 ///|
 test "parse mixed operators and applications" {
   let expr = parse("f x + g y")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed.contains("f"), content="true")
   inspect(printed.contains("x"), content="true")
   inspect(printed.contains("+"), content="true")
@@ -247,7 +247,7 @@ test "parse mixed operators and applications" {
 ///|
 test "parse complex expression with all features" {
   let expr = parse("(λf.λx.if f x then x + 1 else x - 1)")
-  let printed = @ast.print_ast(expr)
+  let printed = @ast.print_term(expr)
   inspect(printed.contains("λf"), content="true")
   inspect(printed.contains("λx"), content="true")
   inspect(printed.contains("if"), content="true")

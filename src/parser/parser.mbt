@@ -9,9 +9,9 @@ pub suberror ParseError {
 /// Parse the input string into a Term (without position information)
 ///
 /// This is a wrapper around parse_tree that discards position information.
-pub fn parse(input : String) -> @ast.Ast raise {
+pub fn parse(input : String) -> @ast.Term raise {
   let node = parse_tree(input)
-  @ast.node_to_ast(node)
+  @ast.node_to_term(node)
 }
 
 ///|

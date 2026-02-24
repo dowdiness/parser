@@ -362,9 +362,9 @@ pub fn cst_to_ast_node(
 }
 
 ///|
-pub fn cst_to_ast(cst : @seam.CstNode) -> @ast.Ast {
+pub fn cst_to_term(cst : @seam.CstNode) -> @ast.Term {
   let node = cst_to_ast_node(cst, 0, Ref::new(0))
-  @ast.node_to_ast(node)
+  @ast.node_to_term(node)
 }
 
 ///|

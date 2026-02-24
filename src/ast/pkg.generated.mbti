@@ -6,26 +6,15 @@ import {
 }
 
 // Values
-pub fn node_to_ast(AstNode) -> Ast
-
-pub fn print_ast(Ast) -> String
+pub fn node_to_term(AstNode) -> Term
 
 pub fn print_ast_node(AstNode) -> String
+
+pub fn print_term(Term) -> String
 
 // Errors
 
 // Types and methods
-pub(all) enum Ast {
-  Int(Int)
-  Var(String)
-  Lam(String, Ast)
-  App(Ast, Ast)
-  Bop(Bop, Ast, Ast)
-  If(Ast, Ast, Ast)
-}
-pub impl Eq for Ast
-pub impl Show for Ast
-
 pub(all) enum AstKind {
   Int(Int)
   Var(String)
@@ -60,6 +49,17 @@ pub impl Eq for Bop
 pub impl Show for Bop
 pub impl ToJson for Bop
 pub impl @json.FromJson for Bop
+
+pub(all) enum Term {
+  Int(Int)
+  Var(String)
+  Lam(String, Term)
+  App(Term, Term)
+  Bop(Bop, Term, Term)
+  If(Term, Term, Term)
+}
+pub impl Eq for Term
+pub impl Show for Term
 
 // Type aliases
 pub type VarName = String

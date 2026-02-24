@@ -17,7 +17,7 @@ pub fn crdt_to_source(@crdt.CRDTNode) -> String
 
 pub fn incremental(String) -> @incremental.IncrementalParser
 
-pub fn parse(String) -> @ast.Ast raise
+pub fn parse(String) -> @ast.Term raise
 
 pub fn parse_tree(String) -> @ast.AstNode raise
 

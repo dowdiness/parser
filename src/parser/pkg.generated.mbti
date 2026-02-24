@@ -13,15 +13,15 @@ import {
 // Values
 pub fn collect_errors(@ast.AstNode) -> Array[String]
 
-pub fn cst_to_ast(@seam.CstNode) -> @ast.Ast
-
 pub fn cst_to_ast_node(@seam.CstNode, Int, Ref[Int]) -> @ast.AstNode
+
+pub fn cst_to_term(@seam.CstNode) -> @ast.Term
 
 pub fn has_errors(@ast.AstNode) -> Bool
 
 pub fn make_reuse_cursor(@seam.CstNode, Int, Int, Array[@token.TokenInfo]) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]
 
-pub fn parse(String) -> @ast.Ast raise
+pub fn parse(String) -> @ast.Term raise
 
 pub fn parse_cst(String) -> @seam.CstNode raise
 

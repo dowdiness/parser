@@ -17,8 +17,8 @@
 // ── Parsing ──────────────────────────────────────────────────
 
 ///|
-/// Parse a source string into an abstract syntax tree (Ast).
-pub fn parse(source : String) -> @ast.Ast raise {
+/// Parse a source string into an abstract syntax tree (Term).
+pub fn parse(source : String) -> @ast.Term raise {
   @parse.parse(source)
 }
 

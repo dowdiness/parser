@@ -10,19 +10,19 @@ pub(all) enum Bop {
 } derive(Show, Eq, FromJson, ToJson)
 
 ///|
-pub(all) enum Ast {
+pub(all) enum Term {
   // Integer
   Int(Int)
   // Variable
   Var(VarName)
   // Lambda abstraction
-  Lam(VarName, Ast)
+  Lam(VarName, Term)
   // Application
-  App(Ast, Ast)
+  App(Term, Term)
   // Binary operation
-  Bop(Bop, Ast, Ast)
+  Bop(Bop, Term, Term)
   // If-then-else
-  If(Ast, Ast, Ast)
+  If(Term, Term, Term)
 } derive(Show, Eq)
 
 ///|
@@ -129,8 +129,8 @@ pub fn print_ast_node(node : AstNode) -> String {
 }
 
 ///|
-pub fn print_ast(ast : Ast) -> String {
-  fn go(t : Ast) -> String {
+pub fn print_term(term : Term) -> String {
+  fn go(t : Term) -> String {
     match t {
       Int(i) => i.to_string()
       Var(x) => x
@@ -142,67 +142,67 @@ pub fn print_ast(ast : Ast) -> String {
     }
   }
 
-  go(ast)
+  go(term)
 }
 
 ///|
-/// Convert a AstNode to a Ast (discarding position information)
-pub fn node_to_ast(node : AstNode) -> Ast {
+/// Convert a AstNode to a Term (discarding position information)
+pub fn node_to_term(node : AstNode) -> Term {
   match node.kind {
-    AstKind::Int(n) => Ast::Int(n)
-    AstKind::Var(name) => Ast::Var(name)
+    AstKind::Int(n) => Term::Int(n)
+    AstKind::Var(name) => Term::Var(name)
     AstKind::Lam(param) => {
       let body = if node.children.length() > 0 {
-        node_to_ast(node.children[0])
+        node_to_term(node.children[0])
       } else {
         abort("Lambda node missing body child")
       }
-      Ast::Lam(param, body)
+      Term::Lam(param, body)
     }
     AstKind::App => {
       let left = if node.children.length() > 0 {
-        node_to_ast(node.children[0])
+        node_to_term(node.children[0])
       } else {
         abort("App node missing left child")
       }
       let right = if node.children.length() > 1 {
-        node_to_ast(node.children[1])
+        node_to_term(node.children[1])
       } else {
         abort("App node missing right child")
       }
-      Ast::App(left, right)
+      Term::App(left, right)
     }
     AstKind::Bop(op) => {
       let left = if node.children.length() > 0 {
-        node_to_ast(node.children[0])
+        node_to_term(node.children[0])
       } else {
         abort("Bop node missing left child")
       }
       let right = if node.children.length() > 1 {
-        node_to_ast(node.children[1])
+        node_to_term(node.children[1])
       } else {
         abort("Bop node missing right child")
       }
-      Ast::Bop(op, left, right)
+      Term::Bop(op, left, right)
     }
     AstKind::If => {
       let cond = if node.children.length() > 0 {
-        node_to_ast(node.children[0])
+        node_to_term(node.children[0])
       } else {
         abort("If node missing condition child")
       }
       let then_expr = if node.children.length() > 1 {
-        node_to_ast(node.children[1])
+        node_to_term(node.children[1])
       } else {
         abort("If node missing then child")
       }
       let else_expr = if node.children.length() > 2 {
-        node_to_ast(node.children[2])
+        node_to_term(node.children[2])
       } else {
         abort("If node missing else child")
       }
-      Ast::If(cond, then_expr, else_expr)
+      Term::If(cond, then_expr, else_expr)
     }
-    AstKind::Error(msg) => abort("Cannot convert error node to Ast: " + msg)
+    AstKind::Error(msg) => abort("Cannot convert error node to Term: " + msg)
   }
 }
