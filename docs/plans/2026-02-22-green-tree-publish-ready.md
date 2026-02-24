@@ -2,12 +2,14 @@
 
 **Date:** 2026-02-22
 **Updated:** 2026-02-24
-**Status:** In Progress — Phases 1–2 partially complete; Phases 3–6 not started
+**Status:** In Progress — Phases 1–2 partially complete; Phases 3–5 not started
 
 ## Goal
 
-Publish `green-tree` as an independent MoonBit module with a stable, documented,
-tested API suitable for first public release (`v0.1.0`).
+Make `green-tree` publish-ready as an independent MoonBit module: hardened API,
+complete tests, standalone module packaging, and documentation sufficient for a
+first public release. Actual publishing (`v0.1.0` tag, mooncakes upload) is out
+of scope for this plan.
 
 ## Scope
 
@@ -25,15 +27,15 @@ Out of scope:
 ## Release Target
 
 Module name: `dowdiness/green-tree`
-Initial version: `0.1.0`
+Initial version: `0.1.0` (to be tagged and published separately)
 
 ## Definition Of Done
 
 - Module can be added by dependency and built in a clean project.
-- Public API is intentional and documented.
-- `moon check --target all`, `moon test`, and `moon info` pass in CI.
-- README examples are executable (`mbt check`) and pass tests.
-- `v0.1.0` tag + publish steps are executed and verified.
+- Public API is intentional, documented, and frozen.
+- `moon check --target all`, `moon test`, and `moon info` pass cleanly.
+- README examples are self-contained and illustrate the event-stream → tree model.
+- CI gates are configured and green on the standalone module.
 
 ## Open Concerns (Track Before Release Freeze)
 
@@ -267,7 +269,7 @@ Acceptance criteria:
 
 ---
 
-## Phase 6: CI And Release — ❌ Not started
+## Phase 6: CI — ❌ Not started
 
 ### Task 6.1: CI gates — ❌ Not done
 
@@ -280,24 +282,8 @@ Required CI commands:
 (CI would be set up after Phase 3 standalone bootstrap).
 
 Acceptance criteria:
-- all gates enforced on default branch
-- failures block release
-
-### Task 6.2: Release checklist — ❌ Not done
-
-Release steps:
-1. verify clean CI
-2. verify `version` and changelog/release notes
-3. tag `v0.1.0`
-4. publish to mooncakes
-5. run clean-room install/build smoke test
-
-Smoke test:
-- new temp project depends on `dowdiness/green-tree@0.1.0`
-- builds and executes README example
-
-Acceptance criteria:
-- published artifact is installable and usable without local code
+- all three gates run on every push to the default branch
+- failures are visible before any release attempt
 
 ---
 
@@ -308,7 +294,7 @@ Acceptance criteria:
 3. Phase 3 (standalone module bootstrap) — extract to independent module/repo
 4. Phase 4 (tests) — panic tests + property tests in standalone module
 5. Phase 5 (docs/examples) — publish-grade README
-6. Phase 6 (CI + publish)
+6. Phase 6 (CI) — gates on standalone module
 
 ## Risks
 
