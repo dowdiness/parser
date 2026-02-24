@@ -3,7 +3,7 @@
 //
 // All language-specific checks are delegated to the LanguageSpec callbacks:
 //   raw_is_trivia / raw_is_error   — classify old-tree RawKind values
-//   green_token_matches            — match old leaf (RawKind + text) to new token T
+//   cst_token_matches            — match old leaf (RawKind + text) to new token T
 //   token_is_trivia / token_is_eof — classify new token stream values
 //
 // Uses (damage_start, damage_end : Int) instead of @range.Range to avoid
@@ -195,7 +195,7 @@ fn[T, K] leading_token_matches(
   let node_first_text = first_token_text(node, cursor.spec)
   match (node_first_kind, node_first_text) {
     (Some(kind), Some(text)) =>
-      (cursor.spec.green_token_matches)(kind, text, expected_token)
+      (cursor.spec.cst_token_matches)(kind, text, expected_token)
     _ => false
   }
 }
@@ -260,7 +260,7 @@ fn[T, K] trailing_context_matches(
   match (old_follow, new_follow) {
     (None, None) => true
     (Some(old), Some(new_tok)) =>
-      (cursor.spec.green_token_matches)(old.kind, old.text, new_tok)
+      (cursor.spec.cst_token_matches)(old.kind, old.text, new_tok)
     _ => false
   }
 }

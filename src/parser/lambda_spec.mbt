@@ -32,7 +32,7 @@ let lambda_spec : @core.LanguageSpec[@token.Token, @syntax.SyntaxKind] = @core.L
   @token.EOF,
   raw_is_trivia=fn(raw) { raw == @syntax.WhitespaceToken.to_raw() },
   raw_is_error=fn(raw) { raw == @syntax.ErrorToken.to_raw() },
-  green_token_matches=(raw, text, tok) => {
+  cst_token_matches=(raw, text, tok) => {
     match @syntax.SyntaxKind::from_raw(raw) {
       IntToken => if tok is Integer(i) { text == i.to_string() } else { false }
       IdentToken => if tok is Identifier(name) { name == text } else { false }

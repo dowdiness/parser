@@ -33,9 +33,9 @@ pub struct LanguageSpec[T, K] {
   eof_token : T
   raw_is_trivia : (@seam.RawKind) -> Bool
   raw_is_error : (@seam.RawKind) -> Bool
-  green_token_matches : (@seam.RawKind, String, T) -> Bool
+  cst_token_matches : (@seam.RawKind, String, T) -> Bool
 }
-pub fn[T, K] LanguageSpec::new((K) -> @seam.RawKind, (T) -> Bool, (T) -> Bool, (T, T) -> Bool, (T) -> String, K, K, K, T, raw_is_trivia? : (@seam.RawKind) -> Bool, raw_is_error? : (@seam.RawKind) -> Bool, green_token_matches? : (@seam.RawKind, String, T) -> Bool) -> Self[T, K]
+pub fn[T, K] LanguageSpec::new((K) -> @seam.RawKind, (T) -> Bool, (T) -> Bool, (T, T) -> Bool, (T) -> String, K, K, K, T, raw_is_trivia? : (@seam.RawKind) -> Bool, raw_is_error? : (@seam.RawKind) -> Bool, cst_token_matches? : (@seam.RawKind, String, T) -> Bool) -> Self[T, K]
 
 type OldToken
 pub impl Compare for OldToken

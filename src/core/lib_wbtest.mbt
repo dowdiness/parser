@@ -85,7 +85,7 @@ let test_spec : LanguageSpec[TestTok, TestKind] = {
   eof_token: TestTok::TokEof,
   raw_is_trivia: fn(raw) { raw == test_kind_raw(KWs) },
   raw_is_error: fn(raw) { raw == test_kind_raw(KErr) },
-  green_token_matches: fn(raw, text, tok) {
+  cst_token_matches: fn(raw, text, tok) {
     if raw != test_kind_raw(KNum) {
       return false
     }
@@ -328,7 +328,7 @@ test "LanguageSpec reuse callbacks are stored and callable" {
     TestTok::TokEof,
     raw_is_trivia=fn(raw) { raw == ws_raw },
     raw_is_error=fn(raw) { raw == err_raw },
-    green_token_matches=fn(raw, text, tok) {
+    cst_token_matches=fn(raw, text, tok) {
       if raw != num_raw {
         return false
       }
@@ -343,15 +343,15 @@ test "LanguageSpec reuse callbacks are stored and callable" {
   inspect((spec.raw_is_error)(err_raw), content="true")
   inspect((spec.raw_is_error)(ws_raw), content="false")
   inspect(
-    (spec.green_token_matches)(num_raw, "42", TestTok::Num(42)),
+    (spec.cst_token_matches)(num_raw, "42", TestTok::Num(42)),
     content="true",
   )
   inspect(
-    (spec.green_token_matches)(num_raw, "42", TestTok::Num(99)),
+    (spec.cst_token_matches)(num_raw, "42", TestTok::Num(99)),
     content="false",
   )
   inspect(
-    (spec.green_token_matches)(num_raw, "42", TestTok::Plus),
+    (spec.cst_token_matches)(num_raw, "42", TestTok::Plus),
     content="false",
   )
 }

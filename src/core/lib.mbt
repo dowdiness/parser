@@ -89,7 +89,7 @@ pub struct LanguageSpec[T, K] {
   // reuse support: classify old-tree RawKind values and match old leaves to new tokens
   raw_is_trivia : (@seam.RawKind) -> Bool
   raw_is_error : (@seam.RawKind) -> Bool
-  green_token_matches : (@seam.RawKind, String, T) -> Bool
+  cst_token_matches : (@seam.RawKind, String, T) -> Bool
 }
 
 ///|
@@ -112,7 +112,7 @@ pub fn[T, K] LanguageSpec::new(
   eof_token : T,
   raw_is_trivia? : (@seam.RawKind) -> Bool = fn(_) { false },
   raw_is_error? : (@seam.RawKind) -> Bool = fn(_) { false },
-  green_token_matches? : (@seam.RawKind, String, T) -> Bool = fn(_, _, _) {
+  cst_token_matches? : (@seam.RawKind, String, T) -> Bool = fn(_, _, _) {
     false
   },
 ) -> LanguageSpec[T, K] {
@@ -128,7 +128,7 @@ pub fn[T, K] LanguageSpec::new(
     eof_token,
     raw_is_trivia,
     raw_is_error,
-    green_token_matches,
+    cst_token_matches,
   }
 }
 
@@ -794,7 +794,7 @@ fn make_test_fixtures() -> (LanguageSpec[String, Int], Array[TokenInfo[String]])
     eof_token: "EOF",
     raw_is_trivia: fn(_) { false },
     raw_is_error: fn(_) { false },
-    green_token_matches: fn(_, _, _) { false },
+    cst_token_matches: fn(_, _, _) { false },
   }
   let tokens = [
     { token: "a", start: 0, end: 1 },
@@ -838,7 +838,7 @@ test "peek skips trivia tokens" {
     eof_token: "EOF",
     raw_is_trivia: fn(_) { false },
     raw_is_error: fn(_) { false },
-    green_token_matches: fn(_, _, _) { false },
+    cst_token_matches: fn(_, _, _) { false },
   }
   let tokens = [
     { token: " ", start: 0, end: 1 },
