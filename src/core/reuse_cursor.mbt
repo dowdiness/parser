@@ -401,6 +401,61 @@ pub fn[T, K] ReuseCursor::try_reuse(
 }
 
 ///|
+/// True if a green node subtree contains any error token or error node.
+/// Traverses recursively but typically called on small sibling subtrees.
+fn[T, K] node_has_error(
+  node : @green_tree.GreenNode,
+  spec : LanguageSpec[T, K],
+) -> Bool {
+  for child in node.children {
+    match child {
+      @green_tree.GreenElement::Token(t) =>
+        if (spec.raw_is_error)(t.kind) {
+          return true
+        }
+      @green_tree.GreenElement::Node(n) =>
+        if (spec.raw_is_error)(n.kind) || node_has_error(n, spec) {
+          return true
+        }
+    }
+  }
+  false
+}
+
+///|
+/// True if the sibling immediately following the most recently found node
+/// has any error content (error token or error node anywhere in its subtree).
+///
+/// After try_reuse returns Some, the cursor's parent frame still has
+/// child_index pointing to the found node. The next sibling is at
+/// child_index + 1, accessible without any seek or cursor advancement.
+///
+/// Call this between try_reuse and advance_past. Returns false when there
+/// is no next sibling or the cursor stack is empty.
+///
+/// Limitation: only inspects the *immediate* next sibling. If a zero-width
+/// trivia node or similar separator sits between the found node and the
+/// error-bearing sibling, this returns false and the EOF exception fires.
+/// Acceptable for current grammars where error siblings are always adjacent.
+pub fn[T, K] ReuseCursor::next_sibling_has_error(
+  self : ReuseCursor[T, K],
+) -> Bool {
+  if self.stack.length() == 0 {
+    return false
+  }
+  let frame = self.stack[self.stack.length() - 1]
+  let next_idx = frame.child_index + 1
+  if next_idx >= frame.node.children.length() {
+    return false
+  }
+  match frame.node.children[next_idx] {
+    @green_tree.GreenElement::Node(n) =>
+      (self.spec.raw_is_error)(n.kind) || node_has_error(n, self.spec)
+    @green_tree.GreenElement::Token(t) => (self.spec.raw_is_error)(t.kind)
+  }
+}
+
+///|
 /// Advance cursor past a reused node. Updates current_offset to stay in sync
 /// with ParserContext.position so subsequent seeks detect backward movement.
 pub fn[T, K] ReuseCursor::advance_past(

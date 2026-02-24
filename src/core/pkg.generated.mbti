@@ -56,6 +56,9 @@ pub struct ParserContext[T, K] {
   errors : Array[Diagnostic[T]]
   mut error_count : Int
   mut open_nodes : Int
+  mut reuse_cursor : ReuseCursor[T, K]?
+  mut reuse_diagnostics : Array[Diagnostic[T]]?
+  mut reuse_count : Int
 }
 pub fn[T, K] ParserContext::at(Self[T, K], T) -> Bool
 pub fn[T, K] ParserContext::at_eof(Self[T, K]) -> Bool
@@ -69,11 +72,15 @@ pub fn[T, K] ParserContext::flush_trivia(Self[T, K]) -> Unit
 pub fn[T, K] ParserContext::mark(Self[T, K]) -> Int
 pub fn[T, K] ParserContext::new(Array[TokenInfo[T]], String, LanguageSpec[T, K]) -> Self[T, K]
 pub fn[T, K] ParserContext::new_indexed(Int, (Int) -> T, (Int) -> Int, (Int) -> Int, String, LanguageSpec[T, K]) -> Self[T, K]
+pub fn[T, K] ParserContext::node(Self[T, K], K, () -> Unit) -> Unit
 pub fn[T, K] ParserContext::peek(Self[T, K]) -> T
 pub fn[T, K] ParserContext::peek_info(Self[T, K]) -> TokenInfo[T]
+pub fn[T, K] ParserContext::set_reuse_cursor(Self[T, K], ReuseCursor[T, K]) -> Unit
+pub fn[T, K] ParserContext::set_reuse_diagnostics(Self[T, K], Array[Diagnostic[T]]) -> Unit
 pub fn[T, K] ParserContext::start_at(Self[T, K], Int, K) -> Unit
 pub fn[T, K] ParserContext::start_node(Self[T, K], K) -> Unit
 pub fn[T, K] ParserContext::token_text(Self[T, K], TokenInfo[T]) -> String
+pub fn[T, K] ParserContext::wrap_at(Self[T, K], Int, K, () -> Unit) -> Unit
 
 pub struct ReuseCursor[T, K] {
   stack : Array[CursorFrame]
@@ -90,6 +97,7 @@ pub struct ReuseCursor[T, K] {
 pub fn[T, K] ReuseCursor::advance_past(Self[T, K], @green-tree.GreenNode) -> Unit
 pub fn[T, K] ReuseCursor::is_reuse_disabled(Self[T, K]) -> Bool
 pub fn[T, K] ReuseCursor::new(@green-tree.GreenNode, Int, Int, Int, (Int) -> T, (Int) -> Int, LanguageSpec[T, K]) -> Self[T, K]
+pub fn[T, K] ReuseCursor::next_sibling_has_error(Self[T, K]) -> Bool
 pub fn[T, K] ReuseCursor::try_reuse(Self[T, K], @green-tree.RawKind, Int, Int) -> @green-tree.GreenNode?
 
 pub struct TokenInfo[T] {

@@ -355,3 +355,293 @@ test "LanguageSpec reuse callbacks are stored and callable" {
     content="false",
   )
 }
+
+///|
+test "ParserContext reuse: zero-width error leaf does not over-advance position" {
+  fn grammar_with_placeholder(ctx : ParserContext[TestTok, TestKind]) -> Unit {
+    ctx.node(KExpr, fn() {
+      ctx.emit_token(KNum)
+      ctx.emit_error_placeholder()
+    })
+    ctx.emit_token(KNum)
+  }
+
+  let src = "1 2"
+  let toks = test_tokenize(src)
+  let (old_tree, _) = parse_with(
+    src, test_spec, test_tokenize, grammar_with_placeholder,
+  )
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let ctx = ParserContext::new(toks, src, test_spec)
+  ctx.set_reuse_cursor(cursor)
+  ctx.node(KExpr, fn() {
+    // Must not run on reuse hit.
+    ctx.emit_token(KNum)
+    ctx.emit_error_placeholder()
+  })
+  inspect(ctx.reuse_count, content="1")
+  inspect(ctx.at(TestTok::Num(2)), content="true")
+}
+
+///|
+test "ParserContext reuse: replays prior diagnostics for reused error subtree" {
+  fn grammar_with_error(ctx : ParserContext[TestTok, TestKind]) -> Unit {
+    ctx.node(KExpr, fn() {
+      ctx.emit_token(KNum)
+      ctx.emit_token(KPlus)
+      ctx.error("expected number after +")
+      ctx.emit_error_placeholder()
+    })
+  }
+
+  let src = "1 +"
+  let toks = test_tokenize(src)
+  let (old_tree, old_errors) = parse_with(
+    src, test_spec, test_tokenize, grammar_with_error,
+  )
+  inspect(old_errors.length(), content="1")
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let ctx = ParserContext::new(toks, src, test_spec)
+  ctx.set_reuse_cursor(cursor)
+  ctx.set_reuse_diagnostics(old_errors)
+  ctx.node(KExpr, fn() {
+    ctx.emit_token(KNum)
+    ctx.emit_token(KPlus)
+    ctx.error("expected number after +")
+    ctx.emit_error_placeholder()
+  })
+  inspect(ctx.reuse_count, content="1")
+  inspect(ctx.errors.length(), content="1")
+  inspect(ctx.errors[0].message, content="expected number after +")
+  inspect(ctx.errors[0].start, content="3")
+  inspect(ctx.errors[0].end, content="3")
+}
+
+///|
+test "ParserContext reuse: synthesizes diagnostics when prior list is unavailable" {
+  fn grammar_with_error(ctx : ParserContext[TestTok, TestKind]) -> Unit {
+    ctx.node(KExpr, fn() {
+      ctx.emit_token(KNum)
+      ctx.emit_token(KPlus)
+      ctx.error("expected number after +")
+      ctx.emit_error_placeholder()
+    })
+  }
+
+  let src = "1 +"
+  let toks = test_tokenize(src)
+  let (old_tree, _) = parse_with(
+    src, test_spec, test_tokenize, grammar_with_error,
+  )
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let ctx = ParserContext::new(toks, src, test_spec)
+  ctx.set_reuse_cursor(cursor)
+  ctx.node(KExpr, fn() {
+    ctx.emit_token(KNum)
+    ctx.emit_token(KPlus)
+    ctx.error("expected number after +")
+    ctx.emit_error_placeholder()
+  })
+  inspect(ctx.reuse_count, content="1")
+  inspect(ctx.errors.length(), content="1")
+  inspect(ctx.errors[0].message, content="reused syntax error")
+  inspect(ctx.errors[0].start, content="3")
+  inspect(ctx.errors[0].end, content="3")
+}
+
+///|
+test "ParserContext reuse: excludes boundary diagnostics at reused node end" {
+  fn grammar_two_nodes(ctx : ParserContext[TestTok, TestKind]) -> Unit {
+    ctx.node(KExpr, fn() { ctx.emit_token(KNum) })
+    ctx.node(KExpr, fn() { ctx.emit_token(KNum) })
+  }
+
+  let src = "1 2"
+  let toks = test_tokenize(src)
+  let (old_tree, _) = parse_with(
+    src, test_spec, test_tokenize, grammar_two_nodes,
+  )
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let old_diags = [
+    {
+      message: "inside-first-node",
+      start: 0,
+      end: 1,
+      got_token: TestTok::Num(1),
+    },
+    {
+      message: "boundary-next-sibling",
+      start: 1,
+      end: 1,
+      got_token: TestTok::Ws,
+    },
+  ]
+  let ctx = ParserContext::new(toks, src, test_spec)
+  ctx.set_reuse_cursor(cursor)
+  ctx.set_reuse_diagnostics(old_diags)
+  ctx.node(KExpr, fn() { ctx.emit_token(KNum) })
+  inspect(ctx.reuse_count, content="1")
+  inspect(ctx.errors.length(), content="1")
+  inspect(ctx.errors[0].message, content="inside-first-node")
+}
+
+///|
+test "ParserContext reuse: preserves EOF ctx.error without placeholder" {
+  fn grammar_eof_error_no_placeholder(
+    ctx : ParserContext[TestTok, TestKind],
+  ) -> Unit {
+    ctx.node(KExpr, fn() {
+      ctx.emit_token(KNum)
+      // EOF diagnostic without an error placeholder leaf.
+      ctx.error("expected trailing token")
+    })
+  }
+
+  let src = "1"
+  let toks = test_tokenize(src)
+  let (old_tree, old_errors) = parse_with(
+    src, test_spec, test_tokenize, grammar_eof_error_no_placeholder,
+  )
+  inspect(old_errors.length(), content="1")
+  inspect(old_errors[0].start, content="1")
+  inspect(old_errors[0].end, content="1")
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  let ctx = ParserContext::new(toks, src, test_spec)
+  ctx.set_reuse_cursor(cursor)
+  ctx.set_reuse_diagnostics(old_errors)
+  grammar_eof_error_no_placeholder(ctx)
+  inspect(ctx.reuse_count, content="1")
+  inspect(ctx.errors.length(), content="1")
+  inspect(ctx.errors[0].message, content="expected trailing token")
+  inspect(ctx.errors[0].start, content="1")
+  inspect(ctx.errors[0].end, content="1")
+}
+
+///|
+test "ParserContext reuse: does not duplicate EOF boundary diagnostics from later sibling" {
+  fn grammar_with_trailing_eof_error(
+    ctx : ParserContext[TestTok, TestKind],
+  ) -> Unit {
+    ctx.node(KExpr, fn() { ctx.emit_token(KNum) })
+    // Zero-width sibling at EOF that owns this diagnostic.
+    ctx.node(KExpr, fn() {
+      ctx.error("missing trailing expression")
+      ctx.emit_error_placeholder()
+    })
+  }
+
+  let src = "1"
+  let toks = test_tokenize(src)
+  let (old_tree, old_errors) = parse_with(
+    src, test_spec, test_tokenize, grammar_with_trailing_eof_error,
+  )
+  inspect(old_errors.length(), content="1")
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+
+  let ctx = ParserContext::new(toks, src, test_spec)
+  ctx.set_reuse_cursor(cursor)
+  ctx.set_reuse_diagnostics(old_errors)
+  // First node should reuse; second node is at EOF and executes body.
+  grammar_with_trailing_eof_error(ctx)
+
+  inspect(ctx.reuse_count, content="1")
+  inspect(ctx.errors.length(), content="1")
+  inspect(ctx.errors[0].message, content="missing trailing expression")
+  inspect(ctx.errors[0].start, content="1")
+  inspect(ctx.errors[0].end, content="1")
+}
+
+///|
+test "ParserContext reuse: later EOF emission replaces replayed stale got_token" {
+  fn grammar_with_trailing_eof_error(
+    ctx : ParserContext[TestTok, TestKind],
+  ) -> Unit {
+    ctx.node(KExpr, fn() { ctx.emit_token(KNum) })
+    ctx.node(KExpr, fn() {
+      ctx.error("missing trailing expression")
+      ctx.emit_error_placeholder()
+    })
+  }
+
+  let src = "1"
+  let toks = test_tokenize(src)
+  let (old_tree, _) = parse_with(
+    src, test_spec, test_tokenize, grammar_with_trailing_eof_error,
+  )
+  let cursor : ReuseCursor[TestTok, TestKind] = ReuseCursor::new(
+    old_tree,
+    99,
+    99,
+    toks.length(),
+    fn(i) { toks[i].token },
+    fn(i) { toks[i].start },
+    test_spec,
+  )
+  // Simulate a replayed stale token payload for the same logical diagnostic.
+  let stale_diags = [
+    {
+      message: "missing trailing expression",
+      start: 1,
+      end: 1,
+      got_token: TestTok::Ws,
+    },
+  ]
+
+  let ctx = ParserContext::new(toks, src, test_spec)
+  ctx.set_reuse_cursor(cursor)
+  ctx.set_reuse_diagnostics(stale_diags)
+  grammar_with_trailing_eof_error(ctx)
+
+  inspect(ctx.reuse_count, content="1")
+  inspect(ctx.errors.length(), content="1")
+  inspect(ctx.errors[0].message, content="missing trailing expression")
+  inspect(ctx.errors[0].got_token, content="TokEof")
+}

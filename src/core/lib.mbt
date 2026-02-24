@@ -154,6 +154,12 @@ pub struct ParserContext[T, K] {
   errors : Array[Diagnostic[T]]
   mut error_count : Int
   mut open_nodes : Int
+  // Incremental reuse — None on a fresh parse, Some(cursor) for incremental.
+  mut reuse_cursor : ReuseCursor[T, K]?
+  // Diagnostics from the previous parse (optional). When present, reuse hits
+  // replay matching diagnostics by byte span to preserve exact messages.
+  mut reuse_diagnostics : Array[Diagnostic[T]]?
+  mut reuse_count : Int
 }
 
 ///|
@@ -176,6 +182,9 @@ pub fn[T, K] ParserContext::new(
     errors: [],
     error_count: 0,
     open_nodes: 0,
+    reuse_cursor: None,
+    reuse_diagnostics: None,
+    reuse_count: 0,
   }
 }
 
@@ -203,6 +212,9 @@ pub fn[T, K] ParserContext::new_indexed(
     errors: [],
     error_count: 0,
     open_nodes: 0,
+    reuse_cursor: None,
+    reuse_diagnostics: None,
+    reuse_count: 0,
   }
 }
 
@@ -368,13 +380,12 @@ pub fn[T, K] ParserContext::error(
   msg : String,
 ) -> Unit {
   let info = self.peek_info()
-  self.errors.push({
+  let _ = self.push_diagnostic_unique({
     message: msg,
     start: info.start,
     end: info.end,
     got_token: info.token,
   })
-  self.error_count = self.error_count + 1
 }
 
 ///|
@@ -413,6 +424,347 @@ pub fn[T, K] ParserContext::emit_error_placeholder(
   self : ParserContext[T, K],
 ) -> Unit {
   self.emit_zero_width(self.spec.error_kind)
+}
+
+// ─── Incremental reuse ────────────────────────────────────────────────────────
+
+///|
+/// Attach a reuse cursor to an existing ParserContext, enabling incremental parsing.
+/// Called by entry points (parse_green_with_cursor etc.) after construction.
+pub fn[T, K] ParserContext::set_reuse_cursor(
+  self : ParserContext[T, K],
+  cursor : ReuseCursor[T, K],
+) -> Unit {
+  self.reuse_cursor = Some(cursor)
+}
+
+///|
+/// Attach diagnostics from the previous parse. On reuse hits, diagnostics whose
+/// spans fall within the reused node are replayed into self.errors.
+pub fn[T, K] ParserContext::set_reuse_diagnostics(
+  self : ParserContext[T, K],
+  diagnostics : Array[Diagnostic[T]],
+) -> Unit {
+  self.reuse_diagnostics = Some(diagnostics)
+}
+
+///|
+/// Try to reuse an old green node of `kind` at the current parse position.
+///
+/// byte_offset uses self.position directly (including any leading trivia) because
+/// seek_node_at matches nodes by their absolute start, and nodes store trivia as
+/// their first children — so the node's start byte IS the trivia's start byte.
+///
+/// token_pos must skip past trivia first. leading_token_matches compares the
+/// node's first *non-trivia* token against the token at token_pos in the new
+/// stream. Passing a trivia index causes systematic false-negative reuse for
+/// all whitespace-separated constructs (the common case).
+///
+/// Returns None immediately if no cursor is attached (non-incremental parse).
+fn[T, K] ParserContext::try_reuse(
+  self : ParserContext[T, K],
+  kind : K,
+) -> @green_tree.GreenNode? {
+  if self.position >= self.token_count {
+    return None
+  }
+  let byte_offset = (self.get_start)(self.position)
+  // Skip trivia to find the logical token position for leading-token matching.
+  let mut token_pos = self.position
+  while token_pos < self.token_count &&
+        (self.spec.token_is_trivia)((self.get_token)(token_pos)) {
+    token_pos = token_pos + 1
+  }
+  match self.reuse_cursor {
+    None => None
+    Some(cursor) =>
+      cursor.try_reuse((self.spec.kind_to_raw)(kind), byte_offset, token_pos)
+  }
+}
+
+///|
+/// Recursively emit StartNode/Token/FinishNode events for a reused green node.
+/// Pure function — does not advance position. Must be followed by advance_past_reused.
+fn[T, K] ParserContext::emit_node_events(
+  self : ParserContext[T, K],
+  node : @green_tree.GreenNode,
+) -> Unit {
+  self.events.push(@green_tree.ParseEvent::StartNode(node.kind))
+  for child in node.children {
+    match child {
+      @green_tree.GreenElement::Token(t) =>
+        self.events.push(@green_tree.ParseEvent::Token(t.kind, t.text))
+      @green_tree.GreenElement::Node(n) => self.emit_node_events(n)
+    }
+  }
+  self.events.push(@green_tree.ParseEvent::FinishNode)
+}
+
+///|
+/// Advance position past all tokens (trivia + non-trivia) covered by node.
+/// Byte-based advancing avoids over-consuming when reused subtrees contain
+/// zero-width non-trivia leaves (e.g. error placeholders).
+fn[T, K] ParserContext::advance_past_reused(
+  self : ParserContext[T, K],
+  node : @green_tree.GreenNode,
+) -> Unit {
+  if self.position >= self.token_count {
+    return
+  }
+  let node_end = (self.get_start)(self.position) + node.text_len
+  while self.position < self.token_count &&
+        (self.get_start)(self.position) < node_end {
+    self.position = self.position + 1
+  }
+}
+
+///|
+priv struct ReusedErrorSpan {
+  start : Int
+  end : Int
+}
+
+///|
+/// Collect error spans from a green subtree.
+/// Returns the number of spans added into `out`.
+fn[T, K] collect_reused_error_spans(
+  node : @green_tree.GreenNode,
+  node_start : Int,
+  spec : LanguageSpec[T, K],
+  out : Array[ReusedErrorSpan],
+) -> Int {
+  let mut offset = node_start
+  let mut added = 0
+  for child in node.children {
+    match child {
+      @green_tree.GreenElement::Token(t) => {
+        let end = offset + t.text_len()
+        if (spec.raw_is_error)(t.kind) {
+          out.push({ start: offset, end })
+          added = added + 1
+        }
+        offset = end
+      }
+      @green_tree.GreenElement::Node(n) => {
+        let child_added = collect_reused_error_spans(n, offset, spec, out)
+        if child_added == 0 && (spec.raw_is_error)(n.kind) {
+          out.push({ start: offset, end: offset + n.text_len })
+          added = added + 1
+        } else {
+          added = added + child_added
+        }
+        offset = offset + n.text_len
+      }
+    }
+  }
+  added
+}
+
+///|
+/// Return the first token that starts at or after byte_offset, or overlaps it
+/// (end > byte_offset). Overlap handling covers zero-width tokens and error
+/// spans that fall mid-token. Scans forward from from_pos.
+fn[T, K] ParserContext::token_info_at_or_after(
+  self : ParserContext[T, K],
+  from_pos : Int,
+  byte_offset : Int,
+) -> TokenInfo[T] {
+  let mut pos = from_pos
+  while pos < self.token_count {
+    let start = (self.get_start)(pos)
+    let end = (self.get_end)(pos)
+    if start >= byte_offset || end > byte_offset {
+      return { token: (self.get_token)(pos), start, end }
+    }
+    pos = pos + 1
+  }
+  let eof = self.source.length()
+  { token: self.spec.eof_token, start: eof, end: eof }
+}
+
+///|
+/// Add a diagnostic unless an equivalent one already exists.
+/// Equivalence: same message and span. If found, update got_token to the latest.
+/// Returns true if newly added, false if an existing diagnostic was updated.
+fn[T, K] ParserContext::push_diagnostic_unique(
+  self : ParserContext[T, K],
+  diag : Diagnostic[T],
+) -> Bool {
+  for i, existing in self.errors.iter2() {
+    if existing.message == diag.message &&
+      existing.start == diag.start &&
+      existing.end == diag.end {
+      // Keep a single logical diagnostic per message/span, but refresh token
+      // with the most recent parse emission.
+      self.errors[i] = diag
+      return false
+    }
+  }
+  self.errors.push(diag)
+  self.error_count = self.error_count + 1
+  true
+}
+
+///|
+/// Replay previous diagnostics that fall fully within [node_start, node_end).
+///
+/// allow_eof_boundary: pass true when the reused node has no error-bearing
+/// next sibling — meaning a zero-width diagnostic at node_end that is also
+/// at EOF was emitted by this node's grammar (ctx.error without placeholder).
+/// Pass false when the next sibling has error content, meaning the boundary
+/// diagnostic belongs to that sibling, not this node.
+fn[T, K] ParserContext::replay_reused_diagnostics(
+  self : ParserContext[T, K],
+  node_start : Int,
+  node_end : Int,
+  owns_right_boundary_zero_width_error : Bool,
+  allow_eof_boundary : Bool,
+) -> Bool {
+  let mut replayed_any = false
+  match self.reuse_diagnostics {
+    None => ()
+    Some(prev) =>
+      for d in prev {
+        // Half-open containment: [node_start, node_end), with one exception:
+        // keep zero-width diagnostics at node_end only when this reused node
+        // itself owns a zero-width error at that boundary (structural check),
+        // OR when the node ends at EOF and no error-bearing sibling follows
+        // (handles ctx.error at EOF without emit_error_placeholder).
+        let keep_right_boundary = d.start == node_end &&
+          d.end == node_end &&
+          (
+            owns_right_boundary_zero_width_error ||
+            (allow_eof_boundary && node_end >= self.source.length())
+          )
+        if d.start >= node_start &&
+          d.end <= node_end &&
+          (d.start < node_end || keep_right_boundary) {
+          if self.push_diagnostic_unique(d) {
+            replayed_any = true
+          }
+        }
+      }
+  }
+  replayed_any
+}
+
+///|
+/// If previous diagnostics are unavailable, synthesize diagnostics from
+/// pre-collected error spans in the reused subtree.
+fn[T, K] ParserContext::synthesize_reused_diagnostics(
+  self : ParserContext[T, K],
+  spans : Array[ReusedErrorSpan],
+) -> Unit {
+  for span in spans {
+    let info = self.token_info_at_or_after(self.position, span.start)
+    let _ = self.push_diagnostic_unique({
+      message: "reused syntax error",
+      start: span.start,
+      end: span.end,
+      got_token: info.token,
+    })
+  }
+}
+
+///|
+/// Emit all events for a reused node, replay its diagnostics, and advance
+/// both positions past it. Order matters:
+///   1. emit_node_events   — replay events (pure, no position change)
+///   2. replay/synthesize  — restore diagnostics while self.position still
+///                           points at node start (token_info_at_or_after needs it)
+///   3. advance_past_reused — advance self.position through the new token stream
+///   4. cursor.advance_past — advance cursor.current_offset through the old tree
+///
+/// Two separate advance calls because there are two independent positions:
+///   advance_past_reused — walks self.position through the *new* token stream
+///   cursor.advance_past  — walks cursor.current_offset through the *old* tree
+/// Both must stay in sync; without cursor.advance_past, subsequent seeks would
+/// detect false backward movement and reset the cursor to the root.
+///
+/// The None arm is unreachable in practice: emit_reused is only called when
+/// try_reuse returns Some, which requires reuse_cursor to be Some. It is
+/// handled defensively to keep the match exhaustive.
+fn[T, K] ParserContext::emit_reused(
+  self : ParserContext[T, K],
+  node : @green_tree.GreenNode,
+) -> Unit {
+  let node_start = if self.position < self.token_count {
+    (self.get_start)(self.position)
+  } else {
+    self.source.length()
+  }
+  let node_end = node_start + node.text_len
+  // Compute error spans once — used for both the boundary check and synthesis.
+  let error_spans : Array[ReusedErrorSpan] = []
+  let _ = collect_reused_error_spans(node, node_start, self.spec, error_spans)
+  let owns_right_boundary = error_spans
+    .iter()
+    .any(fn(s) { s.start == node_end && s.end == node_end })
+  self.emit_node_events(node)
+  // allow_eof_boundary: true when no error-bearing sibling follows this node,
+  // meaning a zero-width diagnostic at node_end that is at EOF was emitted by
+  // this node's own grammar (ctx.error without emit_error_placeholder).
+  // When the next sibling has error content it owns that boundary diagnostic.
+  let allow_eof_boundary = match self.reuse_cursor {
+    None => true
+    Some(cursor) => not(cursor.next_sibling_has_error())
+  }
+  // Diagnostic replay must happen before advance_past_reused: synthesize uses
+  // self.position to locate tokens within the node's span.
+  if not(
+      self.replay_reused_diagnostics(
+        node_start, node_end, owns_right_boundary, allow_eof_boundary,
+      ),
+    ) {
+    self.synthesize_reused_diagnostics(error_spans)
+  }
+  self.advance_past_reused(node)
+  match self.reuse_cursor {
+    Some(cursor) => cursor.advance_past(node)
+    None => () // unreachable — no cursor means try_reuse always returns None
+  }
+  self.reuse_count = self.reuse_count + 1
+}
+
+///|
+/// Reuse-aware node combinator. The core grammar API.
+/// On reuse hit: emits the old node and skips body entirely — O(1) per node.
+/// On miss: start_node → body() → finish_node — standard parse path.
+pub fn[T, K] ParserContext::node(
+  self : ParserContext[T, K],
+  kind : K,
+  body : () -> Unit,
+) -> Unit {
+  if self.try_reuse(kind) is Some(reuse) {
+    // Fast path — reuse hit:
+    // Replays the old subtree's events and advances position past it.
+    // `body` is never called: the closure is allocated but not invoked.
+    // reuse_count increments; no start_node/finish_node are pushed.
+    self.emit_reused(reuse)
+  } else {
+    // Slow path — cache miss:
+    // Runs the grammar body and wraps its output in a new node.
+    // Every token consumed inside body() advances position normally.
+    // Errors recorded inside body() accumulate in self.errors as usual.
+    self.start_node(kind)
+    body()
+    self.finish_node()
+  }
+}
+
+///|
+/// Retroactive node wrapper for expressions built via mark()/start_at().
+/// Reuse is not attempted here — the prefix is already emitted.
+/// Inner node() calls within body() still benefit from reuse.
+pub fn[T, K] ParserContext::wrap_at(
+  self : ParserContext[T, K],
+  mark : Int,
+  kind : K,
+  body : () -> Unit,
+) -> Unit {
+  self.start_at(mark, kind)
+  body()
+  self.finish_node()
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
