@@ -259,6 +259,7 @@ Required metadata in `moon.mod.json`:
 - `license`
 - `keywords`
 - `description`
+- `deps: { "moonbitlang/quickcheck": "<version>" }` (needed for Task 4.2 property tests)
 
 Acceptance criteria:
 - module builds without project-local dependencies
@@ -332,8 +333,9 @@ Suggested properties:
 - `build_tree` preserves concatenated text length
 - red node child offsets are monotonic and contiguous
 
-**Current state:** `moonbitlang/quickcheck` is already a dependency of the
-`dowdiness/parser` module, so property tests can be added without new deps.
+**Current state:** `moonbitlang/quickcheck` is a dependency of `dowdiness/parser`
+but not of standalone `seam`. Task 3.1 must add it to `seam`'s `moon.mod.json`
+before property tests can be written.
 
 Acceptance criteria:
 - property tests added where practical
