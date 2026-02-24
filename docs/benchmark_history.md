@@ -2,6 +2,138 @@
 
 Historical snapshots from project benchmark runs (full suite and focused runs).
 
+## 2026-02-24 (generic incremental reuse — Phase 3 cursor wired)
+
+- Command: `moon bench --package dowdiness/parser/benchmarks --release`
+- Git ref: `main` (`2e0242b`)
+- Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
+- Result: `59/59` benchmarks passed
+- Changes since previous entry:
+  - `ReuseCursor[T, K]` generalized to `src/core/`; old lambda-specific cursor removed
+  - Lambda grammar migrated: `parse_atom` uses `ctx.node()`, binary/app rules use `ctx.wrap_at()`
+  - `run_parse_incremental` wires `ReuseCursor` into `ParserContext` via `set_reuse_cursor`
+  - Three new Phase 3 cursor benchmarks added (see below)
+  - 8 new tests (source-shrink/grow, multi-region, boundary merge, diagnostic replay)
+
+### Phase 3: Cursor Reuse vs Full Reparse (110-token corpus)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| phase3: full green reparse, no cursor - 110 tokens | 21.19 µs | Baseline: pre-tokenized input, cursor setup matched |
+| phase3: cursor reuse, edit at end - 110 tokens | 42.32 µs | 54/55 IntLiterals reusable; cursor overhead dominates |
+| phase3: cursor reuse, edit at start - 110 tokens | 38.48 µs | 54/55 IntLiterals reusable; cursor overhead dominates |
+
+**Key finding:** For the 110-token flat `BinaryExpr` corpus, cursor overhead (~2×) exceeds
+reuse savings because `collect_old_tokens` (O(n) tree walk in `ReuseCursor::new`) runs on
+every iteration, and the reused nodes (`IntLiteral`) are each just one token. Cursor reuse
+shows net benefit when reused subtrees contain many tokens (e.g. large lambda bodies in a
+multi-definition file). These benchmarks establish the baseline for future cursor optimization.
+
+### Core Parse Scaling
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| parse scaling - small (5 tokens) | 1.07 µs | Full parse baseline (small) |
+| parse scaling - medium (15 tokens) | 4.70 µs | Full parse baseline (medium) |
+| parse scaling - large (30+ tokens) | 7.75 µs | Full parse baseline (large) |
+
+### Incremental Parser
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| incremental - initial parse | 0.56 µs | Parser creation + first parse |
+| incremental - small edit | 2.18 µs | `x` → `x + 1` |
+| incremental - multiple edits | 3.80 µs | 2 sequential edits |
+| incremental - replacement | 2.53 µs | `λx.x` → `\x.x` |
+| incremental vs full - edit at start | 12.61 µs | Boundary edit, medium expression |
+| incremental vs full - edit at end | 12.52 µs | Boundary edit, medium expression |
+| incremental vs full - edit in middle | 12.57 µs | Boundary edit, medium expression |
+| sequential edits - typing simulation | 2.20 µs | Single-char insert |
+| sequential edits - backspace simulation | 2.21 µs | Single-char delete |
+| incremental state baseline - repeated parsing | 5.06 µs | Edit + undo |
+| best case - cosmetic change | 3.01 µs | Localized edit path |
+| worst case - full invalidation | 12.44 µs | Full rebuild + incremental overhead |
+| memory pressure - large document | 20.98 µs | Larger input incremental edit |
+
+### Damage Tracking & Position Adjustment
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| damage tracking | 0.92 µs | Wagner-Graham damage expand |
+| damage tracking - localized damage | 1.28 µs | Small edit region |
+| damage tracking - widespread damage | 5.17 µs | Edit at start of medium expression |
+| position adjustment after edit | 2.48 µs | Tree position shift after edit |
+
+### CRDT Integration
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| tokenization | 0.31 µs | Lexer baseline |
+| ast to crdt | 2.39 µs | AST → CRDT conversion |
+| crdt to source | 2.59 µs | CRDT → source reconstruction |
+| crdt operations - nested structure | 6.49 µs | Nested structure round-trip |
+| crdt operations - round trip | 6.50 µs | Parse → CRDT → source → parse |
+
+### Error Recovery & High-level API
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| error recovery - valid | 0.91 µs | `parse_with_error_recovery`, valid input |
+| error recovery - error | 1.02 µs | `parse_with_error_recovery`, invalid input |
+| parsed document - parse | 0.72 µs | `ParsedDocument::parse` |
+| parsed document - edit | 2.75 µs | `ParsedDocument::edit` |
+
+### Phase 1: Incremental Tokenizer (110-token input)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| phase1: full tokenize - 110 tokens | 1.78 µs | Full tokenization baseline |
+| phase1: incremental tokenize - edit at start | 3.50 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit in middle | 3.34 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit at end | 3.06 µs | Includes `TokenBuffer::new()` setup |
+| phase1: full re-tokenize after edit | 1.83 µs | Comparison baseline |
+
+### Green-Tree Microbenchmarks
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| green-tree - token constructor | 0.02 µs | `GreenToken::new` hash compute path |
+| green-tree - node constructor from 32 children | 0.08 µs | `GreenNode::new` fold/hash/token_count path |
+| green-tree - equality identical 32 children | 0.17 µs | Hash check + deep equality walk |
+| green-tree - equality mismatch hash fast path | 0.01 µs | Expected early hash mismatch exit |
+
+### Token Interning
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| interner - intern_token cold miss | 0.10 µs | First call: two-level map miss + `GreenToken::new` |
+| interner - intern_token warm hit | 0.08 µs | Subsequent call: two-level map hit, allocation-free |
+| build_tree - x + 1 | 0.17 µs | No interning baseline |
+| build_tree_interned - x + 1, cold interner | 0.40 µs | First parse (all misses) |
+| build_tree_interned - x + 1, warm interner | 0.24 µs | Subsequent parses (all hits); 1.4× vs `build_tree` |
+| build_tree - 100 identical ident tokens | 1.13 µs | No interning, 100 `GreenToken::new` calls |
+| build_tree_interned - 100 identical tokens, warm | 1.81 µs | 1 miss + 99 hits; 1.6× vs `build_tree` |
+| parse_green_recover - no interner, small | 0.80 µs | `x + 1`, no interning |
+| parse_green_recover - cold interner, small | 1.06 µs | `x + 1`, first parse |
+| parse_green_recover - warm interner, small | 0.90 µs | `x + 1`, subsequent; 1.13× overhead |
+| parse_green_recover - no interner, large | 6.49 µs | `λf.λx.if…`, no interning |
+| parse_green_recover - warm interner, large | 7.05 µs | `λf.λx.if…`, subsequent; 1.09× overhead |
+
+### Notable Changes vs 2026-02-24 (generic ParserContext)
+
+Incremental parser numbers are slightly higher than the previous 2026-02-24 snapshot
+because `ctx.node()` performs a cursor check on every grammar combinator call (even when
+`reuse_cursor` is `None`, the `match` adds a branch). This is the intentional "zero overhead
+without cursor" design — the branch is predicted-not-taken in practice.
+
+| Metric | prev | today | Change |
+|---|---:|---:|---|
+| parse scaling - small (5 tokens) | 1.01 µs | 1.07 µs | +6% (node() match branch) |
+| parse scaling - medium (15 tokens) | 4.66 µs | 4.70 µs | +1% (noise) |
+| parse scaling - large (30+ tokens) | 7.67 µs | 7.75 µs | +1% (noise) |
+| incremental vs full - edit at start | 11.59 µs | 12.61 µs | +9% (node() + wrap_at() overhead) |
+| memory pressure - large document | 18.73 µs | 20.98 µs | +12% (node() on every atom) |
+
 ## 2026-02-24 (generic ParserContext — closure-based token storage)
 
 - Command: `moon bench --release`

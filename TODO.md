@@ -1,7 +1,7 @@
 # Incremental Parser TODO (Compact)
 
-**Last Updated:** 2026-02-03
-**Status:** Phases 1-4 complete; Phase 5 (Grammar Expansion) is next
+**Last Updated:** 2026-02-24
+**Status:** Phases 1-6 complete; Phase 7 (Grammar Expansion) is next
 
 ## Completed
 
@@ -85,10 +85,28 @@
 - ✅ Implementation plan: `docs/plans/2026-02-23-generic-parser-impl.md`
 - ✅ Benchmark snapshot: `docs/benchmark_history.md` (2026-02-24 entry)
 
+### Phase 6 (Generic Incremental Reuse) — Complete ✅
+
+**Goal:** Wire `ReuseCursor[T, K]` from `src/core/` into `ParserContext` via `node()` / `wrap_at()` combinators so incremental subtree reuse fires transparently for any grammar.
+
+- ✅ `ReuseCursor[T, K]` generic struct in `src/core/` with `collect_old_tokens`, `try_reuse`, `seek_node_at`, `advance_past`
+- ✅ `ParserContext` gains `reuse_cursor`, `reuse_count`, `set_reuse_cursor`, `set_reuse_diagnostics` fields/methods
+- ✅ `node(kind, body)` combinator: skips `body` closure on reuse hit (O(edit) skip)
+- ✅ `wrap_at(mark, kind, body)` combinator: retroactive wrapping; inner `node()` calls still reuse
+- ✅ Lambda grammar migrated: `parse_atom` uses `ctx.node()`, `parse_binary_op`/`parse_application` use `ctx.wrap_at()`
+- ✅ `run_parse_incremental` helper wires cursor + diagnostics; replaces duplicated entry-point logic
+- ✅ Old lambda-specific `ReuseCursor` removed from `src/parser/` (3 files, 946 lines deleted)
+- ✅ `make_reuse_cursor` factory updated to return `@core.ReuseCursor[Token, SyntaxKind]`
+- ✅ Reuse verified by `reuse_count > 0` tests (not just structural equality)
+- ✅ `prev_diagnostics?` parameter added to cursor entry points for diagnostic replay on reused subtrees
+- ✅ Phase 3 cursor benchmarks added; cursor overhead documented for 110-token flat grammar
+- ✅ 372 total tests passing; 59 benchmarks passing
+- ✅ Design: `docs/plans/2026-02-24-generic-incremental-reuse-design.md`
+
 ## Optional / On-Demand
 
 ### Priority 4: Future Enhancements
 - [ ] Position-based fragment finding (only if profiling shows need)
 - [ ] Consider tree-sitter migration (only if requirements change)
 - [ ] Semantics-aware reuse checks (follow-set/context-sensitive) for projectional/live editing
-- [ ] Generic `ReuseCursor[T]` — move cursor into `src/core/` so `parse_with_cursor` is fully generic (Phase 2)
+- [x] Generic `ReuseCursor[T]` — move cursor into `src/core/` so `parse_with_cursor` is fully generic (Phase 2)

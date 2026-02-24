@@ -115,7 +115,7 @@ fn parse_binary_op(ctx) {
 
 Cannot reuse because the prefix (first child) is already parsed and emitted. Inner `parse_application` calls still benefit from `node()` reuse on their children.
 
-`wrap_at` is a thin wrapper — it does not exist yet in `core` and must be added:
+`wrap_at` is a thin wrapper implemented in `core`:
 
 ```moonbit
 pub fn[T, K] ParserContext::wrap_at(
@@ -354,28 +354,28 @@ consumption and keeps `position` aligned.
 
 ## Migration Plan
 
-### Phase 1: Extend `LanguageSpec` and `ParserContext`
+### Phase 1: Extend `LanguageSpec` and `ParserContext` ✅ COMPLETE
 
-1. Add `raw_is_trivia`, `raw_is_error`, `green_token_matches` to `LanguageSpec` and `LanguageSpec::new`
-2. Add `reuse_cursor` and `reuse_count` fields to `ParserContext`
-3. Implement `node()`, `wrap_at()`, `try_reuse()`, `emit_reused()`, `emit_node_events()`, `advance_past_reused()`
-4. Update `lambda_spec` with new reuse callbacks
+1. ✅ Add `raw_is_trivia`, `raw_is_error`, `green_token_matches` to `LanguageSpec` and `LanguageSpec::new`
+2. ✅ Add `reuse_cursor` and `reuse_count` fields to `ParserContext`
+3. ✅ Implement `node()`, `wrap_at()`, `try_reuse()`, `emit_reused()`, `emit_node_events()`, `advance_past_reused()`
+4. ✅ Update `lambda_spec` with new reuse callbacks
 
-### Phase 2: Move `ReuseCursor` to `core`
+### Phase 2: Move `ReuseCursor` to `core` ✅ COMPLETE
 
-1. Copy `ReuseCursor` to `core`, replacing all `@syntax`/`@token` references with `LanguageSpec` callbacks
-2. Remove `@range.Range` dependency — use `(damage_start, damage_end)`
-3. Add tests using the existing `TestTok`/`TestKind` test language in `lib_wbtest.mbt`
-4. Remove old `ReuseCursor` from `parser/`
+1. ✅ Copy `ReuseCursor` to `core`, replacing all `@syntax`/`@token` references with `LanguageSpec` callbacks
+2. ✅ Remove `@range.Range` dependency — use `(damage_start, damage_end)`
+3. ✅ Add tests using the existing `TestTok`/`TestKind` test language in `lib_wbtest.mbt`
+4. ✅ Remove old `ReuseCursor` from `parser/`
 
-### Phase 3: Migrate Lambda Grammar to `node()` / `wrap_at()`
+### Phase 3: Migrate Lambda Grammar to `node()` / `wrap_at()` ✅ COMPLETE
 
-1. Convert `parse_atom` to use `ctx.node()`
-2. Convert `parse_binary_op` to use `ctx.wrap_at()`
-3. Convert `parse_application` to use `ctx.wrap_at()`
-4. Wire `parse_green_with_cursor` and `parse_green_recover_with_tokens` to pass cursor into `ParserContext`
-5. Verify all 367+ tests pass
-6. Benchmark incremental vs full reparse
+1. ✅ Convert `parse_atom` to use `ctx.node()`
+2. ✅ Convert `parse_binary_op` to use `ctx.wrap_at()`
+3. ✅ Convert `parse_application` to use `ctx.wrap_at()`
+4. ✅ Wire `parse_green_with_cursor` and `parse_green_recover_with_tokens` to pass cursor into `ParserContext`
+5. ✅ Verify all 372 tests pass
+6. ✅ Benchmark incremental vs full reparse
 
 ### Phase 4 (future): `reusable()` for compound expressions
 
