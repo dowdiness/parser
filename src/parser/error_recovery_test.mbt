@@ -153,18 +153,18 @@ test "error recovery: unclosed paren" {
 
 ///|
 test "parse_cst_recover returns diagnostics" {
-  let (green, diagnostics) = parse_cst_recover("λ.x")
+  let (cst, diagnostics) = parse_cst_recover("λ.x")
   inspect(diagnostics.length(), content="1")
   inspect(diagnostics[0].message, content="Expected parameter after λ")
   // Green tree should be a valid SourceFile
-  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(cst.kind), content="SourceFile")
 }
 
 ///|
 test "parse_cst_recover no errors on valid input" {
-  let (green, diagnostics) = parse_cst_recover("λx.x")
+  let (cst, diagnostics) = parse_cst_recover("λx.x")
   inspect(diagnostics.length(), content="0")
-  inspect(@syntax.SyntaxKind::from_raw(green.kind), content="SourceFile")
+  inspect(@syntax.SyntaxKind::from_raw(cst.kind), content="SourceFile")
 }
 
 ///|

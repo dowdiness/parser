@@ -64,7 +64,11 @@ fn run_parse_incremental(
       " unclosed nodes",
     )
   }
-  (select_build_tree(ctx.events.events, interner), ctx.errors, ctx.reuse_count)
+  (
+    select_build_tree(ctx.events.to_events(), interner),
+    ctx.errors,
+    ctx.reuse_count,
+  )
 }
 
 ///|
@@ -92,12 +96,12 @@ fn select_build_tree(
 /// Prefer parse_cst_recover for new code; this function is retained for
 /// callers that depend on the raising contract.
 pub fn parse_cst(source : String) -> @seam.CstNode raise {
-  let (green, errors) = parse_cst_recover(source)
+  let (cst, errors) = parse_cst_recover(source)
   if errors.length() > 0 {
     let diag = errors[0]
     raise ParseError(diag.message, diag.got_token)
   }
-  green
+  cst
 }
 
 ///|
@@ -126,7 +130,7 @@ fn run_parse(
       " unclosed nodes",
     )
   }
-  (select_build_tree(ctx.events.events, interner), ctx.errors)
+  (select_build_tree(ctx.events.to_events(), interner), ctx.errors)
 }
 
 ///|

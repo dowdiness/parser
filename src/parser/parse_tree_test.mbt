@@ -95,7 +95,7 @@ test "parse_tree preserves source positions" {
 
 ///|
 test "parse_tree: lambda span excludes leading whitespace in application" {
-  // Regression: green tree emits whitespace before λ inside the LambdaExpr
+  // Regression: concrete syntax tree emits whitespace before λ inside the LambdaExpr
   // node. The conversion must skip it so Lam start points at λ, not the space.
   let node = parse_tree("f  λx.x")
   // Root is App(f, λx.x)

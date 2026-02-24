@@ -1,8 +1,8 @@
 # `seam` Publish-Readiness Plan (Standalone Module)
 
 **Date:** 2026-02-22
-**Updated:** 2026-02-24
-**Status:** In Progress — Phase 0 not started; Phases 1–2 partially complete; Phases 3–5 not started; Phase 6 (CI) deferred
+**Updated:** 2026-02-25
+**Status:** In Progress — Phase 0 complete; Phase 1 Task 1.1 complete; Phases 1.2–5 not started; Phase 6 (CI) deferred
 
 ## Goal
 
@@ -69,7 +69,7 @@ Initial version: `0.1.0` (to be tagged and published separately)
 
 ---
 
-## Phase 0: Naming Alignment — ❌ Not started
+## Phase 0: Naming Alignment — ✅ Complete
 
 Rename the three tree layers to names that are self-explanatory without
 knowledge of the Roslyn/rowan tradition. Must land before Phase 1 so all
@@ -91,7 +91,7 @@ opaque to newcomers. Proposed replacements:
 and AST in different communities). `SyntaxNode` (type) inside the CST module
 is the preferred convention.
 
-### Task 0.1: Rename `green-tree` package and types — ❌ Not done
+### Task 0.1: Rename `green-tree` package and types — ✅ Done
 
 Scope:
 - Rename package directory `src/green-tree/` → `src/seam/`
@@ -105,7 +105,7 @@ Acceptance criteria:
 - `moon check` and `moon test` pass with 0 regressions
 - no remaining references to the old type names in source or docs
 
-### Task 0.2: Rename `red-tree` types — ❌ Not done
+### Task 0.2: Rename `red-tree` types — ✅ Done
 
 Scope:
 - Rename `RedNode` → `SyntaxNode` within the CST package (or a new `syntax`
@@ -115,7 +115,7 @@ Scope:
 Acceptance criteria:
 - `moon check` and `moon test` pass with 0 regressions
 
-### Task 0.3: Rename `term-tree` to `ast` — ❌ Not done
+### Task 0.3: Rename `term-tree` to `ast` — ✅ Done
 
 **Scope note:** `TermNode` lives in `src/parser/` (the lambda grammar layer),
 not in `src/green-tree/`. This rename is a `dowdiness/parser` concern and does
@@ -134,7 +134,7 @@ Acceptance criteria:
 
 ## Phase 1: API Hardening — ⚠️ Partial
 
-### Task 1.1: Visibility and invariants audit — ❌ Not done
+### Task 1.1: Visibility and invariants audit — ✅ Done
 
 Audit items:
 - mutable/public fields that should be private or method-based

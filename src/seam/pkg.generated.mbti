@@ -49,12 +49,13 @@ pub impl Hash for CstToken
 pub impl Show for CstToken
 
 pub struct EventBuffer {
-  events : Array[ParseEvent]
+  // private fields
 }
 pub fn EventBuffer::mark(Self) -> Int
 pub fn EventBuffer::new() -> Self
 pub fn EventBuffer::push(Self, ParseEvent) -> Unit
 pub fn EventBuffer::start_at(Self, Int, RawKind) -> Unit
+pub fn EventBuffer::to_events(Self) -> Array[ParseEvent]
 
 pub struct Interner {
   // private fields
@@ -82,13 +83,13 @@ pub impl Hash for RawKind
 pub impl Show for RawKind
 
 pub struct SyntaxNode {
-  green : CstNode
+  cst : CstNode
   parent : SyntaxNode?
   offset : Int
 }
 pub fn SyntaxNode::children(Self) -> Array[Self]
 pub fn SyntaxNode::end(Self) -> Int
-pub fn SyntaxNode::from_green(CstNode) -> Self
+pub fn SyntaxNode::from_cst(CstNode) -> Self
 pub fn SyntaxNode::kind(Self) -> RawKind
 pub fn SyntaxNode::new(CstNode, Self?, Int) -> Self
 pub fn SyntaxNode::start(Self) -> Int

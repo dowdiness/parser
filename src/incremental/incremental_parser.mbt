@@ -21,7 +21,7 @@
 pub struct IncrementalParser {
   mut source : String // Current source text
   mut tree : @ast.AstNode? // Current parse tree
-  mut green_tree : @seam.CstNode? // Current green tree (for subtree reuse)
+  mut cst_tree : @seam.CstNode? // Current cst tree (for subtree reuse)
   mut token_buffer : @lexer.TokenBuffer? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]] // Prior parse diagnostics for reuse replay
@@ -34,7 +34,7 @@ pub fn IncrementalParser::new(source : String) -> IncrementalParser {
   {
     source,
     tree: None,
-    green_tree: None,
+    cst_tree: None,
     token_buffer: None,
     last_reuse_count: 0,
     last_diagnostics: [],
@@ -66,19 +66,19 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @ast.AstNode {
     let buffer = @lexer.TokenBuffer::new(self.source)
     self.token_buffer = Some(buffer)
     // Parse through green tree for subtree reuse support
-    let (green, diagnostics) = @parse.parse_cst_recover(
+    let (cst, diagnostics) = @parse.parse_cst_recover(
       self.source,
       interner=Some(self.interner),
     )
-    self.green_tree = Some(green)
+    self.cst_tree = Some(cst)
     self.last_reuse_count = 0
     self.last_diagnostics = diagnostics
-    let parsed_tree = @parse.cst_to_ast_node(green, 0, Ref::new(0))
+    let parsed_tree = @parse.cst_to_ast_node(cst, 0, Ref::new(0))
     parsed_tree
   } catch {
     @lexer.TokenizationError(msg) => {
       let error_msg = "Tokenization error: " + msg
-      self.green_tree = None
+      self.cst_tree = None
       self.token_buffer = None
       self.last_reuse_count = 0
       self.last_diagnostics = []
@@ -112,7 +112,7 @@ pub fn IncrementalParser::edit(
           let error_msg = "Tokenization error: " + msg
           let tree = @ast.AstNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
-          self.green_tree = None
+          self.cst_tree = None
           self.token_buffer = None
           self.last_reuse_count = 0
           self.last_diagnostics = []
@@ -126,7 +126,7 @@ pub fn IncrementalParser::edit(
           let error_msg = "Tokenization error: " + msg
           let tree = @ast.AstNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
-          self.green_tree = None
+          self.cst_tree = None
           self.token_buffer = None
           self.last_reuse_count = 0
           self.last_diagnostics = []
@@ -188,7 +188,7 @@ fn IncrementalParser::incremental_reparse(
   }
 
   // Create cursor from old green tree for subtree reuse
-  let cursor = match self.green_tree {
+  let cursor = match self.cst_tree {
     Some(old_green) =>
       Some(
         @parse.make_reuse_cursor(
@@ -211,7 +211,7 @@ fn IncrementalParser::incremental_reparse(
   )
 
   // Update stored green tree and reuse stats
-  self.green_tree = Some(new_green)
+  self.cst_tree = Some(new_green)
   self.last_reuse_count = reuse_count
   self.last_diagnostics = diagnostics
 

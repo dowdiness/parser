@@ -166,7 +166,7 @@ fn convert_syntax_node(
     id
   }
 
-  let g = node.green
+  let g = node.cst
   let off = node.start()
   match @syntax.SyntaxKind::from_raw(g.kind) {
     @syntax.IntLiteral => {
@@ -199,8 +199,8 @@ fn convert_syntax_node(
         "",
       )
       let (tight_start, tight_end) = tight_span(g, off)
-      let red_children = node.children()
-      for child in red_children {
+      let syntax_children = node.children()
+      for child in syntax_children {
         let body = convert_syntax_node(child, counter)
         return @ast.AstNode::new(
           @ast.AstKind::Lam(param),
@@ -220,8 +220,8 @@ fn convert_syntax_node(
     }
     @syntax.AppExpr => {
       let children : Array[@ast.AstNode] = []
-      let red_children = node.children()
-      for child in red_children {
+      let syntax_children = node.children()
+      for child in syntax_children {
         children.push(convert_syntax_node(child, counter))
       }
       if children.length() >= 2 {
@@ -245,8 +245,8 @@ fn convert_syntax_node(
     @syntax.BinaryExpr => {
       let ops = collect_binary_ops(g)
       let children : Array[@ast.AstNode] = []
-      let red_children = node.children()
-      for child in red_children {
+      let syntax_children = node.children()
+      for child in syntax_children {
         children.push(convert_syntax_node(child, counter))
       }
       if children.length() >= 2 {
@@ -275,8 +275,8 @@ fn convert_syntax_node(
     @syntax.IfExpr => {
       let (tight_start, _) = tight_span(g, off)
       let children : Array[@ast.AstNode] = []
-      let red_children = node.children()
-      for child in red_children {
+      let syntax_children = node.children()
+      for child in syntax_children {
         children.push(convert_syntax_node(child, counter))
       }
       let if_end = if children.length() > 0 {
@@ -294,8 +294,8 @@ fn convert_syntax_node(
     }
     @syntax.ParenExpr => {
       let (tight_start, tight_end) = tight_span(g, off)
-      let red_children = node.children()
-      for child in red_children {
+      let syntax_children = node.children()
+      for child in syntax_children {
         let inner = convert_syntax_node(child, counter)
         return @ast.AstNode::new(
           inner.kind,
@@ -324,9 +324,9 @@ fn convert_syntax_node(
       )
     }
     @syntax.SourceFile => {
-      let red_children = node.children()
+      let syntax_children = node.children()
       let children : Array[@ast.AstNode] = []
-      for child in red_children {
+      for child in syntax_children {
         children.push(convert_syntax_node(child, counter))
       }
       convert_source_file_children(children, off, counter)
@@ -357,8 +357,8 @@ pub fn cst_to_ast_node(
   offset : Int,
   node_id_counter : Ref[Int],
 ) -> @ast.AstNode {
-  let red = @seam.SyntaxNode::new(cst, None, offset)
-  convert_syntax_node(red, node_id_counter)
+  let syntax = @seam.SyntaxNode::new(cst, None, offset)
+  convert_syntax_node(syntax, node_id_counter)
 }
 
 ///|

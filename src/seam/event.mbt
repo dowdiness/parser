@@ -1,19 +1,54 @@
 ///|
+/// A single event in the parse event stream.
+///
+/// Events are produced by a parser and consumed by `build_tree` /
+/// `build_tree_interned` to construct a `CstNode` tree.
+///
+/// Invariant: the event stream must be balanced — every `StartNode`
+/// must have exactly one matching `FinishNode` that follows it.
+/// Unclaimed `Tombstone` slots are silently skipped by `build_tree`.
 pub(all) enum ParseEvent {
+  /// Begin a new interior node of the given kind.
   StartNode(RawKind)
+  /// Close the most recently opened interior node.
   FinishNode
+  /// A leaf token with the given kind and text.
   Token(RawKind, String)
+  /// A reserved-but-unclaimed slot; ignored by `build_tree`.
+  /// Created by `EventBuffer::mark` and replaced by `EventBuffer::start_at`.
   Tombstone
 } derive(Show, Eq)
 
 ///|
+/// Accumulates parse events for a single parse run.
+///
+/// ## Invariants
+///
+/// The only sanctioned ways to add events are:
+/// - `push(event)` — append any `ParseEvent` directly
+/// - `mark()` — reserve a `Tombstone` slot and return its index
+/// - `start_at(mark, kind)` — retroactively fill a `Tombstone` with `StartNode`
+///
+/// After parsing, pass the events to `build_tree` or `build_tree_interned`
+/// via `EventBuffer::to_events()`. The raw backing array is private to
+/// prevent callers from bypassing the mark/start_at contract.
 pub struct EventBuffer {
-  events : Array[ParseEvent]
+  priv events : Array[ParseEvent]
 }
 
 ///|
 pub fn EventBuffer::new() -> EventBuffer {
   { events: [] }
+}
+
+///|
+/// Return the accumulated events as an array slice.
+///
+/// Intended for passing to `build_tree` or `build_tree_interned` after
+/// the parse is complete. The returned array must not be mutated; doing
+/// so corrupts the event stream invariants.
+pub fn EventBuffer::to_events(self : EventBuffer) -> Array[ParseEvent] {
+  self.events
 }
 
 ///|
@@ -60,7 +95,7 @@ pub fn EventBuffer::start_at(
 }
 
 ///|
-/// Build a green tree from a flat event stream, interning all tokens through
+/// Build a concrete syntax tree from a flat event stream, interning all tokens through
 /// the provided Interner. Structurally identical to build_tree; differs only
 /// in that Token events are deduplicated via intern_token.
 ///
@@ -123,7 +158,7 @@ pub fn build_tree_interned(
 }
 
 ///|
-/// Build a green tree from a flat event stream.
+/// Build a concrete syntax tree from a flat event stream.
 /// root_kind is the kind of the implicit root node (e.g., SourceFile).
 ///
 /// `trivia_kind`: forwarded to every `CstNode::new` call; leaf tokens with

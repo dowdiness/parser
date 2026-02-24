@@ -14,7 +14,7 @@ pub fn parse_with_error_recovery(
       return (@ast.AstNode::error(error_msg, 0, 0), errors)
     }
   }
-  let (green, diagnostics) = result
+  let (cst, diagnostics) = result
   // Map diagnostics to error strings — include token name for readability
   for diag in diagnostics {
     errors.push(
@@ -25,7 +25,7 @@ pub fn parse_with_error_recovery(
       ")",
     )
   }
-  let tree = cst_to_ast_node(green, 0, Ref::new(0))
+  let tree = cst_to_ast_node(cst, 0, Ref::new(0))
   (tree, errors)
 }
 

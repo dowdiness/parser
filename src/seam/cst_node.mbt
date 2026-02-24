@@ -4,6 +4,16 @@
 pub(all) struct RawKind(Int) derive(Eq, Show, Hash, Compare)
 
 ///|
+/// A leaf token in the CST.
+///
+/// ## Invariants
+///
+/// - `hash` is a stable structural hash computed from `kind` and `text`
+///   at construction time by `CstToken::new`. It is used as the fast-path
+///   for `Eq` and as the `Hash` trait output (see stability guarantees on
+///   the `Eq` and `Hash` impls below).
+/// - `hash`, `kind`, and `text` are frozen after construction. Never mutate
+///   these fields directly; doing so invalidates the equality and hash semantics.
 pub(all) struct CstToken {
   kind : RawKind
   text : String
@@ -24,6 +34,10 @@ pub fn CstToken::text_len(self : CstToken) -> Int {
 }
 
 ///|
+/// **Stability guarantee:** Two `CstToken`s are equal iff they have the
+/// same `kind` and `text`. The cached `hash` is compared first as a fast
+/// rejection path; a hash match does NOT skip the kind/text comparison.
+/// This behavior is stable across versions.
 pub impl Eq for CstToken with equal(self, other) {
   if self.hash != other.hash {
     return false
@@ -32,7 +46,9 @@ pub impl Eq for CstToken with equal(self, other) {
 }
 
 ///|
-/// Hash implementation reuses the cached structural hash.
+/// **Stability guarantee:** The `Hash` output is the cached structural hash
+/// (`combine_hash(RawKind.inner, string_hash(text))`). This value is stable
+/// as long as `combine_hash` and `string_hash` are stable.
 pub impl Hash for CstToken with hash_combine(self, hasher) {
   hasher.combine_int(self.hash)
 }
@@ -82,6 +98,25 @@ pub impl Hash for CstElement with hash_combine(self, hasher) {
 }
 
 ///|
+/// An interior node in the CST.
+///
+/// ## Invariants
+///
+/// - `children` is frozen after construction. Mutating it externally
+///   invalidates the cached `text_len`, `hash`, and `token_count` fields,
+///   which are all computed once in `CstNode::new` and never recomputed.
+///   Treat `children` as a read-only sequence.
+///
+/// - `hash` is a stable structural content hash derived recursively from
+///   `kind` and every child's hash. Two `CstNode`s are structurally equal
+///   iff they have the same `kind`, same number of children, and pairwise-
+///   equal children. The `Eq` impl uses `hash` as a fast rejection path
+///   (see stability guarantee on `Eq` below).
+///
+/// - `text_len` is the total byte length of all leaf token text under this
+///   node, computed as the sum of `child.text_len()` at construction time.
+///
+/// - `token_count` is the non-trivia leaf token count (see field doc below).
 pub(all) struct CstNode {
   kind : RawKind
   children : Array[CstElement]
@@ -140,6 +175,11 @@ pub fn CstNode::kind(self : CstNode) -> RawKind {
 }
 
 ///|
+/// **Stability guarantee:** Two `CstNode`s are structurally equal iff they
+/// have the same `kind`, same number of children, and pairwise-equal children
+/// (per `CstElement::Eq`). The cached `hash` is compared first as a fast
+/// rejection path; a hash match does NOT bypass the deep structural check.
+/// This behavior is stable across versions.
 pub impl Eq for CstNode with equal(self, other) {
   if self.hash != other.hash {
     return false
@@ -157,13 +197,15 @@ pub impl Eq for CstNode with equal(self, other) {
 }
 
 ///|
-/// Hash implementation reuses the cached structural hash.
+/// **Stability guarantee:** The `Hash` output is the cached structural content
+/// hash, derived recursively from `kind` and each child's hash via
+/// `combine_hash`. Stable as long as `combine_hash` is stable.
 pub impl Hash for CstNode with hash_combine(self, hasher) {
   hasher.combine_int(self.hash)
 }
 
 ///|
-/// Check if this green tree contains any error nodes or error tokens.
+/// Check if this concrete syntax tree contains any error nodes or error tokens.
 /// error_node_kind and error_token_kind are language-specific RawKind values.
 pub fn CstNode::has_errors(
   self : CstNode,
