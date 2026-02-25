@@ -4,5 +4,8 @@
   "repository": "https://github.com/dowdiness/seam",
   "license": "Apache-2.0",
   "keywords": ["cst", "syntax-tree", "incremental-parsing", "moonbit"],
-  "description": "Language-agnostic concrete syntax tree infrastructure for incremental parsers"
+  "description": "Language-agnostic concrete syntax tree infrastructure for incremental parsers",
+  "deps": {
+    "moonbitlang/quickcheck": "0.9.10"
+  }
 }

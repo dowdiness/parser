@@ -1,3 +1,7 @@
 import {
   "moonbitlang/core/hashmap",
 }
+
+import {
+  "moonbitlang/quickcheck" @qc,
+} for "wbtest"
