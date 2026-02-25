@@ -601,7 +601,8 @@ fn Runtime::record_batch_rollback(
   rollback : () -> Unit,
 ) -> Unit {
   // Some internal batch-like flows (e.g. commit callbacks) temporarily
-  // raise batch_depth without creating an undo frame.
+  // raise batch_depth without creating an undo frame. In this mode, writes
+  // still use batch commit mechanics, but there is no user-visible frame to roll back.
   if self.batch_frames.length() == 0 {
     return
   }

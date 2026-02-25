@@ -144,6 +144,8 @@ let res = @incr.batch_result(app, fn() raise {
 })
 ```
 
+Like `Runtime::batch`, `batch_result` captures raised errors only; `abort()` is not catchable and is not converted to `Err`.
+
 ## Documentation
 
 | Document | Description |

@@ -32,6 +32,7 @@ rt.batch(() => {
 
 Behavior:
 - Nested batches are supported (only the outermost batch commits)
+- If an inner batch raises, its writes are rolled back before the error is re-raised
 - All committed changes share one revision bump
 - Revert detection applies to `Signal::set()` writes (`5 -> 0 -> 5` can result in no net change)
 - Reads during a batch observe pre-batch values
@@ -43,6 +44,7 @@ Limit:
 ### `Runtime::batch_result(self, f: () -> Unit raise?) -> Result[Unit, Error]`
 
 Executes a batch and returns raised errors as `Result` instead of re-raising.
+Like `Runtime::batch`, this handles raised errors only; `abort()` still escapes and is not converted to `Err`.
 
 ```moonbit
 suberror BatchStop {

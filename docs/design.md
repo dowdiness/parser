@@ -294,12 +294,13 @@ Without batching, each `Signal::set()` call bumps the global revision independen
 
 If the batch closure raises, the runtime rolls back pending writes:
 
-- `pending_value` is cleared for each queued signal via `rollback_pending`
-- `commit_pending` / `rollback_pending` closures are cleared
-- `batch_pending_signals` is cleared
+- Only writes made in the failing batch frame are rolled back
+- `pending_value` and registration state are restored to the pre-frame snapshot
+- Signals first registered by the failing frame are removed from `batch_pending_signals`
+- `batch_max_durability` is recomputed from the remaining pending writes
 - `batch_depth` is restored before re-raising
 
-This keeps runtime state consistent after recoverable (raised) failures.
+This keeps runtime state consistent after recoverable (raised) failures, including nested failures caught by outer batches.
 
 ### Abort Limitation
 
@@ -311,7 +312,11 @@ The two-phase design enables revert detection: if a signal is set to a new value
 
 ### Nested Batches
 
-Batches can be nested. A `batch_depth` counter tracks nesting. Only the outermost batch triggers the commit phase. Inner batches are transparent — their signal writes accumulate in the same pending set.
+Batches can be nested. A `batch_depth` counter tracks nesting, and each `Runtime::batch` call pushes a rollback frame.
+
+- On successful inner batch completion, its rollback entries are merged into the parent frame.
+- On inner failure, only that frame is rolled back before re-raising.
+- Only the outermost successful batch triggers the commit phase.
 
 ## Comparison with alien-signals
 
