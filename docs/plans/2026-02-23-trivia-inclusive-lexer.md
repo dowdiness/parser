@@ -228,14 +228,13 @@ test "parse preserves whitespace in green tree" {
 }
 ```
 
-**Step 2: Add `flush_trivia` — TODO(human)**
+**Step 2: Add `flush_trivia`**
 
 ```moonbit
 ///|
 /// Emit all consecutive Whitespace tokens at current position to the
 /// event stream, advancing position past each one.
 fn GreenParser::flush_trivia(self : GreenParser) -> Unit {
-  // TODO(human): implement trivia absorption
 }
 ```
 

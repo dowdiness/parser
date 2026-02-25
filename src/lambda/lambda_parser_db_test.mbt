@@ -119,9 +119,6 @@ test "LambdaParserDb: set_source from lex error to valid clears is_lex_error" {
 /// three-memo @incremental.ParserDb on a set of representative inputs.
 /// The two pipelines must produce structurally equal ASTs for all valid sources.
 test "LambdaParserDb: parity with incremental.ParserDb" {
-  // TODO(human): fill in `sources` with representative test cases.
-  // Think about: basic expressions, nested lambdas, if-then-else, operator
-  // precedence, application chains, and any grammar forms that might diverge.
   let sources : Array[String] = [
     "λx.x      +                   1   ", "λx.x λy.y + x", "if true then 1 else 4",
     "1 + 5993 +", "λa.λb.λc. if c then a b else 124321 - 31 + a c", "10 - 3 + 1",
