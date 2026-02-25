@@ -254,11 +254,24 @@ let value = doubled.get_or(0)
 
 If a cycle error occurs, computes a fallback from the cycle error; otherwise returns the cached value.
 
+**Direct Runtime:**
 ```moonbit
-let value = doubled.get_or_else(err => {
-  println(err.format_path(rt))
-  0
-})
+fn read_or_fallback_rt(rt : Runtime, doubled : Memo[Int]) -> Int {
+  doubled.get_or_else(err => {
+    println(err.format_path(rt))
+    0
+  })
+}
+```
+
+**Database pattern:**
+```moonbit
+fn read_or_fallback_db[Db : IncrDb](app : Db, doubled : Memo[Int]) -> Int {
+  doubled.get_or_else(err => {
+    println(err.format_path(app.runtime()))
+    0
+  })
+}
 ```
 
 ### `Memo::is_up_to_date(self) -> Bool`
@@ -689,10 +702,45 @@ gc_tracked(rt, my_tracked_struct)
 ### `batch[Db : IncrDb](db: Db, f: () -> Unit raise?) -> Unit raise?`
 
 Runs a batch using `db.runtime()`, including rollback-on-raise semantics.
+This is the IncrDb helper form of `rt.batch(...)`.
+
+```moonbit
+fn update_cart[Db : IncrDb](
+  app : Db,
+  price : Signal[Int],
+  quantity : Signal[Int],
+) -> Unit raise? {
+  @incr.batch(app, fn() raise {
+    price.set(100)
+    quantity.set(3)
+  })
+}
+```
 
 ### `batch_result[Db : IncrDb](db: Db, f: () -> Unit raise?) -> Result[Unit, Error]`
 
 Runs a batch using `db.runtime()` and returns raised errors as `Result`.
+This is the IncrDb helper form of `rt.batch_result(...)`.
+
+```moonbit
+suberror BatchStop {
+  Stop
+}
+
+fn update_cart_result[Db : IncrDb](
+  app : Db,
+  price : Signal[Int],
+  quantity : Signal[Int],
+) -> Result[Unit, Error] {
+  let res = @incr.batch_result(app, fn() raise {
+    price.set(100)
+    quantity.set(3)
+    raise Stop
+  })
+  inspect(res is Err(_), content="true")
+  res
+}
+```
 
 ---
 

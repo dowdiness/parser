@@ -81,11 +81,11 @@ test "trait: batch via IncrDb rolls back on raised error" {
   })
   inspect(memo.get(), content="2")
   inspect(compute_count, content="1")
-  let res : Result[Unit, Error] = try? @incr.batch(db, () => {
+  let res = try? @incr.batch(db, () => {
     x.set(10)
     raise Stop
   })
-  inspect(res is Err(_), content="true")
+  inspect(res is Err(Stop), content="true")
   inspect(x.get(), content="1")
   // Rollback keeps previous committed state, so memo remains cached.
   inspect(memo.get(), content="2")
@@ -104,7 +104,7 @@ test "trait: batch_result via IncrDb" {
     x.set(3)
     raise Stop
   })
-  inspect(err is Err(_), content="true")
+  inspect(err is Err(Stop), content="true")
   inspect(x.get(), content="2")
 }
 

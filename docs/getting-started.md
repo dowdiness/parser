@@ -93,6 +93,15 @@ inspect(total.get(), content="1000")
 
 `Memo::get()` is convenient but aborts on cycle errors. For resilient applications, use `get_result()`:
 
+**Database pattern:**
+```moonbit
+match total.get_result() {
+  Ok(value) => println("Total: \{value}")
+  Err(err) => println(err.format_path(app.runtime()))
+}
+```
+
+**Direct Runtime:**
 ```moonbit
 match total.get_result() {
   Ok(value) => println("Total: \{value}")
@@ -123,15 +132,18 @@ inspect(changes, content="1")
 
 Batch writes are transactional for raised errors:
 
-**Database pattern:**
+**Shared setup:**
 ```moonbit
 suberror BatchStop {
   Stop
 }
+```
 
+**Database pattern:**
+```moonbit
 let amount = @incr.create_signal(app, 100)
 let res = @incr.batch_result(app, fn() raise {
-  amount.set(123)
+  amount.set(999)
   raise Stop
 })
 
@@ -141,10 +153,6 @@ inspect(amount.get(), content="100") // rolled back
 
 **Direct Runtime:**
 ```moonbit
-suberror BatchStop {
-  Stop
-}
-
 let amount = Signal(rt, 100)
 let res : Result[Unit, Error] = try? rt.batch(fn() raise {
   amount.set(999)
