@@ -101,9 +101,9 @@ pub impl Show for SyntaxElement
 pub impl @debug.Debug for SyntaxElement
 
 pub struct SyntaxNode {
-  cst : CstNode
   parent : SyntaxNode?
   offset : Int
+  // private fields
 }
 pub fn SyntaxNode::all_children(Self) -> Array[SyntaxElement]
 pub fn SyntaxNode::children(Self) -> Array[Self]
