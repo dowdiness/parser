@@ -5,9 +5,9 @@ import {
   "dowdiness/parser/ast",
   "dowdiness/parser/core",
   "dowdiness/parser/lexer",
-  "dowdiness/parser/seam",
   "dowdiness/parser/syntax",
   "dowdiness/parser/token",
+  "dowdiness/seam",
 }
 
 // Values

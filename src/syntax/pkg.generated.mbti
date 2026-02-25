@@ -2,7 +2,7 @@
 package "dowdiness/parser/syntax"
 
 import {
-  "dowdiness/parser/seam",
+  "dowdiness/seam",
 }
 
 // Values
