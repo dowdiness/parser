@@ -35,7 +35,7 @@ pub(all) enum AstKind {
   Bop(Bop) // Binary operation (operands in children[0] and children[1])
   If // If-then-else (condition, then, else in children)
   Error(String) // Error node for recovery
-} derive(Show, FromJson, ToJson)
+} derive(Show, Eq, FromJson, ToJson)
 
 ///|
 /// AST node with source position and unique identity
@@ -46,6 +46,27 @@ pub(all) struct AstNode {
   node_id : Int // Unique node identifier
   children : Array[AstNode] // Child nodes
 } derive(Show, FromJson, ToJson)
+
+///|
+/// Structure-only equality for AstNode: compares kind and children, ignoring
+/// start/end byte offsets and node_id. Two nodes are equal iff they have the
+/// same syntactic structure regardless of where they appear in the source.
+///
+/// This is the right semantic for Memo[AstNode] backdating: an edit that shifts
+/// all offsets (e.g. inserting a leading space) but preserves AST shape will
+/// still be considered equal, skipping downstream recomputation.
+pub impl Eq for AstNode with equal(self, other : AstNode) -> Bool {
+  if self.kind != other.kind ||
+    self.children.length() != other.children.length() {
+    return false
+  }
+  for i, child in self.children {
+    if child != other.children[i] {
+      return false
+    }
+  }
+  true
+}
 
 ///|
 /// Create a new AstNode

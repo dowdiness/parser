@@ -1,8 +1,8 @@
 # Roadmap: Stabilized Incremental Parser
 
 **Created:** 2026-02-01
-**Updated:** 2026-02-03
-**Status:** Active — Phases 0-4 complete; Phase 5 (Grammar Expansion) is next
+**Updated:** 2026-02-25
+**Status:** Active — Phases 0-7 complete; next: NodeInterner, Typed SyntaxNode views, or Grammar Expansion
 **Goal:** A genuinely incremental, architecturally sound parser for lambda calculus (and beyond) with confidence in every layer.
 
 ---
@@ -53,15 +53,24 @@ Before planning forward, we need an unflinching look at where we are. The existi
 
 | Component | Status |
 |-----------|--------|
-| Recursive descent parser | **Correct** - genuinely works |
-| Lexer | **Correct** - genuinely works |
-| Damage tracking | **Correct** - genuinely works |
-| Position adjustment | **Correct** - genuinely works |
-| ~~Token cache~~ | **Deleted** (Phase 0) - was never read during parsing |
-| ~~Parse cache~~ | **Deleted** (Phase 0) - was never read during parsing |
-| Incremental reparse | **Full reparse** fallback (whole-tree reuse when applicable) |
-| Error recovery | **Try-catch wrapper** - all-or-nothing |
-| CRDT integration | **Conversion functions** - no CRDT logic |
+| Recursive descent parser | **Correct** — `parse()`, `parse_tree()`, `parse_cst()` paths |
+| Lexer | **Correct** — trivia-inclusive; emits `Whitespace` tokens |
+| Damage tracking | **Correct** — Wagner-Graham algorithm |
+| Position adjustment | **Correct** — width-based via `SyntaxNode` (no absolute-position bug) |
+| ~~Token cache~~ | **Deleted** (Phase 0) |
+| ~~Parse cache~~ | **Deleted** (Phase 0) |
+| Incremental lexer | **Complete** (Phase 1) — `TokenBuffer` splice-based re-lex |
+| Green tree / CST | **Complete** (Phase 2) — `CstNode`, `SyntaxNode`, `EventBuffer`, `seam/` package |
+| Error recovery | **Complete** (Phase 3) — sync-point recovery, `ErrorNode`, diagnostics |
+| Subtree reuse | **Complete** (Phase 4) — `ReuseCursor` with 4-condition protocol |
+| Generic parser framework | **Complete** (Phase 5) — `ParserContext[T,K]`, `LanguageSpec`, `parse_with` |
+| Generic incremental reuse | **Complete** (Phase 6) — `ReuseCursor[T,K]` in `src/core/`, `node()`/`wrap_at()` |
+| Reactive pipeline | **Complete** (Phase 7) — `ParserDb`: `Signal`→`Memo[TokenStage]`→`Memo[CstStage]` |
+| SyntaxNode API | **Complete** — `SyntaxToken`, `SyntaxElement`, `all_children`, `find_at`, `tight_span` |
+| `cst` field privacy | **Complete** — `.cst` is private; all callers use `SyntaxNode` methods |
+| CRDT integration | **Conversion functions** — `ast_to_crdt`, `crdt_to_source`; no conflict logic |
+| NodeInterner | **Planned** — design doc at `docs/plans/2026-02-25-node-interner-design.md` |
+| Typed SyntaxNode views | **Planned** — Phase 3 of SyntaxNode-first layer design |
 
 ---
 
@@ -262,11 +271,11 @@ trailing whitespace coverage and mixed binary operators. See TODO archive.
 
 ---
 
-## Phase 2: Green Tree (Immutable CST)
+## Phase 2: Green Tree (Immutable CST) ✅ COMPLETE (2026-02-19)
 
 **Goal:** Replace the current mutable `TermNode` with an immutable green tree architecture that enables structural sharing and subtree reuse.
 
-**Status (2026-02-02): Complete.** All scaffolding, integration, and RedNode production usage are done.
+**Status (2026-02-19): Complete.** All scaffolding, integration, and `SyntaxNode` production usage are done. Types renamed from `GreenNode`/`RedNode` to `CstNode`/`SyntaxNode`, extracted to `seam/` package.
 
 **What's done:**
 - `SyntaxKind` enum unifying tokens and node types (`green_tree.mbt`)
@@ -769,7 +778,80 @@ Where K = size of the edited definition, N = total file size.
 
 ---
 
-## Phase 5: Grammar Expansion and CST Maturity
+## Phase 5: Generic Parser Framework ✅ COMPLETE (2026-02-23)
+
+> **Note:** The originally planned "Phase 5: Grammar Expansion" was superseded by this work.
+> The original grammar expansion plan is preserved below as "Phase 5 (original plan)".
+
+**Goal:** Extract a reusable `ParserContext[T, K]` API so any MoonBit project can define a parser against the green tree / error recovery / incremental infrastructure.
+
+**What was built:**
+- `src/core/` package: `TokenInfo[T]`, `Diagnostic[T]`, `LanguageSpec[T, K]`, `ParserContext[T, K]`
+- `ParserContext::new` (array-based) and `ParserContext::new_indexed` (closure-based, zero-copy)
+- Full method surface: `peek`, `at`, `at_eof`, `emit_token`, `start_node`, `finish_node`, `mark`, `start_at`, `error`, `bump_error`, `emit_zero_width`, `emit_error_placeholder`, `flush_trivia`
+- `parse_with[T, K]` top-level entry point
+- `Diagnostic[T]` with `got_token : T` (captures offending token at parse time)
+- Lambda parser migrated to `ParserContext` as reference implementation
+- Trivia-inclusive lexer integration: whitespace in token stream, `flush_trivia()` before grammar return
+- 367 total tests passing; 56 benchmarks passing
+
+---
+
+## Phase 6: Generic Incremental Reuse ✅ COMPLETE (2026-02-24)
+
+**Goal:** Wire `ReuseCursor[T, K]` from `src/core/` into `ParserContext` via `node()`/`wrap_at()` combinators so incremental subtree reuse fires transparently for any grammar.
+
+**What was built:**
+- `ReuseCursor[T, K]` generic struct in `src/core/` with `collect_old_tokens`, `try_reuse`, `seek_node_at`, `advance_past`
+- `ParserContext` gains `reuse_cursor`, `reuse_count`, `set_reuse_cursor`, `set_reuse_diagnostics`
+- `node(kind, body)` combinator: skips `body` closure on reuse hit (O(edit) skip)
+- `wrap_at(mark, kind, body)` combinator: retroactive wrapping; inner `node()` calls still reuse
+- Lambda grammar migrated: `parse_atom` uses `ctx.node()`, binary/app rules use `ctx.wrap_at()`
+- `run_parse_incremental` helper wires cursor + diagnostics
+- Old lambda-specific `ReuseCursor` removed from `src/parser/` (~946 lines deleted)
+- `prev_diagnostics?` parameter for diagnostic replay on reused subtrees
+- 372 total tests passing; 59 benchmarks passing (Phase 3 cursor benchmarks added)
+
+---
+
+## Phase 7: Reactive Pipeline (ParserDb) ✅ COMPLETE (2026-02-25)
+
+**Goal:** Build `ParserDb`, a `Signal`/`Memo`-backed Salsa-style incremental pipeline using `CstNode` value equality for automatic stage backdating.
+
+**Architecture:** `source_text : Signal[String]` → `tokens : Memo[TokenStage]` → `cst : Memo[CstStage]`
+
+**What was built:**
+- `dowdiness/incr` added as git submodule dependency
+- `TokenStage` enum and `CstStage` struct, both `Eq`-derived for backdating
+- `ParserDb::new()`, `set_source()`, `cst()`, `diagnostics()`, `term()` public API
+- Option B error routing: tokenization failure → `AstNode::error(...)` (consistent with `IncrementalParser`)
+- `diagnostics()` returns `.copy()` to prevent mutation of memoized backing array
+- 343 total tests passing; 59 benchmarks passing
+
+---
+
+## SyntaxNode-First Layer ✅ COMPLETE (2026-02-25)
+
+**Goal:** Make `SyntaxNode` the primary interface for all tree operations; eliminate direct `.cst` field access from callers.
+
+**Phase 1 — Extend `SyntaxNode` API (complete):**
+- `SyntaxToken` positioned leaf view; `SyntaxElement` union type
+- `all_children()`, `tokens()`, `find_token()`, `tokens_of_kind()`, `tight_span()`, `find_at()`
+- `Show` and `Debug` impls for `SyntaxNode` and `SyntaxToken`
+
+**Phase 2 — SyntaxNode-first callers (complete):**
+- `cst_convert.mbt` replaced free functions with `SyntaxNode` methods
+- `IncrementalParser` stores `SyntaxNode?` instead of `CstNode?`
+- `.cst` field made private — abstraction boundary enforced
+- `parse_with_error_recovery_tokens` removed (no callers; was broken)
+
+**Phase 3 — Typed views (planned):**
+- `LambdaExpr(SyntaxNode)`, `AppExpr(SyntaxNode)` typed wrappers
+- `AstNode` becomes JSON-serialization-only
+
+---
+
+## Phase 5 (original plan): Grammar Expansion and CST Maturity
 
 **Goal:** Expand the language beyond bare lambda calculus. Each new construct creates more natural boundaries for incremental reuse.
 
@@ -927,24 +1009,36 @@ This avoids the complexity of tree CRDTs entirely. The incremental parser provid
 ## Phase Summary and Dependencies
 
 ```
-Phase 0: Reckoning          ✅ COMPLETE
+Phase 0: Reckoning                  ✅ COMPLETE (2026-02-01)
     |
-    +------ Phase 1: Incremental Lexer  ✅ COMPLETE
+    +------ Phase 1: Incremental Lexer      ✅ COMPLETE (2026-02-02)
     |
-    +------ Phase 2: Green Tree         ✅ COMPLETE
+    +------ Phase 2: Green Tree / seam/     ✅ COMPLETE (2026-02-19)
                 |
-                +------ Phase 3: Error Recovery     ✅ COMPLETE
+                +------ Phase 3: Error Recovery         ✅ COMPLETE (2026-02-03)
                 |
-                +------ Phase 4: Subtree Reuse      ✅ COMPLETE
+                +------ Phase 4: Subtree Reuse          ✅ COMPLETE (2026-02-03)
                 |
-                +------ Phase 3 + 4 combined: reuse on malformed input ✅ COMPLETE
+                +------ Phase 5: Generic Parser Ctx     ✅ COMPLETE (2026-02-23)
+                |           |
+                |           +-- Phase 6: Generic Reuse  ✅ COMPLETE (2026-02-24)
                 |
-                +------ Phase 5: Grammar Expansion  (depends on Phase 2, 3) ← NEXT
+                +------ SyntaxNode-First Layer          ✅ COMPLETE (2026-02-25)
+                |           Phase 1: SyntaxNode API
+                |           Phase 2: .cst private
+                |           Phase 3: Typed views        ← PLANNED
                 |
-                +------ Phase 6: CRDT Exploration   (depends on Phase 2, 4)
+                +------ Phase 7: ParserDb (reactive)    ✅ COMPLETE (2026-02-25)
+                |
+                +------ NodeInterner                    ← PLANNED
+                |
+                +------ Grammar Expansion               ← PLANNED (original Phase 5)
+                |
+                +------ CRDT Exploration               ← PLANNED (original Phase 6)
 ```
 
-Phases 0-4 are complete. Phase 5 (Grammar Expansion) and Phase 6 (CRDT Exploration) can proceed in parallel.
+Phases 0-7 and the SyntaxNode-First Layer (Phase 1+2) are complete.
+Next candidates: NodeInterner, Typed SyntaxNode views, ParserDb benchmarks, Grammar Expansion.
 
 ---
 

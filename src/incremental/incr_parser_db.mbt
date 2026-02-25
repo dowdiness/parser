@@ -24,16 +24,17 @@ pub(all) struct CstStage {
 /// source_text : Signal[String]
 ///   → tokens : Memo[TokenStage]
 ///   → cst    : Memo[CstStage]
+///   → term   : Memo[AstNode]
 ///
-/// Calling set_source() invalidates tokens_memo and cst_memo.
-/// If re-parse produces a CstNode equal to the previous one (CstNode::Eq),
-/// downstream stages are backdated — they skip recomputation.
+/// Calling set_source() invalidates the full pipeline.
+/// Each Memo stage backdates if its output equals the previous value —
+/// CstStage via cached hash (O(1)), AstNode via structure-only Eq.
 ///
 /// **Lifetime:** one ParserDb per document editing session.
 pub struct ParserDb {
   priv source_text : @incr.Signal[String]
-  priv tokens_memo : @incr.Memo[TokenStage]
   priv cst_memo : @incr.Memo[CstStage]
+  priv term_memo : @incr.Memo[@ast.AstNode]
 }
 
 ///|
@@ -43,7 +44,7 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
 
   let tokens_memo = @incr.Memo::new(
     rt,
-    fn() -> TokenStage {
+    () => {
       TokenStage::Ok(@lexer.tokenize(source_text.get())) catch {
         @lexer.TokenizationError(msg) => TokenStage::Err(msg)
       }
@@ -88,7 +89,22 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
     },
     label="cst",
   )
-  { source_text, tokens_memo, cst_memo }
+
+  let term_memo = @incr.Memo::new(
+    rt,
+    () => {
+      match tokens_memo.get() {
+        TokenStage::Err(msg) =>
+          return @ast.AstNode::error("Tokenization error: " + msg, 0, 0)
+        TokenStage::Ok(_) => {
+          let syntax = @seam.SyntaxNode::from_cst(cst_memo.get().cst)
+          @parse.syntax_node_to_ast_node(syntax, Ref::new(0))
+        }
+      }
+    },
+    label="term",
+  )
+  { source_text, cst_memo, term_memo }
 }
 
 ///|
@@ -116,18 +132,11 @@ pub fn ParserDb::diagnostics(self : ParserDb) -> Array[String] {
 
 ///|
 /// Return an AstNode for the current source.
+/// Backed by term_memo: on a warm call (no source change) the Runtime skips
+/// recomputation and returns the cached AstNode immediately.
 ///
-/// Option B error routing: on tokenization failure, returns AstNode::error(...)
-/// matching IncrementalParser::parse behavior. Callers do not need to check
-/// diagnostics() to detect unrecoverable failures — the tree itself carries
-/// the error signal via AstKind::Error.
+/// Error routing: on tokenization failure, returns AstNode::error(...)
+/// so callers do not need to check diagnostics() separately.
 pub fn ParserDb::term(self : ParserDb) -> @ast.AstNode {
-  match self.tokens_memo.get() {
-    TokenStage::Err(msg) =>
-      @ast.AstNode::error("Tokenization error: " + msg, 0, 0)
-    TokenStage::Ok(_) => {
-      let syntax = @seam.SyntaxNode::from_cst(self.cst_memo.get().cst)
-      @parse.syntax_node_to_ast_node(syntax, Ref::new(0))
-    }
-  }
+  self.term_memo.get()
 }

@@ -24,6 +24,7 @@ pub(all) enum AstKind {
   If
   Error(String)
 }
+pub impl Eq for AstKind
 pub impl Show for AstKind
 pub impl ToJson for AstKind
 pub impl @json.FromJson for AstKind
@@ -37,6 +38,7 @@ pub(all) struct AstNode {
 }
 pub fn AstNode::error(String, Int, Int) -> Self
 pub fn AstNode::new(AstKind, Int, Int, Int, Array[Self]) -> Self
+pub impl Eq for AstNode
 pub impl Show for AstNode
 pub impl ToJson for AstNode
 pub impl @json.FromJson for AstNode

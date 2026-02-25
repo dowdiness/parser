@@ -2,6 +2,156 @@
 
 Historical snapshots from project benchmark runs (full suite and focused runs).
 
+## 2026-02-25 (ParserDb — term_memo added, AstNode::Eq)
+
+- Command: `moon bench --release`
+- Git ref: `main` (uncommitted)
+- Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
+- Result: `65/65` benchmarks passed (+6 new ParserDb benchmarks)
+- Changes since previous entry:
+  - `AstKind` gained `Eq` via `derive`; `AstNode` gained structure-only `Eq` (ignores `start`/`end`/`node_id`)
+  - `term_memo : Memo[AstNode]` added as fourth pipeline stage in `ParserDb`
+  - `tokens_memo` removed from `ParserDb` struct (now owned exclusively by closure captures)
+  - `term()` simplified to `self.term_memo.get()` — warm path is now a staleness check only
+
+### Phase 7: ParserDb Signal/Memo Pipeline
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| parserdb: cold — new + term() | 6.23 µs | Full construction + tokenize + parse + AST conversion |
+| parserdb: warm — term() no change | 0.03 µs | Memo staleness check only; ~200× faster than cold |
+| parserdb: signal no-op — set_source(same) + term() | 0.04 µs | String::Eq short-circuits before any Memo runs |
+| parserdb: full recompute — set_source(new) + term() | 13.37 µs | All three Memos recompute |
+| parserdb: undo/redo cycle | 13.43 µs | Two full recomputes per iteration |
+| parserdb: diagnostics — malformed input | 0.06 µs | Warm path for cached error result |
+
+---
+
+## 2026-02-25 (ParserDb — Salsa-style incremental pipeline added)
+
+- Command: `moon bench --release`
+- Git ref: `main` (`0a2139c`)
+- Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
+- Result: `59/59` benchmarks passed
+- Changes since previous entry:
+  - `ParserDb` added to `src/incremental/`: `Signal[String]` → `Memo[TokenStage]` → `Memo[CstStage]`
+  - `dowdiness/incr` added as git submodule dependency
+  - No changes to the parser hot-path; all differences vs previous entry are run-to-run noise
+
+### Phase 3: Cursor Reuse vs Full Reparse (110-token corpus)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| phase3: full CST reparse, no cursor - 110 tokens | 21.65 µs | Baseline: pre-tokenized input |
+| phase3: cursor reuse, edit at end - 110 tokens | 41.95 µs | 54/55 IntLiterals reusable; cursor overhead dominates |
+| phase3: cursor reuse, edit at start - 110 tokens | 36.77 µs | 54/55 IntLiterals reusable; cursor overhead dominates |
+
+### Core Parse Scaling
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| parse scaling - small (5 tokens) | 1.08 µs | Full parse baseline (small) |
+| parse scaling - medium (15 tokens) | 4.74 µs | Full parse baseline (medium) |
+| parse scaling - large (30+ tokens) | 7.88 µs | Full parse baseline (large) |
+
+### Incremental Parser
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| incremental - initial parse | 0.58 µs | Parser creation + first parse |
+| incremental - small edit | 2.45 µs | `x` → `x + 1` |
+| incremental - multiple edits | 4.10 µs | 2 sequential edits |
+| incremental - replacement | 2.67 µs | `λx.x` → `\x.x` |
+| incremental vs full - edit at start | 12.79 µs | Boundary edit, medium expression |
+| incremental vs full - edit at end | 12.45 µs | Boundary edit, medium expression |
+| incremental vs full - edit in middle | 12.69 µs | Boundary edit, medium expression |
+| sequential edits - typing simulation | 2.41 µs | Single-char insert |
+| sequential edits - backspace simulation | 2.28 µs | Single-char delete |
+| incremental state baseline - repeated parsing | 5.04 µs | Edit + undo |
+| incremental state baseline - similar expressions | 3.00 µs | Repeated similar parses |
+| best case - cosmetic change | 3.20 µs | Localized edit path |
+| worst case - full invalidation | 13.87 µs | Full rebuild + incremental overhead |
+| memory pressure - large document | 22.18 µs | Larger input incremental edit |
+
+### Damage Tracking & Position Adjustment
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| damage tracking | 0.94 µs | Wagner-Graham damage expand |
+| damage tracking - localized damage | 1.30 µs | Small edit region |
+| damage tracking - widespread damage | 5.21 µs | Edit at start of medium expression |
+| position adjustment after edit | 2.51 µs | Tree position shift after edit |
+
+### CRDT Integration
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| tokenization | 0.30 µs | Lexer baseline |
+| ast to crdt | 2.39 µs | AST → CRDT conversion |
+| crdt to source | 2.54 µs | CRDT → source reconstruction |
+| crdt operations - nested structure | 6.81 µs | Nested structure round-trip |
+| crdt operations - round trip | 6.70 µs | Parse → CRDT → source → parse |
+
+### Error Recovery & High-level API
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| error recovery - valid | 0.91 µs | `parse_with_error_recovery`, valid input |
+| error recovery - error | 0.96 µs | `parse_with_error_recovery`, invalid input |
+| parsed document - parse | 0.73 µs | `ParsedDocument::parse` |
+| parsed document - edit | 2.78 µs | `ParsedDocument::edit` |
+
+### Phase 1: Incremental Tokenizer (110-token input)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| phase1: full tokenize - 110 tokens | 1.84 µs | Full tokenization baseline |
+| phase1: incremental tokenize - edit at start | 3.49 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit in middle | 3.35 µs | Includes `TokenBuffer::new()` setup |
+| phase1: incremental tokenize - edit at end | 3.15 µs | Includes `TokenBuffer::new()` setup |
+| phase1: full re-tokenize after edit | 1.88 µs | Comparison baseline |
+
+### Green-Tree Microbenchmarks
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| green-tree - token constructor | 0.02 µs | `GreenToken::new` hash compute path |
+| green-tree - node constructor from 32 children | 0.07 µs | `GreenNode::new` fold/hash/token_count path |
+| green-tree - equality identical 32 children | 0.17 µs | Hash check + deep equality walk |
+| green-tree - equality mismatch hash fast path | 0.01 µs | Expected early hash mismatch exit |
+
+### Token Interning
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| interner - intern_token cold miss | 0.10 µs | First call: two-level map miss + `GreenToken::new` |
+| interner - intern_token warm hit | 0.08 µs | Subsequent call: two-level map hit, allocation-free |
+| build_tree - x + 1 | 0.17 µs | No interning baseline |
+| build_tree_interned - x + 1, cold interner | 0.40 µs | First parse (all misses) |
+| build_tree_interned - x + 1, warm interner | 0.25 µs | Subsequent parses (all hits); 1.5× vs `build_tree` |
+| build_tree - 100 identical ident tokens | 1.09 µs | No interning, 100 `GreenToken::new` calls |
+| build_tree_interned - 100 identical tokens, warm | 1.78 µs | 1 miss + 99 hits; 1.6× vs `build_tree` |
+| parse_cst_recover - no interner, small | 0.79 µs | `x + 1`, no interning |
+| parse_cst_recover - cold interner, small | 1.04 µs | `x + 1`, first parse |
+| parse_cst_recover - warm interner, small | 0.87 µs | `x + 1`, subsequent; 1.10× overhead |
+| parse_cst_recover - no interner, large | 6.39 µs | `λf.λx.if…`, no interning |
+| parse_cst_recover - warm interner, large | 7.05 µs | `λf.λx.if…`, subsequent; 1.10× overhead |
+
+### Notable Changes vs 2026-02-24 (generic incremental reuse)
+
+`ParserDb` adds a new `src/incremental/` package on top of the existing pipeline;
+it does not modify any hot-path code. All differences vs the previous snapshot are
+within run-to-run noise on the same machine:
+
+| Metric | prev | today | Change |
+|---|---:|---:|---|
+| parse scaling - small (5 tokens) | 1.07 µs | 1.08 µs | +1% (noise) |
+| parse scaling - large (30+ tokens) | 7.75 µs | 7.88 µs | +2% (noise) |
+| worst case - full invalidation | 12.44 µs | 13.87 µs | +11% (noise/scheduling) |
+| memory pressure - large document | 20.98 µs | 22.18 µs | +6% (noise) |
+| phase3: full CST reparse | 21.19 µs | 21.65 µs | +2% (noise) |
+| phase3: cursor reuse, edit at end | 42.32 µs | 41.95 µs | -1% (noise) |
+
 ## 2026-02-24 (generic incremental reuse — Phase 3 cursor wired)
 
 - Command: `moon bench --package dowdiness/parser/benchmarks --release`

@@ -1,7 +1,7 @@
 # Incremental Parser TODO (Compact)
 
-**Last Updated:** 2026-02-24
-**Status:** Phases 1-6 complete; Phase 7 (Grammar Expansion) is next
+**Last Updated:** 2026-02-25
+**Status:** Phases 1-7 complete; Phase 8 (Grammar Expansion) is next
 
 ## Completed
 
@@ -102,6 +102,24 @@
 - ✅ Phase 3 cursor benchmarks added; cursor overhead documented for 110-token flat grammar
 - ✅ 372 total tests passing; 59 benchmarks passing
 - ✅ Design: `docs/plans/2026-02-24-generic-incremental-reuse-design.md`
+
+### Phase 7 (ParserDb) — Complete ✅
+
+**Goal:** Build `ParserDb`, a `Signal`/`Memo`-backed Salsa-style incremental pipeline using `CstNode` value equality for automatic stage backdating.
+
+**Architecture:** `source_text : Signal[String]` → `tokens : Memo[TokenStage]` → `cst : Memo[CstStage]`
+
+- ✅ `dowdiness/incr` added as git submodule dependency (`incr/`)
+- ✅ `TokenStage` enum (`Ok(Array[TokenInfo])` / `Err(String)`) with `Eq` for backdating
+- ✅ `CstStage` struct (`cst: CstNode`, `diagnostics: Array[String]`) with `Eq`
+- ✅ `ParserDb::new()` wires `Signal` + two `Memo` nodes in a single `Runtime`
+- ✅ `ParserDb::set_source()` / `cst()` / `diagnostics()` / `term()` public API
+- ✅ `term()` uses Option B error routing: tokenization failure → `AstNode::error(...)`
+- ✅ `diagnostics()` returns `.copy()` to prevent mutation of memoized backing array
+- ✅ `parse_cst_to_ast_node` test comparison uses direct call (no `catch` swallowing errors)
+- ✅ Interfaces updated via `moon info && moon fmt`
+- ✅ 343 total tests passing; 59 benchmarks passing
+- ✅ Implementation plan: `docs/plans/2026-02-25-incr-parser-db.md`
 
 ## Optional / On-Demand
 
