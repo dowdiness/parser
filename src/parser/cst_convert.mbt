@@ -1,86 +1,4 @@
 ///|
-/// Collect token text from all children of an ErrorNode.
-fn extract_error_text(cst : @seam.CstNode) -> String {
-  let parts : Array[String] = []
-  for elem in cst.children {
-    match elem {
-      @seam.CstElement::Token(t) =>
-        if t.kind != @syntax.WhitespaceToken.to_raw() && t.text != "" {
-          parts.push(t.text)
-        }
-      @seam.CstElement::Node(_) => ()
-    }
-  }
-  parts.join("")
-}
-
-///|
-fn extract_token_text(
-  cst : @seam.CstNode,
-  token_kind : @seam.RawKind,
-) -> String? {
-  for elem in cst.children {
-    match elem {
-      @seam.CstElement::Token(t) =>
-        if t.kind == token_kind {
-          return Some(t.text)
-        }
-      _ => continue
-    }
-  }
-  None
-}
-
-///|
-/// Compute tight start/end positions for a cst node, skipping leading and
-/// trailing whitespace tokens. Returns (start, end) relative to the given offset.
-fn tight_span(cst : @seam.CstNode, offset : Int) -> (Int, Int) {
-  let mut pos = offset
-  let mut tight_start = offset
-  let mut tight_end = offset + cst.text_len
-  let mut found_start = false
-  for elem in cst.children {
-    let len = elem.text_len()
-    match elem {
-      @seam.CstElement::Token(t) =>
-        if t.kind != @syntax.WhitespaceToken.to_raw() {
-          if not(found_start) {
-            tight_start = pos
-            found_start = true
-          }
-          tight_end = pos + len
-        }
-      @seam.CstElement::Node(_) => {
-        if not(found_start) {
-          tight_start = pos
-          found_start = true
-        }
-        tight_end = pos + len
-      }
-    }
-    pos = pos + len
-  }
-  (tight_start, tight_end)
-}
-
-///|
-fn collect_binary_ops(cst : @seam.CstNode) -> Array[@ast.Bop] {
-  let ops : Array[@ast.Bop] = []
-  for elem in cst.children {
-    match elem {
-      @seam.CstElement::Token(t) =>
-        if t.kind == @syntax.PlusToken.to_raw() {
-          ops.push(@ast.Bop::Plus)
-        } else if t.kind == @syntax.MinusToken.to_raw() {
-          ops.push(@ast.Bop::Minus)
-        }
-      _ => ()
-    }
-  }
-  ops
-}
-
-///|
 /// Handle multiple children from SourceFile (main expression + error nodes).
 fn convert_source_file_children(
   children : Array[@ast.AstNode],
@@ -166,13 +84,14 @@ fn convert_syntax_node(
     id
   }
 
-  let g = node.cst
-  let off = node.start()
-  match @syntax.SyntaxKind::from_raw(g.kind) {
+  let ws = @syntax.WhitespaceToken.to_raw()
+  match @syntax.SyntaxKind::from_raw(node.kind()) {
     @syntax.IntLiteral => {
-      let text = extract_token_text(g, @syntax.IntToken.to_raw()).unwrap_or("")
+      let text = node.find_token(@syntax.IntToken.to_raw()).map(fn(t) {
+        t.text()
+      }).unwrap_or("")
       let value = @strconv.parse_int(text) catch { _ => 0 }
-      let (tight_start, tight_end) = tight_span(g, off)
+      let (tight_start, tight_end) = node.tight_span(trivia_kind=Some(ws))
       @ast.AstNode::new(
         @ast.AstKind::Int(value),
         tight_start,
@@ -182,10 +101,10 @@ fn convert_syntax_node(
       )
     }
     @syntax.VarRef => {
-      let name = extract_token_text(g, @syntax.IdentToken.to_raw()).unwrap_or(
-        "",
-      )
-      let (tight_start, tight_end) = tight_span(g, off)
+      let name = node.find_token(@syntax.IdentToken.to_raw()).map(fn(t) {
+        t.text()
+      }).unwrap_or("")
+      let (tight_start, tight_end) = node.tight_span(trivia_kind=Some(ws))
       @ast.AstNode::new(
         @ast.AstKind::Var(name),
         tight_start,
@@ -195,10 +114,10 @@ fn convert_syntax_node(
       )
     }
     @syntax.LambdaExpr => {
-      let param = extract_token_text(g, @syntax.IdentToken.to_raw()).unwrap_or(
-        "",
-      )
-      let (tight_start, tight_end) = tight_span(g, off)
+      let param = node.find_token(@syntax.IdentToken.to_raw()).map(fn(t) {
+        t.text()
+      }).unwrap_or("")
+      let (tight_start, tight_end) = node.tight_span(trivia_kind=Some(ws))
       let syntax_children = node.children()
       for child in syntax_children {
         let body = convert_syntax_node(child, counter)
@@ -239,11 +158,22 @@ fn convert_syntax_node(
       } else if children.length() == 1 {
         children[0]
       } else {
-        @ast.AstNode::error("Empty AppExpr", off, next_id())
+        @ast.AstNode::error("Empty AppExpr", node.start(), next_id())
       }
     }
     @syntax.BinaryExpr => {
-      let ops = collect_binary_ops(g)
+      let ops : Array[@ast.Bop] = []
+      for elem in node.all_children() {
+        match elem {
+          @seam.SyntaxElement::Token(t) =>
+            if t.kind() == @syntax.PlusToken.to_raw() {
+              ops.push(@ast.Bop::Plus)
+            } else if t.kind() == @syntax.MinusToken.to_raw() {
+              ops.push(@ast.Bop::Minus)
+            }
+          _ => ()
+        }
+      }
       let children : Array[@ast.AstNode] = []
       let syntax_children = node.children()
       for child in syntax_children {
@@ -269,11 +199,11 @@ fn convert_syntax_node(
       } else if children.length() == 1 {
         children[0]
       } else {
-        @ast.AstNode::error("Empty BinaryExpr", off, next_id())
+        @ast.AstNode::error("Empty BinaryExpr", node.start(), next_id())
       }
     }
     @syntax.IfExpr => {
-      let (tight_start, _) = tight_span(g, off)
+      let (tight_start, _) = node.tight_span(trivia_kind=Some(ws))
       let children : Array[@ast.AstNode] = []
       let syntax_children = node.children()
       for child in syntax_children {
@@ -282,7 +212,7 @@ fn convert_syntax_node(
       let if_end = if children.length() > 0 {
         children[children.length() - 1].end
       } else {
-        off + g.text_len
+        node.end()
       }
       @ast.AstNode::new(
         @ast.AstKind::If,
@@ -293,7 +223,7 @@ fn convert_syntax_node(
       )
     }
     @syntax.ParenExpr => {
-      let (tight_start, tight_end) = tight_span(g, off)
+      let (tight_start, tight_end) = node.tight_span(trivia_kind=Some(ws))
       let syntax_children = node.children()
       for child in syntax_children {
         let inner = convert_syntax_node(child, counter)
@@ -305,11 +235,17 @@ fn convert_syntax_node(
           inner.children,
         )
       }
-      @ast.AstNode::error("Empty ParenExpr", off, next_id())
+      @ast.AstNode::error("Empty ParenExpr", node.start(), next_id())
     }
     @syntax.ErrorNode => {
-      let (tight_start, tight_end) = tight_span(g, off)
-      let text = extract_error_text(g)
+      let (tight_start, tight_end) = node.tight_span(trivia_kind=Some(ws))
+      let parts : Array[String] = []
+      for t in node.tokens() {
+        if t.kind() != ws && t.text() != "" {
+          parts.push(t.text())
+        }
+      }
+      let text = parts.join("")
       let msg = if text != "" {
         "Syntax error: " + text
       } else {
@@ -329,12 +265,12 @@ fn convert_syntax_node(
       for child in syntax_children {
         children.push(convert_syntax_node(child, counter))
       }
-      convert_source_file_children(children, off, counter)
+      convert_source_file_children(children, node.start(), counter)
     }
     _ =>
       @ast.AstNode::error(
-        "Unexpected node kind: " + g.kind.to_string(),
-        off,
+        "Unexpected node kind: " + node.kind().to_string(),
+        node.start(),
         next_id(),
       )
   }
