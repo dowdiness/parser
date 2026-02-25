@@ -30,31 +30,6 @@ pub fn parse_with_error_recovery(
 }
 
 ///|
-/// Parse pre-tokenized input with error recovery
-pub fn parse_with_error_recovery_tokens(
-  tokens : Array[@token.TokenInfo],
-) -> (@ast.AstNode, Array[String]) {
-  let errors : Array[String] = []
-  let (cst, diagnostics, _reuse_count) = parse_cst_recover_with_tokens(
-    "",
-    tokens,
-    None,
-  )
-  for diag in diagnostics {
-    errors.push(
-      "Parse error: " +
-      diag.message +
-      " (got " +
-      @token.print_token(diag.got_token) +
-      ")",
-    )
-  }
-  let syntax = @seam.SyntaxNode::from_cst(cst)
-  let tree = syntax_node_to_ast_node(syntax, Ref::new(0))
-  (tree, errors)
-}
-
-///|
 /// Check if a tree contains any error nodes
 pub fn has_errors(tree : @ast.AstNode) -> Bool {
   match tree.kind {
