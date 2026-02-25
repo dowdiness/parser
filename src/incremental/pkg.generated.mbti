@@ -43,7 +43,7 @@ pub fn DamageTracker::stats(Self) -> String
 pub struct IncrementalParser {
   mut source : String
   mut tree : @ast.AstNode?
-  mut cst_tree : @seam.CstNode?
+  mut syntax_tree : @seam.SyntaxNode?
   mut token_buffer : @lexer.TokenBuffer?
   mut last_reuse_count : Int
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]]

@@ -35,8 +35,6 @@ pub fn parse_cst_with_cursor(String, Array[@token.TokenInfo], @core.ReuseCursor[
 
 pub fn parse_tree(String) -> @ast.AstNode raise
 
-pub fn parse_tree_from_tokens(Array[@token.TokenInfo]) -> @ast.AstNode raise
-
 pub fn parse_with_error_recovery(String) -> (@ast.AstNode, Array[String])
 
 pub fn parse_with_error_recovery_tokens(Array[@token.TokenInfo]) -> (@ast.AstNode, Array[String])
