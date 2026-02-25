@@ -37,6 +37,7 @@ pub struct EventBuffer {
 }
 
 ///|
+/// Create an empty `EventBuffer`.
 pub fn EventBuffer::new() -> EventBuffer {
   { events: [] }
 }
@@ -69,6 +70,7 @@ pub fn EventBuffer::build_tree_interned(
 }
 
 ///|
+/// Append a `ParseEvent` directly. Use `mark`/`start_at` for retroactive `StartNode` placement.
 pub fn EventBuffer::push(self : EventBuffer, event : ParseEvent) -> Unit {
   self.events.push(event)
 }

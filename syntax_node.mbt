@@ -1,4 +1,11 @@
 ///|
+/// Ephemeral positioned view over a `CstNode`.
+///
+/// A `SyntaxNode` pairs an immutable `CstNode` with the absolute byte
+/// `offset` of its start in the source. Unlike `CstNode`, `SyntaxNode`
+/// values are created on demand and are not cached or shared.
+///
+/// **Invariant:** `offset + cst.text_len` is the exclusive end byte.
 pub struct SyntaxNode {
   cst : CstNode
   parent : SyntaxNode?
@@ -6,6 +13,8 @@ pub struct SyntaxNode {
 }
 
 ///|
+/// Full constructor. `parent` is `None` for root nodes.
+/// Prefer `SyntaxNode::from_cst` for root construction.
 pub fn SyntaxNode::new(
   cst : CstNode,
   parent : SyntaxNode?,
@@ -21,21 +30,26 @@ pub fn SyntaxNode::from_cst(cst : CstNode) -> SyntaxNode {
 }
 
 ///|
+/// Absolute byte offset of this node's start in the source.
 pub fn SyntaxNode::start(self : SyntaxNode) -> Int {
   self.offset
 }
 
 ///|
+/// Exclusive byte offset of this node's end in the source (`start + text_len`).
 pub fn SyntaxNode::end(self : SyntaxNode) -> Int {
   self.offset + self.cst.text_len
 }
 
 ///|
+/// The language-agnostic kind of the underlying `CstNode`.
 pub fn SyntaxNode::kind(self : SyntaxNode) -> RawKind {
   self.cst.kind
 }
 
 ///|
+/// Child `SyntaxNode`s with computed absolute offsets. Leaf tokens are skipped;
+/// only interior `CstNode` children are returned.
 pub fn SyntaxNode::children(self : SyntaxNode) -> Array[SyntaxNode] {
   let result : Array[SyntaxNode] = []
   for offset = self.offset, i = 0; i < self.cst.children.length(); {

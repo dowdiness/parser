@@ -29,6 +29,7 @@ pub fn CstToken::new(kind : RawKind, text : String) -> CstToken {
 }
 
 ///|
+/// Number of bytes in this token's text (`text.length()`).
 pub fn CstToken::text_len(self : CstToken) -> Int {
   self.text.length()
 }
@@ -60,6 +61,7 @@ pub(all) enum CstElement {
 } derive(Show)
 
 ///|
+/// Total byte length of this element's text.
 pub fn CstElement::text_len(self : CstElement) -> Int {
   match self {
     Token(t) => t.text_len()
@@ -68,6 +70,7 @@ pub fn CstElement::text_len(self : CstElement) -> Int {
 }
 
 ///|
+/// The kind of the contained token or node.
 pub fn CstElement::kind(self : CstElement) -> RawKind {
   match self {
     Token(t) => t.kind
@@ -170,6 +173,7 @@ fn child_hash(elem : CstElement) -> Int {
 }
 
 ///|
+/// Accessor for the `kind` field (equivalent to `self.kind`).
 pub fn CstNode::kind(self : CstNode) -> RawKind {
   self.kind
 }
