@@ -21,7 +21,7 @@
 pub struct IncrementalParser {
   mut source : String // Current source text
   mut tree : @ast.AstNode? // Current parse tree
-  mut cst_tree : @seam.CstNode? // Current cst tree (for subtree reuse)
+  mut syntax_tree : @seam.SyntaxNode? // Current syntax tree (for subtree reuse)
   mut token_buffer : @lexer.TokenBuffer? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]] // Prior parse diagnostics for reuse replay
@@ -34,7 +34,7 @@ pub fn IncrementalParser::new(source : String) -> IncrementalParser {
   {
     source,
     tree: None,
-    cst_tree: None,
+    syntax_tree: None,
     token_buffer: None,
     last_reuse_count: 0,
     last_diagnostics: [],
@@ -70,15 +70,16 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @ast.AstNode {
       self.source,
       interner=Some(self.interner),
     )
-    self.cst_tree = Some(cst)
+    let syntax = @seam.SyntaxNode::from_cst(cst)
+    self.syntax_tree = Some(syntax)
     self.last_reuse_count = 0
     self.last_diagnostics = diagnostics
-    let parsed_tree = @parse.cst_to_ast_node(cst, 0, Ref::new(0))
+    let parsed_tree = @parse.syntax_node_to_ast_node(syntax, Ref::new(0))
     parsed_tree
   } catch {
     @lexer.TokenizationError(msg) => {
       let error_msg = "Tokenization error: " + msg
-      self.cst_tree = None
+      self.syntax_tree = None
       self.token_buffer = None
       self.last_reuse_count = 0
       self.last_diagnostics = []
@@ -112,7 +113,7 @@ pub fn IncrementalParser::edit(
           let error_msg = "Tokenization error: " + msg
           let tree = @ast.AstNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
-          self.cst_tree = None
+          self.syntax_tree = None
           self.token_buffer = None
           self.last_reuse_count = 0
           self.last_diagnostics = []
@@ -126,7 +127,7 @@ pub fn IncrementalParser::edit(
           let error_msg = "Tokenization error: " + msg
           let tree = @ast.AstNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
-          self.cst_tree = None
+          self.syntax_tree = None
           self.token_buffer = None
           self.last_reuse_count = 0
           self.last_diagnostics = []
@@ -188,11 +189,11 @@ fn IncrementalParser::incremental_reparse(
   }
 
   // Create cursor from old CST for subtree reuse
-  let cursor = match self.cst_tree {
-    Some(old_cst) =>
+  let cursor = match self.syntax_tree {
+    Some(old_syntax) =>
       Some(
         @parse.make_reuse_cursor(
-          old_cst,
+          old_syntax.cst_node(),
           damaged_range.start,
           damaged_range.end,
           tokens,
@@ -210,13 +211,14 @@ fn IncrementalParser::incremental_reparse(
     interner=Some(self.interner),
   )
 
-  // Update stored CST and reuse stats
-  self.cst_tree = Some(new_cst)
+  // Update stored syntax tree and reuse stats
+  let new_syntax = @seam.SyntaxNode::from_cst(new_cst)
+  self.syntax_tree = Some(new_syntax)
   self.last_reuse_count = reuse_count
   self.last_diagnostics = diagnostics
 
   // Convert to AstNode
-  @parse.cst_to_ast_node(new_cst, 0, Ref::new(0))
+  @parse.syntax_node_to_ast_node(new_syntax, Ref::new(0))
 }
 
 ///|
