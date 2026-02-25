@@ -87,9 +87,10 @@ fn convert_syntax_node(
   let ws = @syntax.WhitespaceToken.to_raw()
   match @syntax.SyntaxKind::from_raw(node.kind()) {
     @syntax.IntLiteral => {
-      let text = node.find_token(@syntax.IntToken.to_raw()).map(fn(t) {
-        t.text()
-      }).unwrap_or("")
+      let text = node
+        .find_token(@syntax.IntToken.to_raw())
+        .map(t => t.text())
+        .unwrap_or("")
       let value = @strconv.parse_int(text) catch { _ => 0 }
       let (tight_start, tight_end) = node.tight_span(trivia_kind=Some(ws))
       @ast.AstNode::new(
@@ -101,9 +102,10 @@ fn convert_syntax_node(
       )
     }
     @syntax.VarRef => {
-      let name = node.find_token(@syntax.IdentToken.to_raw()).map(fn(t) {
-        t.text()
-      }).unwrap_or("")
+      let name = node
+        .find_token(@syntax.IdentToken.to_raw())
+        .map(t => t.text())
+        .unwrap_or("")
       let (tight_start, tight_end) = node.tight_span(trivia_kind=Some(ws))
       @ast.AstNode::new(
         @ast.AstKind::Var(name),
@@ -114,9 +116,10 @@ fn convert_syntax_node(
       )
     }
     @syntax.LambdaExpr => {
-      let param = node.find_token(@syntax.IdentToken.to_raw()).map(fn(t) {
-        t.text()
-      }).unwrap_or("")
+      let param = node
+        .find_token(@syntax.IdentToken.to_raw())
+        .map(t => t.text())
+        .unwrap_or("")
       let (tight_start, tight_end) = node.tight_span(trivia_kind=Some(ws))
       let syntax_children = node.children()
       for child in syntax_children {
