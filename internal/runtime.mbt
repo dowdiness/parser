@@ -466,7 +466,8 @@ pub fn Runtime::batch(self : Runtime, f : () -> Unit raise?) -> Unit raise? {
 /// Executes a batch and returns raised errors as `Result` instead of re-raising.
 ///
 /// This is a convenience wrapper around `Runtime::batch` for callers that prefer
-/// explicit result handling.
+/// explicit result handling. Like `Runtime::batch`, this captures raised errors
+/// only; `abort()` is not recoverable here and still escapes `Runtime::batch_result`.
 pub fn Runtime::batch_result(
   self : Runtime,
   f : () -> Unit raise?,
