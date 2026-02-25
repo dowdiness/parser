@@ -20,9 +20,10 @@
 
 ---
 
-### Task 1: Define `Debug` trait + `SyntaxToken` struct
+### Task 1: Add `SyntaxToken` struct
 
-`Debug` is not a standard MoonBit trait — define it locally in `seam/`.
+`Debug` is a standard MoonBit trait (since 0.8.0) — use `derive(Debug)`.
+`Show` needs a custom implementation for the compact `"SyntaxToken@[3,6)"` format.
 
 **Files:**
 - Modify: `seam/syntax_node.mbt`
@@ -55,13 +56,6 @@ test "SyntaxToken Show" {
   let st = SyntaxToken::new(tok, 3)
   inspect(st, content="SyntaxToken@[3,6)")
 }
-
-///|
-test "SyntaxToken Debug" {
-  let tok = CstToken::new(RawKind(9), "foo")
-  let st = SyntaxToken::new(tok, 3)
-  inspect(st.debug_string(), content="SyntaxToken { kind: RawKind(9), offset: 3, text: \"foo\" }")
-}
 ```
 
 **Step 2: Run to verify failure**
@@ -77,19 +71,12 @@ Add before the existing `SyntaxNode` struct:
 
 ```moonbit
 ///|
-/// Structural debug representation trait.
-/// Produces verbose output suitable for debugging (not display).
-pub trait Debug {
-  debug_string(Self) -> String
-}
-
-///|
 /// Ephemeral positioned view over a `CstToken`.
 /// Mirrors `SyntaxNode` but for leaf tokens.
 pub struct SyntaxToken {
   cst : CstToken
   offset : Int
-}
+} derive(Debug)
 
 ///|
 pub fn SyntaxToken::new(cst : CstToken, offset : Int) -> SyntaxToken {
@@ -125,18 +112,6 @@ pub impl Show for SyntaxToken with output(self, logger) {
   logger.write_string(self.end().to_string())
   logger.write_string(")")
 }
-
-///|
-/// Debug: structural form — "SyntaxToken { kind: ..., offset: ..., text: ... }"
-pub impl Debug for SyntaxToken with debug_string(self) {
-  "SyntaxToken { kind: " +
-  self.cst.kind.to_string() +
-  ", offset: " +
-  self.offset.to_string() +
-  ", text: \"" +
-  self.cst.text +
-  "\" }"
-}
 ```
 
 **Step 4: Run tests**
@@ -144,13 +119,13 @@ pub impl Debug for SyntaxToken with debug_string(self) {
 ```bash
 cd /path/to/parser/seam && moon test
 ```
-Expected: all 4 new tests PASS.
+Expected: all 3 new tests PASS.
 
 **Step 5: Commit**
 
 ```bash
 git add seam/syntax_node.mbt seam/syntax_node_wbtest.mbt
-git commit -m "feat(seam): add Debug trait and SyntaxToken positioned token view"
+git commit -m "feat(seam): add SyntaxToken positioned token view"
 ```
 
 ---
@@ -634,6 +609,8 @@ git commit -m "feat(seam): add SyntaxNode::find_at deepest-node query"
 
 ### Task 7: Add `Show` and `Debug` for `SyntaxNode`
 
+`SyntaxNode` cannot use `derive(Debug)` — it has a `parent: SyntaxNode?` field that would cause infinite recursion. Use `derive(Debug(ignore=[SyntaxNode]))` to suppress it. `Show` is always hand-written (compact format).
+
 **Files:**
 - Modify: `seam/syntax_node.mbt`
 - Modify: `seam/syntax_node_wbtest.mbt`
@@ -648,23 +625,33 @@ test "SyntaxNode Show" {
   let sn = SyntaxNode::from_cst(cst)
   inspect(sn, content="SyntaxNode@[0,5)")
 }
-
-///|
-test "SyntaxNode Debug" {
-  let cst = CstNode::new(RawKind(20), [])
-  let sn = SyntaxNode::from_cst(cst)
-  inspect(
-    sn.debug_string(),
-    content="SyntaxNode { kind: RawKind(20), offset: 0, text_len: 0 }",
-  )
-}
 ```
 
 **Step 2: Run to verify failure**
 
-Expected: FAIL — no `Show` or `debug_string` on `SyntaxNode`.
+Expected: FAIL — no `Show` on `SyntaxNode`.
 
-**Step 3: Implement** — add to `seam/syntax_node.mbt` after the existing `SyntaxNode` methods:
+**Step 3: Add `derive(Debug(...))` to the struct and implement `Show`**
+
+Edit the `SyntaxNode` struct definition to add the derive, and add the `Show` impl after it:
+
+```moonbit
+// Change the struct definition from:
+pub struct SyntaxNode {
+  cst : CstNode
+  parent : SyntaxNode?
+  offset : Int
+}
+
+// To:
+pub struct SyntaxNode {
+  cst : CstNode
+  parent : SyntaxNode?
+  offset : Int
+} derive(Debug(ignore=[SyntaxNode]))
+```
+
+Then add the `Show` impl:
 
 ```moonbit
 ///|
@@ -676,19 +663,9 @@ pub impl Show for SyntaxNode with output(self, logger) {
   logger.write_string(self.end().to_string())
   logger.write_string(")")
 }
-
-///|
-/// Debug: structural form — "SyntaxNode { kind: ..., offset: ..., text_len: ... }"
-pub impl Debug for SyntaxNode with debug_string(self) {
-  "SyntaxNode { kind: " +
-  self.cst.kind.to_string() +
-  ", offset: " +
-  self.offset.to_string() +
-  ", text_len: " +
-  self.cst.text_len.to_string() +
-  " }"
-}
 ```
+
+> **Note:** `derive(Debug(ignore=[SyntaxNode]))` suppresses the `parent` field from debug output to avoid infinite recursion. If the `ignore` parameter does not apply to `SyntaxNode?` fields (Option wrapping), run `moon check` to find the exact error, then try `ignore=[Option]` as an alternative or add the `offset` field to the `ignore` list and compare outputs.
 
 **Step 4: Run tests**
 
@@ -701,7 +678,7 @@ Expected: PASS.
 
 ```bash
 git add seam/syntax_node.mbt seam/syntax_node_wbtest.mbt
-git commit -m "feat(seam): add Show and Debug impls for SyntaxNode"
+git commit -m "feat(seam): add Show and Debug for SyntaxNode"
 ```
 
 ---
