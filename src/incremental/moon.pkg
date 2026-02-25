@@ -7,6 +7,7 @@ import {
   "dowdiness/parser/core" @core,
   "dowdiness/parser/parser" @parse,
   "dowdiness/seam" @seam,
+  "dowdiness/incr" @incr,
 }
 
 import {
