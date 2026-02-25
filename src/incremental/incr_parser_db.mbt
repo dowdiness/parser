@@ -1,4 +1,5 @@
-///| Tokenization stage output — designed for Memo[T : Eq] boundaries.
+///|
+/// Tokenization stage output — designed for Memo[T : Eq] boundaries.
 /// Eq on Array[TokenInfo] is element-wise; enables backdating when
 /// the same source re-tokenizes to an identical token stream.
 pub(all) enum TokenStage {
@@ -6,7 +7,8 @@ pub(all) enum TokenStage {
   Err(String)
 } derive(Eq, Show)
 
-///| Green parse stage output — designed for Memo[T : Eq] boundaries.
+///|
+/// Green parse stage output — designed for Memo[T : Eq] boundaries.
 /// CstNode::Eq uses a cached structural hash (O(1) rejection path),
 /// so comparing two CstStage values is very cheap.
 /// diagnostics is Array[String] rather than Array[Diagnostic] because
@@ -16,7 +18,8 @@ pub(all) struct CstStage {
   diagnostics : Array[String]
 } derive(Eq, Show)
 
-///| Salsa-style incremental pipeline for the lambda calculus parser.
+///|
+/// Salsa-style incremental pipeline for the lambda calculus parser.
 ///
 /// source_text : Signal[String]
 ///   → tokens : Memo[TokenStage]
@@ -28,10 +31,9 @@ pub(all) struct CstStage {
 ///
 /// **Lifetime:** one ParserDb per document editing session.
 pub struct ParserDb {
-  priv rt          : @incr.Runtime
   priv source_text : @incr.Signal[String]
   priv tokens_memo : @incr.Memo[TokenStage]
-  priv cst_memo    : @incr.Memo[CstStage]
+  priv cst_memo : @incr.Memo[CstStage]
 }
 
 ///|
@@ -42,9 +44,7 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
   let tokens_memo = @incr.Memo::new(
     rt,
     fn() -> TokenStage {
-      try {
-        TokenStage::Ok(@lexer.tokenize(source_text.get()))
-      } catch {
+      TokenStage::Ok(@lexer.tokenize(source_text.get())) catch {
         @lexer.TokenizationError(msg) => TokenStage::Err(msg)
       }
     },
@@ -59,14 +59,18 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
           // Tokenization failed: return an empty SourceFile CST as placeholder.
           // term() will detect this via tokens_memo and return AstNode::error.
           let (empty_cst, _, _) = @parse.parse_cst_recover_with_tokens(
-            "", [], None,
+            "",
+            [],
+            None,
           )
           CstStage::{ cst: empty_cst, diagnostics: ["tokenization: " + msg] }
         }
         TokenStage::Ok(tokens) => {
           let source = source_text.get()
           let (cst, diags, _reuse_count) = @parse.parse_cst_recover_with_tokens(
-            source, tokens, None,
+            source,
+            tokens,
+            None,
           )
           CstStage::{
             cst,
@@ -84,30 +88,34 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
     },
     label="cst",
   )
-  { rt, source_text, tokens_memo, cst_memo }
+  { source_text, tokens_memo, cst_memo }
 }
 
-///| Update the source text, invalidating tokens and cst memos.
+///|
+/// Update the source text, invalidating tokens and cst memos.
 /// If the new source equals the current source (String::Eq), Signal::set
 /// is a no-op and no recomputation occurs.
 pub fn ParserDb::set_source(self : ParserDb, source : String) -> Unit {
   self.source_text.set(source)
 }
 
-///| Return the current CstStage (parse result + normalized diagnostics).
+///|
+/// Return the current CstStage (parse result + normalized diagnostics).
 /// Triggers memo evaluation if the source has changed since last call.
 pub fn ParserDb::cst(self : ParserDb) -> CstStage {
   self.cst_memo.get()
 }
 
-///| Return normalized parse diagnostic strings.
+///|
+/// Return normalized parse diagnostic strings.
 /// On tokenization error this contains the tokenization message.
 /// On parse error this contains position-annotated error strings.
 pub fn ParserDb::diagnostics(self : ParserDb) -> Array[String] {
   self.cst_memo.get().diagnostics
 }
 
-///| Return an AstNode for the current source.
+///|
+/// Return an AstNode for the current source.
 ///
 /// Option B error routing: on tokenization failure, returns AstNode::error(...)
 /// matching IncrementalParser::parse behavior. Callers do not need to check
