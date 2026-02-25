@@ -21,7 +21,7 @@ fn TestDb::new() -> TestDb {
 }
 
 ///|
-impl @incr.IncrDb for TestDb with runtime(self) {
+impl @incr.Database for TestDb with runtime(self) {
   self.rt
 }
 
@@ -31,10 +31,10 @@ fn[R : @incr.Readable] check_up_to_date(node : R) -> Bool {
   node.is_up_to_date()
 }
 
-// === IncrDb + helper function tests ===
+// === Database + helper function tests ===
 
 ///|
-test "trait: create_signal via IncrDb" {
+test "trait: create_signal via Database" {
   let db = TestDb()
   let sig = @incr.create_signal(db, 42)
   inspect(sig.get(), content="42")
@@ -49,7 +49,7 @@ test "trait: create_signal with High durability" {
 }
 
 ///|
-test "trait: create_memo via IncrDb" {
+test "trait: create_memo via Database" {
   let db = TestDb()
   let sig = @incr.create_signal(db, 10)
   let memo = @incr.create_memo(db, () => sig.get() * 2)
@@ -57,7 +57,7 @@ test "trait: create_memo via IncrDb" {
 }
 
 ///|
-test "trait: batch via IncrDb" {
+test "trait: batch via Database" {
   let db = TestDb()
   let x = @incr.create_signal(db, 1)
   let y = @incr.create_signal(db, 2)
@@ -71,7 +71,7 @@ test "trait: batch via IncrDb" {
 }
 
 ///|
-test "trait: batch via IncrDb rolls back on raised error" {
+test "trait: batch via Database rolls back on raised error" {
   let db = TestDb()
   let x = @incr.create_signal(db, 1)
   let mut compute_count = 0
@@ -93,7 +93,7 @@ test "trait: batch via IncrDb rolls back on raised error" {
 }
 
 ///|
-test "trait: batch_result via IncrDb" {
+test "trait: batch_result via Database" {
   let db = TestDb()
   let x = @incr.create_signal(db, 1)
   let ok = @incr.batch_result(db, () => x.set(2))
@@ -206,7 +206,7 @@ fn CalcPipeline::new() -> CalcPipeline {
 }
 
 ///|
-impl @incr.IncrDb for CalcPipeline with runtime(self) {
+impl @incr.Database for CalcPipeline with runtime(self) {
   self.rt
 }
 
@@ -351,7 +351,7 @@ test "trait: create_memo with label" {
 }
 
 ///|
-test "trait: create_memo_map via IncrDb" {
+test "trait: create_memo_map via Database" {
   let db = TestDb()
   let source = @incr.create_signal(db, 10)
   let by_key = @incr.create_memo_map(

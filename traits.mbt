@@ -16,11 +16,11 @@
 ///   rt : @incr.Runtime
 /// }
 ///
-/// impl @incr.IncrDb for MyDb with runtime(self) {
+/// impl @incr.Database for MyDb with runtime(self) {
 ///   self.rt
 /// }
 /// ```
-pub(open) trait IncrDb {
+pub(open) trait Database {
   runtime(Self) -> Runtime
 }
 
@@ -63,7 +63,7 @@ pub impl[T] Readable for Memo[T] with is_up_to_date(self) {
 ///
 /// # Parameters
 ///
-/// - `db`: Any type implementing `IncrDb`
+/// - `db`: Any type implementing `Database`
 /// - `value`: The initial value of the signal
 /// - `durability`: How often this signal is expected to change (default: `Low`)
 /// - `label`: An optional human-readable name for debugging
@@ -71,7 +71,7 @@ pub impl[T] Readable for Memo[T] with is_up_to_date(self) {
 /// # Returns
 ///
 /// A new signal associated with the database's runtime
-pub fn[Db : IncrDb, T] create_signal(
+pub fn[Db : Database, T] create_signal(
   db : Db,
   value : T,
   durability? : Durability = Low,
@@ -85,14 +85,14 @@ pub fn[Db : IncrDb, T] create_signal(
 ///
 /// # Parameters
 ///
-/// - `db`: Any type implementing `IncrDb`
+/// - `db`: Any type implementing `Database`
 /// - `f`: The compute function for the memo
 /// - `label`: An optional human-readable name for debugging
 ///
 /// # Returns
 ///
 /// A new memo associated with the database's runtime
-pub fn[Db : IncrDb, T : Eq] create_memo(
+pub fn[Db : Database, T : Eq] create_memo(
   db : Db,
   f : () -> T,
   label? : String,
@@ -108,14 +108,14 @@ pub fn[Db : IncrDb, T : Eq] create_memo(
 ///
 /// # Parameters
 ///
-/// - `db`: Any type implementing `IncrDb`
+/// - `db`: Any type implementing `Database`
 /// - `f`: The compute function for each key
 /// - `label`: An optional label applied to each per-key memo
 ///
 /// # Returns
 ///
 /// A new memo map associated with the database's runtime
-pub fn[Db : IncrDb, K, V] create_memo_map(
+pub fn[Db : Database, K, V] create_memo_map(
   db : Db,
   f : (K) -> V,
   label? : String,
@@ -132,15 +132,15 @@ pub fn[Db : IncrDb, K, V] create_memo_map(
 ///
 /// # Parameters
 ///
-/// - `db`: Any type implementing `IncrDb`
+/// - `db`: Any type implementing `Database`
 /// - `f`: The closure containing signal updates
-pub fn[Db : IncrDb] batch(db : Db, f : () -> Unit raise?) -> Unit raise? {
+pub fn[Db : Database] batch(db : Db, f : () -> Unit raise?) -> Unit raise? {
   db.runtime().batch(f)
 }
 
 ///|
 /// Runs a batch and returns raised errors as `Result`.
-pub fn[Db : IncrDb] batch_result(
+pub fn[Db : Database] batch_result(
   db : Db,
   f : () -> Unit raise?,
 ) -> Result[Unit, Error] {
@@ -179,7 +179,7 @@ pub(open) trait Trackable {
 ///
 /// # Parameters
 ///
-/// - `db`: Any type implementing `IncrDb`
+/// - `db`: Any type implementing `Database`
 /// - `value`: The initial value of the TrackedCell
 /// - `durability`: How often this cell is expected to change (default: `Low`)
 /// - `label`: An optional human-readable name for debugging
@@ -187,7 +187,7 @@ pub(open) trait Trackable {
 /// # Returns
 ///
 /// A new TrackedCell associated with the database's runtime
-pub fn[Db : IncrDb, T] create_tracked_cell(
+pub fn[Db : Database, T] create_tracked_cell(
   db : Db,
   value : T,
   durability? : Durability = Low,

@@ -344,7 +344,7 @@ rt.batch(() => {
 // Single revision bump; downstream memos reverify once
 ```
 
-### Using IncrDb with TrackedCell
+### Using Database with TrackedCell
 
 When your runtime is wrapped in a database type, use `create_tracked_cell` instead of calling `TrackedCell(...)` directly:
 
@@ -355,7 +355,7 @@ struct MyDb {
   fn new() -> MyDb
 }
 
-impl @incr.IncrDb for MyDb with runtime(self) { self.rt }
+impl @incr.Database for MyDb with runtime(self) { self.rt }
 
 fn MyDb::new() -> MyDb {
   { rt: @incr.Runtime() }
@@ -413,7 +413,7 @@ inspect(by_id.get(1), content="21")  // key=1 recomputes lazily
 inspect(by_id.get(2), content="22")  // key=2 recomputes when read
 ```
 
-For `IncrDb`-style code, use `create_memo_map(db, f, label?)`.
+For `Database`-style code, use `create_memo_map(db, f, label?)`.
 
 ---
 

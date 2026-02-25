@@ -25,7 +25,7 @@ This library is organized into four MoonBit sub-packages:
 dowdiness/incr/
 ├── moon.pkg                    (root facade — imports types + internal + pipeline)
 ├── incr.mbt                    (pub type re-exports for all public types)
-├── traits.mbt                  (IncrDb, Readable, Trackable traits; create_signal, create_memo, create_tracked_cell, batch, gc_tracked helpers)
+├── traits.mbt                  (Database, Readable, Trackable traits; create_signal, create_memo, create_tracked_cell, batch, gc_tracked helpers)
 │
 ├── types/                      (pure value types, zero dependencies)
 │   ├── revision.mbt            (Revision, Durability, DURABILITY_COUNT)
@@ -50,7 +50,7 @@ dowdiness/incr/
     ├── moon.pkg                (imports dowdiness/incr and dowdiness/incr/pipeline for test)
     ├── integration_test.mbt    (end-to-end graph scenarios)
     ├── fanout_test.mbt         (wide fanout stress tests)
-    ├── traits_test.mbt         (IncrDb, Readable, and pipeline trait tests)
+    ├── traits_test.mbt         (Database, Readable, and pipeline trait tests)
     └── tracked_struct_test.mbt (TrackedCell, Trackable, and gc_tracked tests)
 ```
 
@@ -71,7 +71,7 @@ The library implements Salsa's incremental computation pattern with three key ty
 - **Revision** / **Durability** (`types/revision.mbt`) — Monotonic revision counter bumped on input changes. Durability classifies input change frequency; derived cells inherit the minimum durability of their dependencies.
 - **Verification** (`internal/verify.mbt`) — `maybe_changed_after()` is the core algorithm. For derived cells: checks the durability shortcut first, then walks dependencies iteratively using an explicit stack of `VerifyFrame`s. If any dependency changed, recomputes the cell (enabling backdating). Green path (no change) marks `verified_at` without recomputation.
 - **CycleError** (`internal/cycle.mbt`) — Cycle detection error type. `CycleError::from_path(path, closing_id)` constructs a `CycleDetected` value from a collected path; `format_path(rt)` produces a human-readable chain string.
-- **Traits** (`traits.mbt`) — `IncrDb`, `Readable`, and `Trackable` public traits; `create_signal`, `create_memo`, `create_tracked_cell`, `batch`, and `gc_tracked` helper functions. Pipeline traits (`Sourceable`, `Parseable`, `Checkable`, `Executable`) live in `pipeline/pipeline_traits.mbt` and are marked experimental.
+- **Traits** (`traits.mbt`) — `Database`, `Readable`, and `Trackable` public traits; `create_signal`, `create_memo`, `create_tracked_cell`, `batch`, and `gc_tracked` helper functions. Pipeline traits (`Sourceable`, `Parseable`, `Checkable`, `Executable`) live in `pipeline/pipeline_traits.mbt` and are marked experimental.
 
 ### Data Flow
 
@@ -98,7 +98,7 @@ The library implements Salsa's incremental computation pattern with three key ty
 
 ### For Users
 - **README.md** — Entry point: features, quick start, documentation index
-- **docs/getting-started.md** — Step-by-step tutorial for new users (shows both Runtime and IncrDb patterns)
+- **docs/getting-started.md** — Step-by-step tutorial for new users (shows both Runtime and Database patterns)
 - **docs/concepts.md** — Core concepts explained simply (Signals, Memos, Revisions, Durability, TrackedCell/Field-Level Tracking)
 - **docs/api-reference.md** — Complete reference for all public types and methods
 - **docs/cookbook.md** — Common patterns and recipes

@@ -88,7 +88,7 @@ import {}
 ### `dowdiness/incr` (root — public API facade)
 
 The public-facing package. Imports from `types` and `internal`, re-exports all
-public types via `pub typealias`, and contains the `IncrDb`/`Readable` traits
+public types via `pub typealias`, and contains the `Database`/`Readable` traits
 plus the `create_signal`, `create_memo`, `batch` helper functions.
 
 **`moon.pkg` (modified):**

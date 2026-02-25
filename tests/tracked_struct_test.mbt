@@ -176,7 +176,7 @@ test "gc_tracked compiles and runs (no-op)" {
 }
 
 ///|
-test "create_tracked_cell with IncrDb" {
+test "create_tracked_cell with Database" {
   // TestDb is defined at the top level of traits_test.mbt (same package)
   let db = TestDb::new()
   let cell = @incr.create_tracked_cell(db, 42, label="db_cell")

@@ -2,7 +2,7 @@
 
 Complete reference for the public API in `incr`.
 
-> **Recommended Pattern:** Use the `IncrDb` trait to encapsulate your `Runtime` in a database type. This makes your API cleaner and hides implementation details. See the [Helper Functions](#helper-functions) section and [API Design Guidelines](api-design-guidelines.md) for details.
+> **Recommended Pattern:** Use the `Database` trait to encapsulate your `Runtime` in a database type. This makes your API cleaner and hides implementation details. See the [Helper Functions](#helper-functions) section and [API Design Guidelines](api-design-guidelines.md) for details.
 
 ## Runtime
 
@@ -266,7 +266,7 @@ fn read_or_fallback_rt(rt : Runtime, doubled : Memo[Int]) -> Int {
 
 **Database pattern:**
 ```moonbit
-fn read_or_fallback_db[Db : IncrDb](app : Db, doubled : Memo[Int]) -> Int {
+fn read_or_fallback_db[Db : Database](app : Db, doubled : Memo[Int]) -> Int {
   doubled.get_or_else(err => {
     println(err.format_path(app.runtime()))
     0
@@ -581,10 +581,10 @@ doubled.clear_on_change()
 
 ## Core Traits
 
-### `IncrDb`
+### `Database`
 
 ```moonbit
-pub(open) trait IncrDb {
+pub(open) trait Database {
   runtime(Self) -> Runtime
 }
 ```
@@ -662,15 +662,15 @@ create_signal(db, value, label="config")               // with debug label
 create_signal(db, value, durability=High, label="cfg") // both
 ```
 
-**Parameters:** `db: Db` (IncrDb), `value: T`, `durability?: Durability = Low`, `label?: String`
+**Parameters:** `db: Db` (Database), `value: T`, `durability?: Durability = Low`, `label?: String`
 
 **Returns:** `Signal[T]`
 
-### `create_memo[Db : IncrDb, T : Eq](db: Db, f: () -> T) -> Memo[T]`
+### `create_memo[Db : Database, T : Eq](db: Db, f: () -> T) -> Memo[T]`
 
 Creates a memo using `db.runtime()`.
 
-### `create_memo_map[Db : IncrDb, K, V](db: Db, f: (K) -> V, label? : String) -> MemoMap[K, V]`
+### `create_memo_map[Db : Database, K, V](db: Db, f: (K) -> V, label? : String) -> MemoMap[K, V]`
 
 Creates a memo map using `db.runtime()`. Each key is memoized independently.
 
@@ -685,7 +685,7 @@ create_tracked_cell(db, value, label="SourceFile.path")      // with debug label
 create_tracked_cell(db, value, durability=High, label="cfg") // both
 ```
 
-**Parameters:** `db: Db` (IncrDb), `value: T`, `durability?: Durability = Low`, `label?: String`
+**Parameters:** `db: Db` (Database), `value: T`, `durability?: Durability = Low`, `label?: String`
 
 **Returns:** `TrackedCell[T]`
 
@@ -699,13 +699,13 @@ Marks all cells of a `Trackable` struct as GC roots.
 gc_tracked(rt, my_tracked_struct)
 ```
 
-### `batch[Db : IncrDb](db: Db, f: () -> Unit raise?) -> Unit raise?`
+### `batch[Db : Database](db: Db, f: () -> Unit raise?) -> Unit raise?`
 
 Runs a batch using `db.runtime()`, including rollback-on-raise semantics.
-This is the IncrDb helper form of `rt.batch(...)`.
+This is the Database helper form of `rt.batch(...)`.
 
 ```moonbit
-fn update_cart[Db : IncrDb](
+fn update_cart[Db : Database](
   app : Db,
   price : Signal[Int],
   quantity : Signal[Int],
@@ -717,17 +717,17 @@ fn update_cart[Db : IncrDb](
 }
 ```
 
-### `batch_result[Db : IncrDb](db: Db, f: () -> Unit raise?) -> Result[Unit, Error]`
+### `batch_result[Db : Database](db: Db, f: () -> Unit raise?) -> Result[Unit, Error]`
 
 Runs a batch using `db.runtime()` and returns raised errors as `Result`.
-This is the IncrDb helper form of `rt.batch_result(...)`.
+This is the Database helper form of `rt.batch_result(...)`.
 
 ```moonbit
 suberror BatchStop {
   Stop
 }
 
-fn update_cart_result[Db : IncrDb](
+fn update_cart_result[Db : Database](
   app : Db,
   price : Signal[Int],
   quantity : Signal[Int],

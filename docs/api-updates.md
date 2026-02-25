@@ -75,7 +75,7 @@ This document summarizes the documentation updates made based on the API Interfa
 ### 4. `README.md`
 
 **Changes:**
-- **Quick Start section:** Now shows database pattern (IncrDb) FIRST, with direct Runtime as an alternative
+- **Quick Start section:** Now shows database pattern (Database) FIRST, with direct Runtime as an alternative
 - **Documentation table:** Added link to new API Design Guidelines document
 - **Updated contributor docs descriptions:** More specific about what each document contains
 
@@ -93,7 +93,7 @@ struct MyApp {
 
   fn new() -> MyApp
 }
-impl IncrDb for MyApp with runtime(self) { self.rt }
+impl Database for MyApp with runtime(self) { self.rt }
 
 fn MyApp::new() -> MyApp {
   { rt: Runtime() }
@@ -112,7 +112,7 @@ let x = create_signal(app, 10)
 **Changes:**
 - **New section:** "Recommended Approach: Database Pattern" added before runtime creation
 - **All code examples:** Now show BOTH database pattern and direct runtime pattern side-by-side
-- **Step 1:** Explains IncrDb trait and database encapsulation
+- **Step 1:** Explains Database trait and database encapsulation
 - **Step 2 & 3:** Show `create_signal(app, ...)` alongside `Signal(rt, ...)`
 
 **Why updated:** Teaches the recommended pattern from the start while still showing the direct approach for comparison.
@@ -120,7 +120,7 @@ let x = create_signal(app, 10)
 ### 6. `docs/api-reference.md`
 
 **Changes:**
-- **New introductory note:** Recommends IncrDb pattern at the top of the document
+- **New introductory note:** Recommends Database pattern at the top of the document
 - **New section: "Introspection (Planned - Phase 2A)"**
   - Signal introspection methods
   - Memo introspection methods
@@ -137,7 +137,7 @@ let x = create_signal(app, 10)
 
 **Changes:**
 - **Documentation Hierarchy section:** Added descriptions for updated documents
-- **User docs:** Added note about IncrDb pattern in getting-started.md
+- **User docs:** Added note about Database pattern in getting-started.md
 - **Contributor docs:**
   - Updated ROADMAP description to mention Phase 2 details
   - Updated TODO description to note priority organization
@@ -150,7 +150,7 @@ let x = create_signal(app, 10)
 ### 1. **Promote Database-Centric Pattern**
 
 **Before:** Direct Runtime usage was shown as the primary approach
-**After:** IncrDb trait pattern is recommended first, with Runtime as an alternative
+**After:** Database trait pattern is recommended first, with Runtime as an alternative
 
 **Rationale:** Encapsulating Runtime in a database type is better for real applications:
 - Cleaner API (no Runtime passing)
@@ -205,7 +205,7 @@ struct MyApp {
 
   fn new() -> MyApp
 }
-impl IncrDb for MyApp with runtime(self) { self.rt }
+impl Database for MyApp with runtime(self) { self.rt }
 
 fn MyApp::new() -> MyApp {
   { rt: Runtime() }
@@ -268,7 +268,7 @@ let m = Memo(rt, () => sig.get() * 2, label="doubled")
 | `docs/api-design-guidelines.md` | **New** | Comprehensive API design guide |
 | `ROADMAP.md` | Updated | Reorganized Phase 2 with priorities |
 | `TODO.md` | Updated | Added 30+ concrete tasks |
-| `README.md` | Updated | Promote IncrDb pattern first |
+| `README.md` | Updated | Promote Database pattern first |
 | `docs/getting-started.md` | Updated | Show both patterns side-by-side |
 | `docs/api-reference.md` | Updated | Added planned API sections |
 | `CLAUDE.md` | Updated | Reference new docs structure |

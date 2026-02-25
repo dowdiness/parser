@@ -690,11 +690,11 @@ Replace the current `create_signal` and delete `create_signal_durable` entirely.
 ///
 /// # Parameters
 ///
-/// - `db`: Any type implementing `IncrDb`
+/// - `db`: Any type implementing `Database`
 /// - `value`: The initial value of the signal
 /// - `durability`: How often this signal is expected to change (default: `Low`)
 /// - `label`: An optional human-readable name for debugging
-pub fn[Db : IncrDb, T] create_signal(
+pub fn[Db : Database, T] create_signal(
   db : Db,
   value : T,
   ~durability : Durability = Low,
@@ -712,10 +712,10 @@ pub fn[Db : IncrDb, T] create_signal(
 ///
 /// # Parameters
 ///
-/// - `db`: Any type implementing `IncrDb`
+/// - `db`: Any type implementing `Database`
 /// - `f`: The compute function for the memo
 /// - `label`: An optional human-readable name for debugging
-pub fn[Db : IncrDb, T : Eq] create_memo(
+pub fn[Db : Database, T : Eq] create_memo(
   db : Db,
   f : () -> T,
   label? : String,
@@ -730,7 +730,7 @@ Replace the removed `create_signal_durable` test:
 
 ```moonbit
 ///|
-test "trait: create_signal_durable via IncrDb" {
+test "trait: create_signal_durable via Database" {
   let db = TestDb::new()
   let sig = create_signal(db, "hello", durability=High)
   inspect(sig.get(), content="hello")

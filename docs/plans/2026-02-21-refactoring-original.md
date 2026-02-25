@@ -720,7 +720,7 @@ pub(open) trait Executable {
 }
 ```
 
-Delete all of the above. `traits.mbt` should end after `pub fn[Db : IncrDb] batch`.
+Delete all of the above. `traits.mbt` should end after `pub fn[Db : Database] batch`.
 
 ### Step 4: Type-check and regenerate interface file
 

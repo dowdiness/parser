@@ -78,7 +78,7 @@ Out of scope:
 
 **Steps:**
 - Add:
-  - `pub fn[Db : IncrDb, K : Hash + Eq, V : Eq] create_memo_map(db : Db, f : (K) -> V, label? : String) -> MemoMap[K, V]`
+  - `pub fn[Db : Database, K : Hash + Eq, V : Eq] create_memo_map(db : Db, f : (K) -> V, label? : String) -> MemoMap[K, V]`
 - Keep style aligned with existing helpers:
   - `create_signal`
   - `create_memo`

@@ -504,7 +504,7 @@ pub typealias CycleError = @internal.CycleError
 
 Remove the `pub fn[T] Memo::is_up_to_date` method body (it moved to `internal/memo.mbt` in Task 9). The `impl Readable for Memo[T]` block that calls `self.is_up_to_date()` stays — it now dispatches to `@internal.Memo::is_up_to_date`.
 
-The rest of `traits.mbt` — `IncrDb`, `Readable`, `Signal::is_up_to_date`, `impl Readable for Signal`, `impl Readable for Memo`, `create_signal`, `create_memo`, `batch` — stays unchanged. Within the root package, `Signal`, `Memo`, `Runtime`, `Durability` etc. resolve through the typealiases defined in `incr.mbt`.
+The rest of `traits.mbt` — `Database`, `Readable`, `Signal::is_up_to_date`, `impl Readable for Signal`, `impl Readable for Memo`, `create_signal`, `create_memo`, `batch` — stays unchanged. Within the root package, `Signal`, `Memo`, `Runtime`, `Durability` etc. resolve through the typealiases defined in `incr.mbt`.
 
 **Step 4: Delete root engine source files**
 

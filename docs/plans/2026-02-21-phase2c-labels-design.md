@@ -51,7 +51,7 @@ pub fn[T : Eq] Memo::new(
 ) -> Memo[T]
 ```
 
-### IncrDb helpers
+### Database helpers
 
 ```moonbit
 // Before: two helpers

@@ -347,7 +347,7 @@ The library is split into four MoonBit sub-packages. The root package re-exports
 | File | Purpose |
 |------|---------|
 | `incr.mbt` | `pub type` re-exports — transparent aliases for all public types |
-| `traits.mbt` | `IncrDb`, `Readable` — core public traits; `create_signal`, `create_memo`, `create_memo_map`, `batch` helpers |
+| `traits.mbt` | `Database`, `Readable` — core public traits; `create_signal`, `create_memo`, `create_memo_map`, `batch` helpers |
 
 ### `types/` package (`dowdiness/incr/types`)
 

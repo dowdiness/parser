@@ -50,7 +50,7 @@ let sig = Signal(rt, 10)
 
 // ✓ Better (database pattern)
 struct MyDb { rt : Runtime }
-impl IncrDb for MyDb with runtime(self) { self.rt }
+impl Database for MyDb with runtime(self) { self.rt }
 let sig = create_signal(db, 10)
 ```
 
@@ -60,11 +60,11 @@ let sig = create_signal(db, 10)
 
 ```moonbit
 // Minimal: just incremental computation
-impl IncrDb for MyDb { ... }
+impl Database for MyDb { ... }
 
 // Add pipeline stages as needed
-impl IncrDb + Sourceable for MyCompiler { ... }
-impl IncrDb + Sourceable + Parseable for MyFullCompiler { ... }
+impl Database + Sourceable for MyCompiler { ... }
+impl Database + Sourceable + Parseable for MyFullCompiler { ... }
 ```
 
 Users implement only what they need. No forced inheritance hierarchy.
@@ -267,7 +267,7 @@ struct MyApp {
   fn new() -> MyApp
 }
 
-impl IncrDb for MyApp with runtime(self) { self.rt }
+impl Database for MyApp with runtime(self) { self.rt }
 
 fn MyApp::new() -> MyApp {
   let rt = Runtime()
@@ -293,13 +293,13 @@ fn process(app : MyApp) -> Memo[String] {
 
 ```moonbit
 // Stage 1: Just incremental
-trait MyDb : IncrDb { ... }
+trait MyDb : Database { ... }
 
 // Stage 2: Add source handling
-trait MyCompiler : IncrDb + Sourceable { ... }
+trait MyCompiler : Database + Sourceable { ... }
 
 // Stage 3: Full pipeline
-trait MyFullCompiler : IncrDb + Sourceable + Parseable + Checkable { ... }
+trait MyFullCompiler : Database + Sourceable + Parseable + Checkable { ... }
 ```
 
 **Why:** Pay only for what you use. No forced methods.
@@ -444,7 +444,7 @@ pub fn[T] Memo::dependents(self) -> Array[CellId]
 
 **Emphasize:**
 
-1. **Trait design** (`IncrDb`, `Readable`, pipeline traits)
+1. **Trait design** (`Database`, `Readable`, pipeline traits)
 2. **Type constraints** (when to require `Eq`)
 3. **Performance** (backdating, durability shortcuts)
 4. **Correctness** (cycle detection, batch semantics)
@@ -455,7 +455,7 @@ pub fn[T] Memo::dependents(self) -> Array[CellId]
 
 - Core types: `Signal[T]`, `Memo[T]`, `Runtime`
 - Core methods: constructors (`Signal(rt, ...)`, `Memo(rt, ...)`), `get`, `set`, `batch`
-- Core traits: `IncrDb`, `Readable`
+- Core traits: `Database`, `Readable`
 - Error types: `CycleError`
 
 ### Additive (Safe to Add)

@@ -60,7 +60,7 @@ High-level future direction for the `incr` library, organized by phase. Each pha
   - Full Signal-equivalent API: `get`, `set`, `set_unconditional`, `id`, `durability`, `on_change`, `clear_on_change`, `is_up_to_date`, `as_signal`
   - Implements `Readable` trait; runtime sees only the inner Signal — zero changes to verification algorithm
 - ~~**`Trackable` trait**: `cell_ids(Self) -> Array[CellId]` contract for structs with TrackedCell fields~~ ✓ Implemented
-- ~~**`create_tracked_cell` helper**: Mirrors `create_signal` for IncrDb-pattern usage~~ ✓ Implemented
+- ~~**`create_tracked_cell` helper**: Mirrors `create_signal` for Database-pattern usage~~ ✓ Implemented
 - ~~**`gc_tracked` stub**: No-op call site for future Phase 4 GC integration~~ ✓ Implemented
 
 ### Phase 3D: Internal Quality Refactoring ✓
@@ -75,7 +75,7 @@ High-level future direction for the `incr` library, organized by phase. Each pha
 - ~~**`MemoMap[K, V]`**: Minimal parameterized-query helper with one memo per key~~ ✓ Implemented
   - Lazy key instantiation: per-key memo created on first read
   - API: `new`, `get`, `get_result`, `contains`, `length`
-- ~~**`create_memo_map` helper**: IncrDb-style constructor for keyed memo maps~~ ✓ Implemented
+- ~~**`create_memo_map` helper**: Database-style constructor for keyed memo maps~~ ✓ Implemented
 
 ## Phase 4 — Advanced Features
 

@@ -31,7 +31,7 @@ incr/                       # Root facade — re-exports public types
 ├── moon.mod.json           # name: "dowdiness/incr", version: "0.3.0"
 ├── moon.pkg                # imports @incr_types, @internal, @pipeline
 ├── incr.mbt                # pub using re-exports
-├── traits.mbt              # IncrDb, Readable traits; create_signal, create_memo, batch
+├── traits.mbt              # Database, Readable traits; create_signal, create_memo, batch
 ├── types/                  # Pure value types (zero dependencies)
 │   ├── moon.pkg            # no imports
 │   ├── cell_id.mbt         # CellId struct
@@ -104,7 +104,7 @@ Relevant constraints that shape this design:
 - **Monomorphization** — trait-constrained generics compile to specialized code (confirmed via C backend inspection). No vtable overhead.
 - **Derive macros exist** — `derive(Eq, Show, Debug)` etc. are available, with field ignore syntax: `derive(Debug(ignore=[SomeType]))`. Custom derives are not supported.
 - **Optional parameters** — `fn f(x~ : Int = 0, label? : String)` syntax is supported and used extensively in incr's API.
-- **`pub(open) trait`** — allows external packages to provide implementations. Used for `IncrDb` and `Readable`.
+- **`pub(open) trait`** — allows external packages to provide implementations. Used for `Database` and `Readable`.
 - **`pub(all) struct`** — makes all fields publicly accessible. Used for `Signal`, `Memo`, `Runtime`, `CellInfo`.
 
 ---
@@ -293,7 +293,7 @@ pub fn[T : Trackable] gc_tracked(rt : Runtime, tracked : T) -> Unit {
 }
 ```
 
-The function takes `Runtime` explicitly, following incr's existing convention where `batch`, `create_signal`, and `create_memo` are module-level functions accepting an `IncrDb` or `Runtime` parameter. Placing GC marking on the trait itself (e.g., `Trackable::mark_gc(self, rt)`) would conflate the struct's contract with runtime operations.
+The function takes `Runtime` explicitly, following incr's existing convention where `batch`, `create_signal`, and `create_memo` are module-level functions accepting a `Database` or `Runtime` parameter. Placing GC marking on the trait itself (e.g., `Trackable::mark_gc(self, rt)`) would conflate the struct's contract with runtime operations.
 
 ---
 
@@ -377,9 +377,9 @@ fn main {
 }
 ```
 
-### §3.4 Using with IncrDb Trait
+### §3.4 Using with Database Trait
 
-The tracked struct pattern composes cleanly with the existing `IncrDb` trait:
+The tracked struct pattern composes cleanly with the existing `Database` trait:
 
 ```moonbit
 struct MyDb {
@@ -387,7 +387,7 @@ struct MyDb {
   files : Array[SourceFile]
 }
 
-impl @incr.IncrDb for MyDb with runtime(self) {
+impl @incr.Database for MyDb with runtime(self) {
   self.rt
 }
 
@@ -461,7 +461,7 @@ pub(open) trait Trackable {
 /// Creates a new TrackedCell using the database's runtime.
 ///
 /// Follows the same pattern as create_signal and create_memo.
-pub fn[Db : IncrDb, T] create_tracked_cell(
+pub fn[Db : Database, T] create_tracked_cell(
   db : Db,
   value : T,
   durability? : Durability = Low,
@@ -650,7 +650,7 @@ test "TrackedCell Readable trait" {
 **Acceptance criteria**:
 1. `Trackable` trait compiles and can be implemented by user structs.
 2. `cell_ids()` returns correct CellIds for a struct with N TrackedCell fields.
-3. `create_tracked_cell(db, value)` works with `IncrDb`-implementing types.
+3. `create_tracked_cell(db, value)` works with `Database`-implementing types.
 4. `gc_tracked(rt, struct)` compiles and runs as no-op.
 5. No changes to Runtime internals.
 6. All existing tests still pass.
@@ -739,7 +739,7 @@ test "gc_tracked compiles and runs (no-op)" {
   // No crash, no effect — just verifying call compiles
 }
 
-test "create_tracked_cell with IncrDb" {
+test "create_tracked_cell with Database" {
   // TestDb is defined at the top level of traits_test.mbt (same package)
   let db = TestDb::new()
   let cell = @incr.create_tracked_cell(db, 42, label="db_cell")
@@ -833,11 +833,11 @@ Alternative: require tracked structs to embed a base struct like `struct Tracked
 
 - MoonBit structs do not support inheritance. A base struct would be a field, creating awkward `self.base.ids` access patterns.
 - A trait is more flexible — it works with any struct shape and imposes no structural requirement.
-- The trait approach aligns with incr's existing patterns: `IncrDb` and `Readable` are both `pub(open) trait`.
+- The trait approach aligns with incr's existing patterns: `Database` and `Readable` are both `pub(open) trait`.
 
 ### §6.3 Why gc_tracked Is a Free Function
 
-Following incr's convention where `batch`, `create_signal`, and `create_memo` are module-level functions that accept an `IncrDb` or `Runtime` parameter. Placing GC marking on the trait itself would conflate the struct's contract with runtime operations.
+Following incr's convention where `batch`, `create_signal`, and `create_memo` are module-level functions that accept a `Database` or `Runtime` parameter. Placing GC marking on the trait itself would conflate the struct's contract with runtime operations.
 
 ### §6.4 Why TrackedCell has derive(Debug(ignore=[Signal]))
 

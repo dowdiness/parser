@@ -25,7 +25,7 @@ struct MyApp {
   fn new() -> MyApp
 }
 
-impl IncrDb for MyApp with runtime(self) { self.rt }
+impl Database for MyApp with runtime(self) { self.rt }
 
 fn MyApp::new() -> MyApp {
   { rt: Runtime() }
