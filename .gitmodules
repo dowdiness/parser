@@ -1,3 +1,6 @@
 [submodule "seam"]
 	path = seam
 	url = https://github.com/dowdiness/seam.git
+[submodule "incr"]
+	path = incr
+	url = https://github.com/dowdiness/incr
