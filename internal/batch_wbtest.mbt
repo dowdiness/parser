@@ -232,6 +232,35 @@ test "batch: nested raised error rolls back entire outer batch" {
 }
 
 ///|
+test "batch: failed inner batch_result rolls back before outer continues" {
+  let rt = Runtime::new()
+  let outer_only = Signal::new(rt, 0)
+  let shared = Signal::new(rt, 0)
+  let inner_only = Signal::new(rt, 0)
+
+  rt.batch(() => {
+    outer_only.set(10)
+    shared.set(1)
+
+    let inner = rt.batch_result(fn() raise {
+      shared.set(2)
+      inner_only.set(99)
+      raise Stop
+    })
+    inspect(inner is Err(_), content="true")
+
+    // Outer batch continues with its own writes.
+    outer_only.set(20)
+  })
+
+  inspect(outer_only.get(), content="20")
+  inspect(shared.get(), content="1")
+  inspect(inner_only.get(), content="0")
+  inspect(rt.current_revision.value, content="1")
+  inspect(rt.batch_pending_signals.length(), content="0")
+}
+
+///|
 test "batch: raised error does not fire on_change callback" {
   let mut fired = 0
   let rt = Runtime::new(on_change=() => fired = fired + 1)

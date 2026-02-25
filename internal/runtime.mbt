@@ -8,6 +8,34 @@
 let next_runtime_id : Ref[Int] = { val: 0 }
 
 ///|
+/// Undo entry for one signal touched by a batch frame.
+priv struct BatchUndo {
+  cell_id : CellId
+  rollback : () -> Unit
+}
+
+///|
+/// Per-batch-frame rollback log for nested batch semantics.
+priv struct BatchFrame {
+  undo_entries : Array[BatchUndo]
+}
+
+///|
+fn BatchFrame::new() -> BatchFrame {
+  { undo_entries: [] }
+}
+
+///|
+fn BatchFrame::has_undo_for(self : BatchFrame, cell_id : CellId) -> Bool {
+  for entry in self.undo_entries {
+    if entry.cell_id == cell_id {
+      return true
+    }
+  }
+  false
+}
+
+///|
 /// Central coordinator for the incremental computation framework.
 ///
 /// The Runtime manages all bookkeeping for dependency tracking, revision
@@ -32,6 +60,7 @@ pub(all) struct Runtime {
   priv durability_last_changed : FixedArray[Revision]
   priv mut batch_depth : Int
   priv batch_pending_signals : Array[CellId]
+  priv batch_frames : Array[BatchFrame]
   priv mut batch_max_durability : Durability
   priv mut on_change : (() -> Unit)?
 
@@ -80,6 +109,7 @@ pub fn Runtime::new(on_change? : () -> Unit) -> Runtime {
     ),
     batch_depth: 0,
     batch_pending_signals: [],
+    batch_frames: [],
     batch_max_durability: Low,
     on_change,
   }
@@ -410,15 +440,14 @@ fn Runtime::bump_revision(self : Runtime, durability : Durability) -> Unit {
 /// cleanup cannot run and runtime state may be left inconsistent.
 pub fn Runtime::batch(self : Runtime, f : () -> Unit raise?) -> Unit raise? {
   self.batch_depth = self.batch_depth + 1
+  self.batch_frames.push(BatchFrame::new())
   f() catch {
     e => {
       self.batch_depth = self.batch_depth - 1
       if self.batch_depth < 0 {
         abort("batch_depth underflow: batch() nesting is unbalanced")
       }
-      if self.batch_depth == 0 {
-        self.rollback_batch()
-      }
+      self.rollback_current_batch_frame()
       raise e
     }
   }
@@ -427,6 +456,7 @@ pub fn Runtime::batch(self : Runtime, f : () -> Unit raise?) -> Unit raise? {
   if self.batch_depth < 0 {
     abort("batch_depth underflow: batch() nesting is unbalanced")
   }
+  self.complete_batch_frame_success()
   if self.batch_depth == 0 {
     self.commit_batch()
   }
@@ -445,27 +475,40 @@ pub fn Runtime::batch_result(
 }
 
 ///|
-/// Roll back pending batch writes without committing values or bumping revision.
-/// Called when a batch closure raises.
-fn Runtime::rollback_batch(self : Runtime) -> Unit {
-  if self.batch_pending_signals.length() == 0 {
-    self.batch_max_durability = Low
-    return
-  }
-  for id in self.batch_pending_signals {
-    let meta = self.get_cell(id)
-    match meta.rollback_pending {
-      Some(rollback_fn) => rollback_fn()
-      None =>
-        abort(
-          "Batched signal missing rollback_pending — internal invariant violated",
-        )
+/// Rolls back only the currently failing batch frame.
+fn Runtime::rollback_current_batch_frame(self : Runtime) -> Unit {
+  match self.batch_frames.pop() {
+    Some(frame) => {
+      let mut i = frame.undo_entries.length()
+      while i > 0 {
+        i = i - 1
+        (frame.undo_entries[i].rollback)()
+      }
+      self.recompute_batch_max_durability()
     }
-    meta.rollback_pending = None
-    meta.commit_pending = None
+    None => abort("batch frame underflow: batch() nesting is unbalanced")
   }
-  self.batch_pending_signals.clear()
-  self.batch_max_durability = Low
+}
+
+///|
+/// Completes the current frame after successful batch execution.
+/// - Outermost success: discard undo log.
+/// - Nested success: merge child frame entries into parent for outer rollback.
+fn Runtime::complete_batch_frame_success(self : Runtime) -> Unit {
+  match self.batch_frames.pop() {
+    Some(frame) => {
+      if self.batch_frames.length() == 0 {
+        return
+      }
+      let parent = self.batch_frames[self.batch_frames.length() - 1]
+      for entry in frame.undo_entries {
+        if not(parent.has_undo_for(entry.cell_id)) {
+          parent.undo_entries.push(entry)
+        }
+      }
+    }
+    None => abort("batch frame underflow: batch() nesting is unbalanced")
+  }
 }
 
 ///|
@@ -482,6 +525,13 @@ fn Runtime::commit_batch(self : Runtime) -> Unit {
   let changed_ids : Array[CellId] = []
   for id in self.batch_pending_signals {
     let meta = self.get_cell(id)
+    match meta.rollback_pending {
+      Some(_) => ()
+      None =>
+        abort(
+          "Batched signal missing rollback_pending — internal invariant violated",
+        )
+    }
     match meta.commit_pending {
       Some(commit_fn) => {
         if commit_fn() {
@@ -539,6 +589,57 @@ fn Runtime::commit_batch(self : Runtime) -> Unit {
 /// - `cell_id`: The ID of the signal with a pending change
 fn Runtime::record_batch_signal(self : Runtime, cell_id : CellId) -> Unit {
   self.batch_pending_signals.push(cell_id)
+}
+
+///|
+/// Registers a rollback action for the current batch frame.
+/// Only the first write per signal in a frame stores an undo entry.
+fn Runtime::record_batch_rollback(
+  self : Runtime,
+  cell_id : CellId,
+  rollback : () -> Unit,
+) -> Unit {
+  // Some internal batch-like flows (e.g. commit callbacks) temporarily
+  // raise batch_depth without creating an undo frame.
+  if self.batch_frames.length() == 0 {
+    return
+  }
+  let frame = self.batch_frames[self.batch_frames.length() - 1]
+  if frame.has_undo_for(cell_id) {
+    return
+  }
+  frame.undo_entries.push({ cell_id, rollback })
+}
+
+///|
+/// Removes one pending signal registration by id.
+fn Runtime::remove_batch_signal(self : Runtime, cell_id : CellId) -> Unit {
+  let kept : Array[CellId] = []
+  let mut removed = false
+  for id in self.batch_pending_signals {
+    if not(removed) && id == cell_id {
+      removed = true
+    } else {
+      kept.push(id)
+    }
+  }
+  self.batch_pending_signals.clear()
+  for id in kept {
+    self.batch_pending_signals.push(id)
+  }
+}
+
+///|
+/// Recompute max durability from currently pending signals.
+fn Runtime::recompute_batch_max_durability(self : Runtime) -> Unit {
+  let mut max_durability : Durability = Low
+  for id in self.batch_pending_signals {
+    let durability = self.get_cell(id).durability
+    if durability > max_durability {
+      max_durability = durability
+    }
+  }
+  self.batch_max_durability = max_durability
 }
 
 ///|
