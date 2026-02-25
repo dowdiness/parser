@@ -73,7 +73,7 @@ pub fn SyntaxElement::end(self : SyntaxElement) -> Int {
 ///
 /// **Invariant:** `offset + cst.text_len` is the exclusive end byte.
 pub struct SyntaxNode {
-  cst : CstNode
+  priv cst : CstNode
   parent : SyntaxNode?
   offset : Int
 } derive(Debug(ignore=[SyntaxNode]))
