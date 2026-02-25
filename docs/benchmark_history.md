@@ -2,6 +2,59 @@
 
 Historical snapshots from project benchmark runs (full suite and focused runs).
 
+## 2026-02-26 (Language-agnostic pipeline — `src/pipeline/` + `src/lambda/`)
+
+- Command: `moon bench --release`
+- Git ref: `main` (post `cfdfea3`)
+- Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
+- Result: `66/66` benchmarks passed (+1 new `lambda_parserdb` benchmark)
+- Changes since previous entry:
+  - `src/pipeline/` package added: `Parseable` trait, `Language[Ast]` vtable struct, `Language::from` bridge, `CstStage` (moved from `src/incremental/`), generic `ParserDb[Ast]` (two-memo: `Signal[String]` → `Memo[CstStage]` → `Memo[Ast]`)
+  - `src/lambda/` package added: `LambdaLanguage` (impl `Parseable`), `lambda_language()` constructor, `LambdaParserDb` newtype wrapper
+  - `CstStage` gains `is_lex_error : Bool` field — explicit lex-error signal replacing fragile `token_count == 0` heuristic
+  - `src/incremental/incr_parser_db.mbt` re-exports `@pipeline.CstStage`; existing `ParserDb` (three-memo) unchanged
+  - Test suite added: `src/lambda/lambda_parser_db_test.mbt` (12 tests, including cross-pipeline parity check)
+
+### Phase 8: Language-Agnostic Pipeline (two-memo)
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| lambda_parserdb: cold — new + term() | 5.82 µs | `LambdaParserDb::new` + `term()`; two-memo pipeline |
+
+### Phase 7: ParserDb Signal/Memo Pipeline (three-memo, updated run)
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| parserdb: cold — new + term() | 6.34 µs | Full construction + tokenize + parse + AST conversion |
+| parserdb: warm — term() no change | 0.02 µs | Memo staleness check only |
+| parserdb: signal no-op — set_source(same) + term() | 0.04 µs | String::Eq short-circuits before any Memo runs |
+| parserdb: full recompute — set_source(new) + term() | 13.73 µs | All three Memos recompute |
+| parserdb: undo/redo cycle | 13.70 µs | Two full recomputes per iteration |
+| parserdb: diagnostics — malformed input | 0.06 µs | Warm path for cached error result |
+
+### Core Parse Scaling (updated run)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| parse scaling - small (5 tokens) | 1.10 µs | Full parse baseline (small) |
+| parse scaling - medium (15 tokens) | 4.88 µs | Full parse baseline (medium) |
+| parse scaling - large (30+ tokens) | 8.02 µs | Full parse baseline (large) |
+
+### Notable Changes vs 2026-02-25 (term_memo)
+
+The new `lambda_parserdb` benchmark measures the two-memo generic pipeline. The two-memo
+path skips the `TokenStage` memo entirely, saving one staleness check per warm access.
+All other benchmark changes are within run-to-run noise on the same machine:
+
+| Metric | prev | today | Change |
+|---|---:|---:|---|
+| parserdb: cold | 6.23 µs | 6.34 µs | +2% (noise) |
+| parserdb: full recompute | 13.37 µs | 13.73 µs | +3% (noise) |
+| parse scaling - large | 7.88 µs | 8.02 µs | +2% (noise) |
+| **lambda_parserdb: cold** | — | **5.82 µs** | **NEW** — two-memo pipeline |
+
+---
+
 ## 2026-02-25 (ParserDb — term_memo added, AstNode::Eq)
 
 - Command: `moon bench --release`

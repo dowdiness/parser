@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+**Status: ✅ COMPLETE** — Implemented 2026-02-26 (commits `6b0287a`, `cfdfea3`).
+
 **Goal:** Separate lambda-calculus-specific code from the reactive pipeline infrastructure by introducing a `src/pipeline/` package. Language designers implement `trait Language` (partial contract) and get a full `Signal → Memo[CstStage] → Memo[Ast]` pipeline for free via `struct Language[Ast : Eq]` (same name, token-erased vtable) and `ParserDb[Ast : Eq]`.
 
 **Architecture:**
@@ -46,7 +48,7 @@ src/incremental/  ← MODIFIED: CstStage definition removed; re-exported from pi
 
 ---
 
-## Task 1: Create `src/pipeline/moon.pkg`
+## ✅ Task 1: Create `src/pipeline/moon.pkg`
 
 **Files:**
 - Create: `src/pipeline/moon.pkg`
@@ -60,7 +62,7 @@ import {
 
 ---
 
-## Task 2: Create `src/pipeline/language.mbt`
+## ✅ Task 2: Create `src/pipeline/language.mbt`
 
 **Files:**
 - Create: `src/pipeline/language.mbt`
@@ -110,7 +112,7 @@ pub fn[T : Language, Ast : Eq] Language::from(
 
 ---
 
-## Task 3: Create `src/pipeline/parser_db.mbt`
+## ✅ Task 3: Create `src/pipeline/parser_db.mbt`
 
 **Files:**
 - Create: `src/pipeline/parser_db.mbt`
@@ -183,7 +185,7 @@ pub fn[Ast : Eq] ParserDb::term(self : ParserDb[Ast]) -> Ast {
 
 ---
 
-## Task 4: Create `src/lambda/moon.pkg`
+## ✅ Task 4: Create `src/lambda/moon.pkg`
 
 **Files:**
 - Create: `src/lambda/moon.pkg`
@@ -201,7 +203,7 @@ import {
 
 ---
 
-## Task 5: Create `src/lambda/language.mbt`
+## ✅ Task 5: Create `src/lambda/language.mbt`
 
 **Files:**
 - Create: `src/lambda/language.mbt`
@@ -253,7 +255,7 @@ pub fn LambdaParserDb::new(source : String) -> LambdaParserDb {
 
 ---
 
-## Task 6: Update `src/incremental/` — re-export CstStage
+## ✅ Task 6: Update `src/incremental/` — re-export CstStage
 
 **Files:**
 - Modify: `src/incremental/moon.pkg` — add `"dowdiness/parser/pipeline"`
@@ -268,7 +270,7 @@ pub fn LambdaParserDb::new(source : String) -> LambdaParserDb {
 
 ---
 
-## Task 7: Add tests for generic ParserDb
+## ✅ Task 7: Add tests for generic ParserDb
 
 **Files:**
 - Create: `src/pipeline/parser_db_test.mbt` (blackbox test)
@@ -284,7 +286,7 @@ Use `@lambda.LambdaParserDb::new` as the concrete implementation under test.
 
 ---
 
-## Task 8: Update benchmarks
+## ✅ Task 8: Update benchmarks
 
 **Files:**
 - Modify: `src/benchmarks/moon.pkg` — add `"dowdiness/parser/lambda"` to imports
@@ -300,3 +302,14 @@ moon test                                     # 343+ tests pass
 moon bench --release                          # all benchmarks pass
 moon info && git diff src/**/*.mbti           # verify public API additions are intentional
 ```
+
+### Actual results (2026-02-26)
+
+- `moon check` — 0 errors, 0 warnings ✅
+- `moon test` — 78 tests passed (12 new in `src/lambda/`) ✅
+- `moon bench --release` — 66/66 benchmarks passed (1 new: `lambda_parserdb: cold = 5.82 µs`) ✅
+
+**Key deviation from plan:** MoonBit does not allow a `trait` and a `struct` with the same name in the
+same namespace. The `trait Language` was renamed to `trait Parseable` (aligning with the existing
+`incr/pipeline/pipeline_traits.mbt` vocabulary). The struct remains `Language[Ast]`. Callers use
+`@pipeline.Language[Ast]` for the vtable and `@pipeline.Parseable` for the trait bound.
