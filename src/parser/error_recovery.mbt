@@ -35,21 +35,22 @@ pub fn parse_with_error_recovery_tokens(
   tokens : Array[@token.TokenInfo],
 ) -> (@ast.AstNode, Array[String]) {
   let errors : Array[String] = []
-  let tree = parse_tree_from_tokens(tokens) catch {
-    ParseError(msg, token) => {
-      let error_msg = "Parse error: " +
-        msg +
-        " at token " +
-        @token.print_token(token)
-      errors.push(error_msg)
-      @ast.AstNode::error(error_msg, 0, 0)
-    }
-    e => {
-      let error_msg = "Unexpected error: " + e.to_string()
-      errors.push(error_msg)
-      @ast.AstNode::error(error_msg, 0, 0)
-    }
+  let (cst, diagnostics, _reuse_count) = parse_cst_recover_with_tokens(
+    "",
+    tokens,
+    None,
+  )
+  for diag in diagnostics {
+    errors.push(
+      "Parse error: " +
+      diag.message +
+      " (got " +
+      @token.print_token(diag.got_token) +
+      ")",
+    )
   }
+  let syntax = @seam.SyntaxNode::from_cst(cst)
+  let tree = syntax_node_to_ast_node(syntax, Ref::new(0))
   (tree, errors)
 }
 
