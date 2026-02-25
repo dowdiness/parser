@@ -261,6 +261,16 @@ pub fn SyntaxNode::tight_span(
 }
 
 ///|
+/// Returns the underlying `CstNode`.
+///
+/// **Advanced use only.** Use this when you need to pass the raw
+/// `CstNode` to infrastructure that requires it (e.g. reuse cursors).
+/// Prefer the SyntaxNode API for all navigation and position queries.
+pub fn SyntaxNode::cst_node(self : SyntaxNode) -> CstNode {
+  self.cst
+}
+
+///|
 /// Deepest descendant node whose span contains `offset`.
 ///
 /// Drills into the first child whose `[start, end)` covers `offset`,

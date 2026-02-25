@@ -107,6 +107,7 @@ pub struct SyntaxNode {
 }
 pub fn SyntaxNode::all_children(Self) -> Array[SyntaxElement]
 pub fn SyntaxNode::children(Self) -> Array[Self]
+pub fn SyntaxNode::cst_node(Self) -> CstNode
 pub fn SyntaxNode::end(Self) -> Int
 pub fn SyntaxNode::find_at(Self, Int) -> Self
 pub fn SyntaxNode::find_token(Self, RawKind) -> SyntaxToken?

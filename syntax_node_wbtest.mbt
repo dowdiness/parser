@@ -235,6 +235,13 @@ test "SyntaxNode::find_at returns self when no child node covers offset" {
 }
 
 ///|
+test "SyntaxNode::cst_node returns underlying CstNode" {
+  let cst = CstNode::new(RawKind(22), [])
+  let sn = SyntaxNode::from_cst(cst)
+  inspect(sn.cst_node() == cst, content="true")
+}
+
+///|
 test "SyntaxNode::find_at drills into deepest child" {
   // Build: root[0,5) → child[0,3) → grandchild[0,2)
   let leaf_tok = CstToken::new(RawKind(9), "ab")
