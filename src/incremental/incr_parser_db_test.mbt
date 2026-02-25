@@ -73,9 +73,7 @@ test "ParserDb term matches parse_cst_to_ast_node output" {
   for source in sources {
     let db = @incremental.ParserDb::new(source)
     let from_db = db.term()
-    let direct = @parse.parse_cst_to_ast_node(source) catch {
-      _ => @ast.AstNode::error("parse_cst_to_ast_node failed", 0, 0)
-    }
+    let direct = @parse.parse_cst_to_ast_node(source)
     assert_eq(from_db.to_string(), direct.to_string())
   }
 }

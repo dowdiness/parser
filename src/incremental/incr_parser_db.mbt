@@ -111,7 +111,7 @@ pub fn ParserDb::cst(self : ParserDb) -> CstStage {
 /// On tokenization error this contains the tokenization message.
 /// On parse error this contains position-annotated error strings.
 pub fn ParserDb::diagnostics(self : ParserDb) -> Array[String] {
-  self.cst_memo.get().diagnostics
+  self.cst_memo.get().diagnostics.copy()
 }
 
 ///|
