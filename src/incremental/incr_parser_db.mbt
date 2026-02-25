@@ -86,3 +86,40 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
   )
   { rt, source_text, tokens_memo, cst_memo }
 }
+
+///| Update the source text, invalidating tokens and cst memos.
+/// If the new source equals the current source (String::Eq), Signal::set
+/// is a no-op and no recomputation occurs.
+pub fn ParserDb::set_source(self : ParserDb, source : String) -> Unit {
+  self.source_text.set(source)
+}
+
+///| Return the current CstStage (parse result + normalized diagnostics).
+/// Triggers memo evaluation if the source has changed since last call.
+pub fn ParserDb::cst(self : ParserDb) -> CstStage {
+  self.cst_memo.get()
+}
+
+///| Return normalized parse diagnostic strings.
+/// On tokenization error this contains the tokenization message.
+/// On parse error this contains position-annotated error strings.
+pub fn ParserDb::diagnostics(self : ParserDb) -> Array[String] {
+  self.cst_memo.get().diagnostics
+}
+
+///| Return an AstNode for the current source.
+///
+/// Option B error routing: on tokenization failure, returns AstNode::error(...)
+/// matching IncrementalParser::parse behavior. Callers do not need to check
+/// diagnostics() to detect unrecoverable failures — the tree itself carries
+/// the error signal via AstKind::Error.
+pub fn ParserDb::term(self : ParserDb) -> @ast.AstNode {
+  match self.tokens_memo.get() {
+    TokenStage::Err(msg) =>
+      @ast.AstNode::error("Tokenization error: " + msg, 0, 0)
+    TokenStage::Ok(_) => {
+      let syntax = @seam.SyntaxNode::from_cst(self.cst_memo.get().cst)
+      @parse.syntax_node_to_ast_node(syntax, Ref::new(0))
+    }
+  }
+}
