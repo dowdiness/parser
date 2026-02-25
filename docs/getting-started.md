@@ -89,6 +89,28 @@ quantity.set(10)
 inspect(total.get(), content="1000")
 ```
 
+### Step 4.5: Prefer Graceful Reads
+
+`Memo::get()` is convenient but aborts on cycle errors. For resilient applications, use `get_result()`:
+
+**Database pattern:**
+```moonbit
+match total.get_result() {
+  Ok(value) => println("Total: \{value}")
+  Err(err) => println(err.format_path(app.runtime()))
+}
+```
+
+**Direct Runtime:**
+```moonbit
+match total.get_result() {
+  Ok(value) => println("Total: \{value}")
+  Err(err) => println(err.format_path(rt))
+}
+```
+
+`Signal::get_result()` is always `Ok`, but useful for API symmetry in generic code.
+
 ### Step 5: Observe Committed Changes
 
 Use `Runtime::set_on_change` to run a callback whenever the runtime commits a change.
@@ -106,14 +128,42 @@ quantity.set(12)
 inspect(changes, content="1")
 ```
 
+### Step 5.5: Batch Rollback on Raised Errors
+
+Batch writes are transactional for raised errors:
+
+**Shared setup:**
+```moonbit
+suberror BatchStop {
+  Stop
+}
+```
+
+**Database pattern:**
+```moonbit
+let amount = @incr.create_signal(app, 100)
+let res = @incr.batch_result(app, fn() raise {
+  amount.set(999)
+  raise Stop
+})
+
+inspect(res is Err(_), content="true")
+inspect(amount.get(), content="100") // rolled back
+```
+
 **Direct Runtime:**
 ```moonbit
-let mut changes = 0
-rt.set_on_change(() => { changes = changes + 1 })
+let amount = Signal(rt, 100)
+let res : Result[Unit, Error] = try? rt.batch(fn() raise {
+  amount.set(999)
+  raise Stop
+})
 
-quantity.set(12)
-inspect(changes, content="1")
+inspect(res is Err(_), content="true")
+inspect(amount.get(), content="100") // rolled back
 ```
+
+Note: `abort()` is not catchable in MoonBit. Rollback applies to raised errors only.
 
 ## Complete Example
 

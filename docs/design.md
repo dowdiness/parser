@@ -290,13 +290,33 @@ Without batching, each `Signal::set()` call bumps the global revision independen
 
 2. **Commit phase**: When the outermost batch ends, the runtime iterates over `batch_pending_signals` directly (not via an alias, to ensure the list clears correctly) and calls each signal's `commit_pending` closure. Each closure compares the pending value against the current value using `Eq`. Only signals whose values actually changed are marked with the new revision. The pending list is then cleared via `.clear()`.
 
+### Raised Error Rollback
+
+If the batch closure raises, the runtime rolls back pending writes:
+
+- Only writes made in the failing batch frame are rolled back
+- `pending_value` and registration state are restored to the pre-frame snapshot
+- Signals first registered by the failing frame are removed from `batch_pending_signals`
+- `batch_max_durability` is recomputed from the remaining pending writes
+- `batch_depth` is restored before re-raising
+
+This keeps runtime state consistent after recoverable (raised) failures, including nested failures caught by outer batches.
+
+### Abort Limitation
+
+MoonBit `abort()` is not catchable. If user code aborts inside a batch closure, rollback hooks cannot run.
+
 ### Revert Detection
 
 The two-phase design enables revert detection: if a signal is set to a new value and then set back to its original value within the same batch, the commit phase sees no net change. No revision bump occurs, and downstream memos skip verification entirely.
 
 ### Nested Batches
 
-Batches can be nested. A `batch_depth` counter tracks nesting. Only the outermost batch triggers the commit phase. Inner batches are transparent — their signal writes accumulate in the same pending set.
+Batches can be nested. A `batch_depth` counter tracks nesting, and each `Runtime::batch` call pushes a rollback frame.
+
+- On successful inner batch completion, its rollback entries are merged into the parent frame.
+- On inner failure, only that frame is rolled back before re-raising.
+- Only the outermost successful batch triggers the commit phase.
 
 ## Comparison with alien-signals
 
