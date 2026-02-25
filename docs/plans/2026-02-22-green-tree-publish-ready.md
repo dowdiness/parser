@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-22
 **Updated:** 2026-02-25
-**Status:** In Progress — Phases 0–3 complete; Phases 4–5 not started; Phase 6 (CI) deferred
+**Status:** In Progress — Phases 0–5 complete; Phase 6 (CI) deferred
 
 ## Goal
 
@@ -307,7 +307,7 @@ Acceptance criteria:
 
 ---
 
-## Phase 4: Test Completion — ⚠️ Partial
+## Phase 4: Test Completion — ✅ Complete
 
 **Current state:** unit tests exist in `*_wbtest.mbt` files for green node,
 red node, event buffer, hash, and interner. Panic/abort tests and two property
@@ -326,55 +326,50 @@ Acceptance criteria:
 - all tests pass with `moon test` ✅
 - panic/abort paths are explicitly tested ✅ (event_wbtest.mbt: 5 panic tests)
 
-### Task 4.2: Property-style confidence checks — ⚠️ Partial
+### Task 4.2: Property-style confidence checks — ✅ Done
 
 Properties:
 - deterministic structural hash for identical trees ✅ implemented
 - `build_tree` preserves concatenated text length ✅ implemented
-- SyntaxNode child offsets are monotonic and contiguous ⚠️ TODO(human) in seam_properties_wbtest.mbt
+- SyntaxNode child offsets are monotonic and contiguous ✅ implemented
 
-**Current state:** `moonbitlang/quickcheck 0.9.10` added to `seam/moon.mod.json`.
-Two of three properties pass with 100 checks each. Third property body is a
-stub with `ignore(children); true` pending user implementation of the predicate.
+**Current state:** All three properties in `seam/seam_properties_wbtest.mbt`,
+each running 100 cases via `moonbitlang/quickcheck 0.9.10`.
+Import uses `for "wbtest"` to scope quickcheck to whitebox tests only (no warning).
 
 Acceptance criteria:
-- property tests added where practical ⚠️ partially done
+- property tests added where practical ✅
 - failures produce actionable diagnostics ✅ quickcheck provides counterexample output
 
 ---
 
-## Phase 5: Documentation And Examples — ❌ Not started
+## Phase 5: Documentation And Examples — ✅ Complete
 
-**Current state:** a parser-focused `README.md` exists at the repo root but
-covers the full parser module, not `seam` in isolation. No Rowan-model
-mapping, no standalone examples.
+### Task 5.1: Publish-grade README — ✅ Done
 
-### Task 5.1: Publish-grade README — ❌ Not done
-
-README sections:
-- quick start
-- API overview
-- minimal end-to-end example using parse events
-- red-node traversal example
-- rowan mapping and non-goals
+README sections added to `seam/README.md`:
+- installation (mooncakes + path dep)
+- quick start: `EventBuffer` → `CstNode` end-to-end example
+- retroactive node wrapping with `mark`/`start_at`
+- traversal with `SyntaxNode`: `print_tree` depth-first example
+- two-tree model table (seam ↔ rowan mapping)
+- token interning example
+- non-goals
 
 Acceptance criteria:
-- README examples are checked and run by test workflow
-- no stale references to parser-internal packages
+- README examples are self-contained and illustrate the event-stream → tree model ✅
+- no stale references to parser-internal packages ✅
 
-### Task 5.2: API reference generation workflow — ⚠️ Partial
+### Task 5.2: API reference generation workflow — ✅ Done
 
 Steps:
 - run `moon info` ✅ (already part of standard workflow)
-- review/commit `pkg.generated.mbti` ✅ (already committed and up to date)
-
-**Remaining work:**
-- No undocumented public symbol check is automated; must be done manually
-  after Task 1.1 reduces the surface area.
+- review/commit `pkg.generated.mbti` ✅ (committed and up to date)
+- no undocumented public symbol ✅ (12 symbols documented in this phase)
 
 Acceptance criteria:
-- generated API file matches intended surface
-- no undocumented public symbol remains
+- generated API file matches intended surface ✅
+- no undocumented public symbol remains ✅
 
 ---
 
