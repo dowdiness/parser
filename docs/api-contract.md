@@ -139,7 +139,8 @@ pub struct EventBuffer { /* private fields */ }
 | `EventBuffer::mark(Self) -> Int` | Stable | Reserve a `Tombstone` slot; returns its index |
 | `EventBuffer::start_at(Self, Int, RawKind) -> Unit` | Stable | Fill a `Tombstone` with `StartNode`; aborts if out-of-bounds or non-Tombstone |
 | `EventBuffer::build_tree(Self, RawKind, trivia_kind? : RawKind?) -> CstNode` | Stable | Builds CST from accumulated events; equivalent to calling `build_tree(events, ...)` |
-| `EventBuffer::build_tree_interned(Self, RawKind, Interner, trivia_kind? : RawKind?) -> CstNode` | Stable | Interned variant |
+| `EventBuffer::build_tree_interned(Self, RawKind, Interner, trivia_kind? : RawKind?) -> CstNode` | Stable | Interns tokens; deduplicates `CstToken` by `(kind, text)` |
+| `EventBuffer::build_tree_fully_interned(Self, RawKind, Interner, NodeInterner, trivia_kind? : RawKind?) -> CstNode` | **Deferred** | Interns both tokens and nodes; requires `NodeInterner` (planned) |
 
 ---
 
@@ -160,15 +161,58 @@ pub struct Interner { /* private fields */ }
 
 ---
 
+## `SyntaxToken`
+
+```moonbit
+pub struct SyntaxToken { /* private fields */ }
+```
+
+**Stable.** Ephemeral positioned view over a `CstToken`. Mirrors `SyntaxNode` for leaf tokens.
+
+**Invariant:** `start()` is the absolute byte offset of the token's first byte. `end() == start() + cst.text_len()`.
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `SyntaxToken::new(CstToken, Int) -> Self` | Stable | Full constructor; `offset` is the absolute start byte |
+| `SyntaxToken::start(Self) -> Int` | Stable | Absolute byte start |
+| `SyntaxToken::end(Self) -> Int` | Stable | Absolute byte end |
+| `SyntaxToken::kind(Self) -> RawKind` | Stable | Token kind |
+| `SyntaxToken::text(Self) -> String` | Stable | Token text |
+| `Show` | Stable | `"TokenKind@[start,end)"` format |
+| `Debug` | Stable | |
+
+---
+
+## `SyntaxElement`
+
+```moonbit
+pub(all) enum SyntaxElement { Node(SyntaxNode); Token(SyntaxToken) }
+```
+
+**Stable.** Positioned union of a child node or leaf token. Returned by `SyntaxNode::all_children`.
+
+| Symbol | Stability | Notes |
+|---|---|---|
+| `Node(SyntaxNode)` / `Token(SyntaxToken)` | Stable | |
+| `SyntaxElement::start(Self) -> Int` | Stable | |
+| `SyntaxElement::end(Self) -> Int` | Stable | |
+| `Show`, `Debug` | Stable | |
+
+---
+
 ## `SyntaxNode`
 
 ```moonbit
-pub struct SyntaxNode { cst : CstNode; parent : SyntaxNode?; offset : Int }
+pub struct SyntaxNode {
+  // priv cst : CstNode
+  parent : SyntaxNode?
+  offset : Int
+}
 ```
 
-**Stable.** Ephemeral positioned view over a `CstNode`. Fields are public and read-only (no `mut`).
+**Stable.** Ephemeral positioned view over a `CstNode`. `cst` is private; use `cst_node()` only when raw `CstNode` access is required (e.g. reuse cursors). `parent` and `offset` are public read-only fields.
 
-**Invariant:** `offset` is the absolute byte offset of this node's start in the source. `cst.text_len` gives the span width; `offset + cst.text_len` is the end.
+**Invariant:** `offset` is the absolute byte offset of this node's start in the source. `offset + cst.text_len` is the end (accessible via `end()`).
 
 | Symbol | Stability | Notes |
 |---|---|---|
@@ -176,8 +220,17 @@ pub struct SyntaxNode { cst : CstNode; parent : SyntaxNode?; offset : Int }
 | `SyntaxNode::new(CstNode, Self?, Int) -> Self` | Stable | Full constructor; `parent` may be `None` for roots |
 | `SyntaxNode::start(Self) -> Int` | Stable | Returns `offset` |
 | `SyntaxNode::end(Self) -> Int` | Stable | Returns `offset + cst.text_len` |
-| `SyntaxNode::kind(Self) -> RawKind` | Stable | Returns `cst.kind` |
-| `SyntaxNode::children(Self) -> Array[Self]` | Stable | Returns child `SyntaxNode`s with computed offsets; skips leaf tokens |
+| `SyntaxNode::kind(Self) -> RawKind` | Stable | |
+| `SyntaxNode::children(Self) -> Array[Self]` | Stable | Child `SyntaxNode`s with computed offsets; skips leaf tokens |
+| `SyntaxNode::all_children(Self) -> Array[SyntaxElement]` | Stable | All children including leaf tokens, in source order |
+| `SyntaxNode::tokens(Self) -> Array[SyntaxToken]` | Stable | All leaf tokens in subtree, in source order |
+| `SyntaxNode::find_token(Self, RawKind) -> SyntaxToken?` | Stable | First token of the given kind in this node |
+| `SyntaxNode::tokens_of_kind(Self, RawKind) -> Array[SyntaxToken]` | Stable | All tokens of the given kind in this node |
+| `SyntaxNode::tight_span(Self, trivia_kind? : RawKind?) -> (Int, Int)` | Stable | Start/end skipping leading/trailing trivia tokens |
+| `SyntaxNode::find_at(Self, Int) -> Self` | Stable | Deepest descendant whose span contains the byte offset; falls back to `self` |
+| `SyntaxNode::cst_node(Self) -> CstNode` | Stable | **Advanced use only.** Returns the underlying `CstNode` for infrastructure that requires it (e.g. reuse cursors). Prefer SyntaxNode API for all navigation. |
+| `Show` | Stable | `"NodeKind@[start,end)"` format |
+| `Debug` | Stable | |
 | `SyntaxNode::node_at(Int) -> Self?` | **Deferred** | Find deepest node at a byte position; edge-case semantics (boundary, trivia) unresolved |
 
 ---
@@ -195,9 +248,11 @@ pub struct SyntaxNode { cst : CstNode; parent : SyntaxNode?; offset : Int }
 
 ## Deferred API summary
 
-Both decisions recorded here; may be revisited for `0.2.0`:
+Decisions recorded here; may be revisited for `0.2.0`:
 
 | Symbol | Reason deferred |
 |---|---|
 | `CstNode::width()` | Redundant alias for the already-public `text_len` field |
 | `SyntaxNode::node_at(Int) -> Self?` | No current callers; position-on-boundary and trivia semantics need design before freeze |
+| `EventBuffer::build_tree_fully_interned` | Requires `NodeInterner` (planned, not yet implemented) |
+| `NodeInterner` | Planned — deduplicates `CstNode` by structural identity, parallel to `Interner` for tokens |

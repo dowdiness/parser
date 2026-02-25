@@ -383,7 +383,10 @@ pub fn parse_with_error_recovery_tokens(
 }
 ```
 
-> **Note:** `parse_cst_recover_with_tokens` takes a source string as its first argument. Passing `""` is correct here — the tokens already carry their text, and position information comes from `TokenInfo.start`/`.end` directly, not from the source string.
+> **Note (post-implementation correction):** The note above was wrong. `text_at()` in `ParserContext`
+> reads from `self.source[start:end]` — with `source == ""` every token produces `""`, causing
+> `Var("")` / `Int(0)` in the resulting AST. The function had no callers, so it was subsequently
+> removed entirely rather than fixed. See commit `a474eac`.
 
 **Step 2: Run tests**
 

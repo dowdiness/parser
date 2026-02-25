@@ -1,7 +1,7 @@
 # SyntaxNode-First Layer Design
 
 **Date:** 2026-02-25
-**Status:** Approved
+**Status:** Complete
 
 ## Problem
 
@@ -22,13 +22,18 @@ The `SyntaxNode` type in `seam/` is the right layer for all positioned tree oper
 
 Add the methods `SyntaxNode` needs to replace all direct `.cst` access. No other files change.
 
-### Phase 2 — Approach B: SyntaxNode-first layer
+### Phase 2 — Approach B: SyntaxNode-first layer ✅ Complete
 
-- Replace direct `.cst` access in `cst_convert.mbt` with SyntaxNode methods
-- Remove duplicate `parse_tree_from_tokens`
-- `IncrementalParser` stores `SyntaxNode?` instead of `CstNode?`
-- Replace `adjust_tree_positions` / `can_reuse_node` with SyntaxNode-based equivalents
-- Make `.cst` private (closes Phase 2)
+- Replace direct `.cst` access in `cst_convert.mbt` with SyntaxNode methods ✅
+- Remove duplicate `parse_tree_from_tokens` ✅
+- `IncrementalParser` stores `SyntaxNode?` instead of `CstNode?` ✅
+- Make `.cst` private (closes Phase 2) ✅
+- `parse_with_error_recovery_tokens` removed post-review (no callers; implementation
+  was broken — passed `""` as source to `parse_cst_recover_with_tokens`, causing
+  `text_at()` to return `""` for every token) ✅
+- `adjust_tree_positions` / `can_reuse_node` intentionally left on `AstNode` —
+  these operate on the semantic tree layer, not the CST/SyntaxNode layer, so
+  migrating them was descoped
 
 ### Phase 3 — Approach C: Typed SyntaxNode views (future)
 
