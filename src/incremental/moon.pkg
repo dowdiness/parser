@@ -1,4 +1,5 @@
 import {
+  "dowdiness/parser/pipeline" @pipeline,
   "dowdiness/parser/token",
   "dowdiness/parser/range",
   "dowdiness/parser/ast",

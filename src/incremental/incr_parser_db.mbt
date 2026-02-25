@@ -8,17 +8,6 @@ pub(all) enum TokenStage {
 } derive(Eq, Show)
 
 ///|
-/// Green parse stage output — designed for Memo[T : Eq] boundaries.
-/// CstNode::Eq uses a cached structural hash (O(1) rejection path),
-/// so comparing two CstStage values is very cheap.
-/// diagnostics is Array[String] rather than Array[Diagnostic] because
-/// Diagnostic[T] does not derive Eq; normalized strings keep the Eq boundary clean.
-pub(all) struct CstStage {
-  cst : @seam.CstNode
-  diagnostics : Array[String]
-} derive(Eq, Show)
-
-///|
 /// Salsa-style incremental pipeline for the lambda calculus parser.
 ///
 /// source_text : Signal[String]
@@ -33,7 +22,7 @@ pub(all) struct CstStage {
 /// **Lifetime:** one ParserDb per document editing session.
 pub struct ParserDb {
   priv source_text : @incr.Signal[String]
-  priv cst_memo : @incr.Memo[CstStage]
+  priv cst_memo : @incr.Memo[@pipeline.CstStage]
   priv term_memo : @incr.Memo[@ast.AstNode]
 }
 
@@ -54,7 +43,7 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
 
   let cst_memo = @incr.Memo::new(
     rt,
-    fn() -> CstStage {
+    fn() -> @pipeline.CstStage {
       match tokens_memo.get() {
         TokenStage::Err(msg) => {
           // Tokenization failed: return an empty SourceFile CST as placeholder.
@@ -64,7 +53,11 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
             [],
             None,
           )
-          CstStage::{ cst: empty_cst, diagnostics: ["tokenization: " + msg] }
+          @pipeline.CstStage::{
+            cst: empty_cst,
+            diagnostics: ["tokenization: " + msg],
+            is_lex_error: true,
+          }
         }
         TokenStage::Ok(tokens) => {
           let source = source_text.get()
@@ -73,7 +66,7 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
             tokens,
             None,
           )
-          CstStage::{
+          @pipeline.CstStage::{
             cst,
             diagnostics: diags.map(fn(d) {
               d.message +
@@ -83,6 +76,7 @@ pub fn ParserDb::new(initial_source : String) -> ParserDb {
               d.end.to_string() +
               "]"
             }),
+            is_lex_error: false,
           }
         }
       }
@@ -118,7 +112,7 @@ pub fn ParserDb::set_source(self : ParserDb, source : String) -> Unit {
 ///|
 /// Return the current CstStage (parse result + normalized diagnostics).
 /// Triggers memo evaluation if the source has changed since last call.
-pub fn ParserDb::cst(self : ParserDb) -> CstStage {
+pub fn ParserDb::cst(self : ParserDb) -> @pipeline.CstStage {
   self.cst_memo.get()
 }
 

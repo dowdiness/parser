@@ -6,6 +6,7 @@ import {
   "dowdiness/parser/core",
   "dowdiness/parser/edit",
   "dowdiness/parser/lexer",
+  "dowdiness/parser/pipeline",
   "dowdiness/parser/range",
   "dowdiness/parser/token",
   "dowdiness/seam",
@@ -27,13 +28,6 @@ pub let perf_stats : PerfStats
 // Errors
 
 // Types and methods
-pub(all) struct CstStage {
-  cst : @seam.CstNode
-  diagnostics : Array[String]
-}
-pub impl Eq for CstStage
-pub impl Show for CstStage
-
 pub struct DamageTracker {
   damaged_ranges : Array[@range.Range]
 }
@@ -70,7 +64,7 @@ pub fn IncrementalParser::stats(Self) -> String
 pub struct ParserDb {
   // private fields
 }
-pub fn ParserDb::cst(Self) -> CstStage
+pub fn ParserDb::cst(Self) -> @pipeline.CstStage
 pub fn ParserDb::diagnostics(Self) -> Array[String]
 pub fn ParserDb::new(String) -> Self
 pub fn ParserDb::set_source(Self, String) -> Unit

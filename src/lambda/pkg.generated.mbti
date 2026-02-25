@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser/lambda"
+
+import {
+  "dowdiness/parser/ast",
+  "dowdiness/parser/pipeline",
+}
+
+// Values
+pub fn lambda_language() -> @pipeline.Language[@ast.AstNode]
+
+// Errors
+
+// Types and methods
+pub struct LambdaLanguage {
+}
+pub impl @pipeline.Parseable for LambdaLanguage
+
+pub struct LambdaParserDb {
+  // private fields
+}
+pub fn LambdaParserDb::cst(Self) -> @pipeline.CstStage
+pub fn LambdaParserDb::diagnostics(Self) -> Array[String]
+pub fn LambdaParserDb::new(String) -> Self
+pub fn LambdaParserDb::set_source(Self, String) -> Unit
+pub fn LambdaParserDb::term(Self) -> @ast.AstNode
+
+// Type aliases
+
+// Traits
+

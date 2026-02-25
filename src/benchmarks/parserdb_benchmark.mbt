@@ -81,3 +81,15 @@ test "parserdb: diagnostics - malformed input" (b : @bench.T) {
     let _ = db.diagnostics()
   })
 }
+
+///|
+/// Smoke benchmark: LambdaParserDb (generic two-memo pipeline) cold start.
+/// Exercises the language-agnostic ParserDb[AstNode] path via LambdaLanguage.
+/// Comparable to "parserdb: cold" above; difference reflects the cost of the
+/// missing TokenStage memo (one fewer caching layer vs the three-memo pipeline).
+test "lambda_parserdb: cold - new + term()" (b : @bench.T) {
+  b.bench(fn() {
+    let db = @lambda.LambdaParserDb::new("λf.λx.if f x then x + 1 else x - 1")
+    b.keep(db.term())
+  })
+}
