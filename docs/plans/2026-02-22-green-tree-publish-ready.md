@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-22
 **Updated:** 2026-02-25
-**Status:** In Progress — Phases 0–2 complete; Phases 3–5 not started; Phase 6 (CI) deferred
+**Status:** In Progress — Phases 0–3 complete; Phases 4–5 not started; Phase 6 (CI) deferred
 
 ## Goal
 
@@ -236,7 +236,7 @@ Acceptance criteria:
 
 ---
 
-## Phase 3: Standalone Module Bootstrap — ❌ Not started
+## Phase 3: Standalone Module Bootstrap — ✅ Complete
 
 **Decision:** `seam` will be extracted as a **git submodule** (new repository
 `dowdiness/seam`), added to `dowdiness/parser` via `git submodule add`.
@@ -247,7 +247,7 @@ Acceptance criteria:
 inside the `dowdiness/parser` module (`moon.mod.json` name = `"dowdiness/parser"`).
 It cannot be added as a standalone dependency today.
 
-### Task 3.1: Create module skeleton — ❌ Not done
+### Task 3.1: Create module skeleton — ✅ Done
 
 New repository: `https://github.com/dowdiness/seam`
 
@@ -271,7 +271,7 @@ Acceptance criteria:
 - module builds without project-local dependencies
 - package imports are minimal and intentional
 
-### Task 3.2: Move/copy core implementation — ❌ Not done
+### Task 3.2: Move/copy core implementation — ✅ Done
 
 Source set (all present in current `src/green-tree/`, will move to `seam/`):
 - `green_node.mbt` ✅ — includes `CstNode`, `CstToken`, `CstElement`, `RawKind`
@@ -292,7 +292,7 @@ Acceptance criteria:
 - behavior matches current internal `green-tree` / `seam`
 - no parser/language-specific code in standalone module
 
-### Task 3.3: Wire `dowdiness/parser` to standalone `seam` — ❌ Not done
+### Task 3.3: Wire `dowdiness/parser` to standalone `seam` — ✅ Done
 
 After extraction:
 - Add `seam` as a git submodule to `dowdiness/parser`
@@ -310,42 +310,36 @@ Acceptance criteria:
 ## Phase 4: Test Completion — ⚠️ Partial
 
 **Current state:** unit tests exist in `*_wbtest.mbt` files for green node,
-red node, event buffer, hash, and interner. No panic/abort path tests and no
-property-style tests exist.
+red node, event buffer, hash, and interner. Panic/abort tests and two property
+tests are now in place; one property test is pending user implementation.
 
-### Task 4.1: Unit + panic tests — ⚠️ Partial
+### Task 4.1: Unit + panic tests — ✅ Done
 
 Required coverage:
 - constructor correctness (`text_len`, hash derivation) ✅ covered
 - equality/hash fast-path behavior ✅ covered (hash_test.mbt)
-- event balancing invariants ✅ partially covered (event_wbtest.mbt)
-- red-node offsets and traversal ✅ covered (red_node_wbtest.mbt)
-- deferred/included API behavior (`node_at`, `width`) per Phase 2 ❌ pending decision
-
-**Remaining work:**
-- Add explicit panic/abort tests for:
-  - `EventBuffer::start_at` on out-of-bounds mark index
-  - `EventBuffer::start_at` on non-Tombstone slot
-  - `build_tree` with unbalanced StartNode/FinishNode
+- event balancing invariants ✅ covered (event_wbtest.mbt)
+- red-node offsets and traversal ✅ covered (syntax_node_wbtest.mbt)
+- deferred/included API behavior (`node_at`, `width`) per Phase 2 ✅ neither implemented — deferred in Phase 2
 
 Acceptance criteria:
-- all tests pass with `moon test`
-- panic/abort paths are explicitly tested
+- all tests pass with `moon test` ✅
+- panic/abort paths are explicitly tested ✅ (event_wbtest.mbt: 5 panic tests)
 
-### Task 4.2: Property-style confidence checks — ❌ Not done
+### Task 4.2: Property-style confidence checks — ⚠️ Partial
 
-Suggested properties:
-- deterministic structural hash for identical trees
-- `build_tree` preserves concatenated text length
-- red node child offsets are monotonic and contiguous
+Properties:
+- deterministic structural hash for identical trees ✅ implemented
+- `build_tree` preserves concatenated text length ✅ implemented
+- SyntaxNode child offsets are monotonic and contiguous ⚠️ TODO(human) in seam_properties_wbtest.mbt
 
-**Current state:** `moonbitlang/quickcheck` is a dependency of `dowdiness/parser`
-but not of standalone `seam`. Task 3.1 must add it to `seam`'s `moon.mod.json`
-before property tests can be written.
+**Current state:** `moonbitlang/quickcheck 0.9.10` added to `seam/moon.mod.json`.
+Two of three properties pass with 100 checks each. Third property body is a
+stub with `ignore(children); true` pending user implementation of the predicate.
 
 Acceptance criteria:
-- property tests added where practical
-- failures produce actionable diagnostics
+- property tests added where practical ⚠️ partially done
+- failures produce actionable diagnostics ✅ quickcheck provides counterexample output
 
 ---
 
