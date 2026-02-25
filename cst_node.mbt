@@ -1,7 +1,7 @@
 ///|
 /// Language-independent node kind (equivalent to rowan's RawSyntaxKind).
 /// Each language defines its own enum and converts to/from RawKind via to_raw()/from_raw().
-pub(all) struct RawKind(Int) derive(Eq, Show, Hash, Compare)
+pub(all) struct RawKind(Int) derive(Eq, Show, Hash, Compare, Debug)
 
 ///|
 /// A leaf token in the CST.
@@ -18,7 +18,7 @@ pub(all) struct CstToken {
   kind : RawKind
   text : String
   hash : Int
-} derive(Show)
+} derive(Show, Debug)
 
 ///|
 /// Create a CstToken. Hash is computed from kind and text.
@@ -58,7 +58,7 @@ pub impl Hash for CstToken with hash_combine(self, hasher) {
 pub(all) enum CstElement {
   Token(CstToken)
   Node(CstNode)
-} derive(Show)
+} derive(Show, Debug)
 
 ///|
 /// Total byte length of this element's text.
@@ -131,7 +131,7 @@ pub(all) struct CstNode {
   /// Used by the incremental parser to advance `position` (whitespace-free
   /// token index) without an O(subtree) traversal on every reuse.
   token_count : Int
-} derive(Show)
+} derive(Show, Debug)
 
 ///|
 /// Create a CstNode. text_len, hash, and token_count are computed from children.

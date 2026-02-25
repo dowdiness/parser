@@ -133,5 +133,5 @@ let root2 = buf2.build_tree_interned(FILE, interner)
 ## API reference
 
 See [`pkg.generated.mbti`](pkg.generated.mbti) for the full interface and
-[`docs/api-contract.md`](https://github.com/dowdiness/parser/blob/main/docs/api-contract.md)
-for stability levels and invariants.
+[`docs/design.md`](docs/design.md) for the three-layer API design principles
+(total functions, checked functions, error information) and Phase 1/2 boundary.
