@@ -187,3 +187,151 @@ test "build_tree_interned - 100 identical tokens, warm interner" (b : @bench.T) 
     b.keep(tree)
   })
 }
+
+// --- Node interning benchmarks ---
+// Measure overhead and deduplication benefit of NodeInterner (build_tree_fully_interned).
+
+///|
+/// Events for a nested tree: BinaryExpr(VarRef(x), +, VarRef(x)) — two identical subtrees.
+fn make_x_plus_x_events() -> Array[@seam.ParseEvent] {
+  [
+    @seam.ParseEvent::StartNode(@seam.RawKind(16)), // BinaryExpr
+    @seam.ParseEvent::StartNode(@seam.RawKind(20)), // VarRef
+    @seam.ParseEvent::Token(@seam.RawKind(9), "x"),
+    @seam.ParseEvent::FinishNode,
+    @seam.ParseEvent::Token(@seam.RawKind(11), " "),
+    @seam.ParseEvent::Token(@seam.RawKind(4), "+"),
+    @seam.ParseEvent::Token(@seam.RawKind(11), " "),
+    @seam.ParseEvent::StartNode(@seam.RawKind(20)), // VarRef
+    @seam.ParseEvent::Token(@seam.RawKind(9), "x"),
+    @seam.ParseEvent::FinishNode,
+    @seam.ParseEvent::FinishNode,
+  ]
+}
+
+///|
+/// Benchmark: build_tree_fully_interned on "x + x", cold interners (first parse).
+test "build_tree_fully_interned - x + x, cold" (b : @bench.T) {
+  let events = make_x_plus_x_events()
+  b.bench(fn() {
+    let interner = @seam.Interner::new()
+    let ni = @seam.NodeInterner::new()
+    let tree = @seam.build_tree_fully_interned(
+      events, @seam.RawKind(22), interner, ni,
+    )
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: build_tree_fully_interned on "x + x", warm interners (subsequent parses).
+/// Both VarRef(x) nodes should hit the NodeInterner on second build.
+test "build_tree_fully_interned - x + x, warm" (b : @bench.T) {
+  let events = make_x_plus_x_events()
+  let interner = @seam.Interner::new()
+  let ni = @seam.NodeInterner::new()
+  let _ = @seam.build_tree_fully_interned(
+    events, @seam.RawKind(22), interner, ni,
+  )
+  b.bench(fn() {
+    let tree = @seam.build_tree_fully_interned(
+      events, @seam.RawKind(22), interner, ni,
+    )
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: build_tree_interned (token only) on "x + x" for comparison.
+test "build_tree_interned - x + x, warm" (b : @bench.T) {
+  let events = make_x_plus_x_events()
+  let interner = @seam.Interner::new()
+  let _ = @seam.build_tree_interned(events, @seam.RawKind(22), interner)
+  b.bench(fn() {
+    let tree = @seam.build_tree_interned(events, @seam.RawKind(22), interner)
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: build_tree (no interning) on "x + x" for baseline.
+test "build_tree - x + x" (b : @bench.T) {
+  let events = make_x_plus_x_events()
+  b.bench(fn() {
+    let tree = @seam.build_tree(events, @seam.RawKind(22))
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: NodeInterner::intern_node cold miss.
+test "node_interner - intern_node cold miss" (b : @bench.T) {
+  b.bench(fn() {
+    let ni = @seam.NodeInterner::new()
+    let node = @seam.CstNode::new(@seam.RawKind(20), [
+      @seam.CstElement::Token(make_ident_token("x")),
+    ])
+    let r = ni.intern_node(node)
+    b.keep(r)
+  })
+}
+
+///|
+/// Benchmark: NodeInterner::intern_node warm hit.
+test "node_interner - intern_node warm hit" (b : @bench.T) {
+  let ni = @seam.NodeInterner::new()
+  let node = @seam.CstNode::new(@seam.RawKind(20), [
+    @seam.CstElement::Token(make_ident_token("x")),
+  ])
+  let _ = ni.intern_node(node)
+  b.bench(fn() {
+    let node2 = @seam.CstNode::new(@seam.RawKind(20), [
+      @seam.CstElement::Token(make_ident_token("x")),
+    ])
+    let r = ni.intern_node(node2)
+    b.keep(r)
+  })
+}
+
+///|
+/// Benchmark: Full parse_cst_recover with both interners (end-to-end).
+test "parse_cst_recover - fully interned" (b : @bench.T) {
+  let interner = @seam.Interner::new()
+  let ni = @seam.NodeInterner::new()
+  b.bench(fn() {
+    let result = @parse.parse_cst_recover(
+      "λf.λx.f (f x)",
+      interner=Some(interner),
+      node_interner=Some(ni),
+    ) catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Full parse_cst_recover with token interner only (comparison).
+test "parse_cst_recover - token interned only" (b : @bench.T) {
+  let interner = @seam.Interner::new()
+  b.bench(fn() {
+    let result = @parse.parse_cst_recover(
+      "λf.λx.f (f x)",
+      interner=Some(interner),
+    ) catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Full parse_cst_recover with no interning (baseline).
+test "parse_cst_recover - no interning" (b : @bench.T) {
+  b.bench(fn() {
+    let result = @parse.parse_cst_recover("λf.λx.f (f x)") catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(result)
+  })
+}

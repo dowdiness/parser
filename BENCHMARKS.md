@@ -2,7 +2,7 @@
 
 Performance benchmarks for the incremental parser implementation.
 
-**Last measured:** 2026-02-25 (`moon bench --release`)
+**Last measured:** 2026-02-28 (`moon bench --release`)
 
 ## Running Benchmarks
 
@@ -95,7 +95,23 @@ Measures pipeline construction, warm-path overhead, and backdating effectiveness
 - Undo/redo cycle: alternate between two sources
 - Diagnostics: malformed input error path
 
-### 5. Phase 4: Checkpoint-Based Subtree Reuse (`performance_benchmark.mbt`)
+### 5. NodeInterner (`cst_benchmark.mbt`)
+
+Benchmarks for `NodeInterner` hash-consing overhead and deduplication benefit.
+
+**Microbenchmarks:**
+- `intern_node` cold miss (HashMap insert)
+- `intern_node` warm hit (HashMap lookup)
+
+**Tree building comparison (`x + x` — two identical VarRef subtrees):**
+- `build_tree` (no interning, baseline)
+- `build_tree_interned` (token only, warm)
+- `build_tree_fully_interned` (token + node, cold / warm)
+
+**End-to-end parse comparison (`λf.λx.f (f x)`):**
+- `parse_cst_recover` with no interning / token only / fully interned
+
+### 6. Phase 4: Checkpoint-Based Subtree Reuse (`performance_benchmark.mbt`)
 
 Benchmarks for `ReuseCursor` subtree reuse during incremental parsing.
 When reparsing after an edit, unchanged subtrees outside the damaged range
@@ -115,6 +131,40 @@ are reused from the previous parse tree.
 - Backspace simulation (character deletion)
 
 ## Benchmark Results
+
+### NodeInterner Performance Impact
+
+*Measured 2026-02-28, `moon bench --release`*
+
+**Tree building overhead (`x + x` event stream):**
+
+| Builder | Mean | vs baseline |
+|---------|------|-------------|
+| `build_tree` (no interning) | 0.20 µs | baseline |
+| `build_tree_interned` (token only, warm) | 0.26 µs | +30% |
+| `build_tree_fully_interned` (warm) | 0.42 µs | +110% |
+| `build_tree_fully_interned` (cold) | 0.49 µs | +145% |
+
+**End-to-end parse overhead (`λf.λx.f (f x)`):**
+
+| Mode | Mean | vs baseline |
+|------|------|-------------|
+| No interning | 2.08 µs | baseline |
+| Token interned only | 2.28 µs | +10% |
+| Fully interned (token + node) | 2.90 µs | +39% |
+
+**`intern_node` microbenchmark:**
+
+| Path | Mean |
+|------|------|
+| Cold miss (HashMap insert) | 0.07 µs |
+| Warm hit (HashMap lookup) | 0.05 µs |
+
+**Key observations:**
+- Node interning adds ~0.8 µs overhead on a 15-token parse (2.08 → 2.90 µs)
+- The cost is per-`FinishNode` HashMap lookup (~0.05 µs warm hit)
+- Payoff is structural sharing across incremental edits: identical subtrees are pointer-equal, enabling O(1) `Memo` backdating in `ParserDb`
+- With grammar expansion (let bindings), more subtrees will be shareable
 
 ### Phase 7: ParserDb Signal/Memo Pipeline
 
