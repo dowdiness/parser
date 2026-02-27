@@ -45,7 +45,7 @@ pub struct ReuseCursor[T, K] {
 
 ///|
 // OffsetIndexed for Array[OldToken]: lets lower_bound search the flattened
-// old-tree token list by byte offset. Sorted by construction — collect_old_tokens
+// old-tree token list by code-unit offset. Sorted by construction — collect_old_tokens
 // walks the tree left-to-right so .start values are strictly increasing.
 impl OffsetIndexed for Array[OldToken] with length(self) {
   self.length()
@@ -83,7 +83,7 @@ fn[T, K] collect_old_tokens(
 
 ///|
 /// Create a new reuse cursor positioned at the start of the old tree.
-/// damage_start/damage_end are byte offsets (exclusive-end) of the edited region.
+/// damage_start/damage_end are code-unit offsets (exclusive-end) of the edited region.
 pub fn[T, K] ReuseCursor::new(
   old_tree : @seam.CstNode,
   damage_start : Int,
@@ -167,10 +167,10 @@ fn[T, K] first_token_kind(
 }
 
 ///|
-/// True if the node's byte range is entirely outside the damage region.
+/// True if the node's code-unit range is entirely outside the damage region.
 /// Left-adjacent (node_end == damage_start) is excluded: trailing context
 /// at the boundary may have changed. Right-adjacent (node_start == damage_end)
-/// is safe because damage_end is the first unmodified byte.
+/// is safe because damage_end is the first unmodified code unit.
 fn is_outside_damage(
   node_start : Int,
   node_end : Int,
@@ -213,7 +213,7 @@ fn old_follow_token(old_tokens : Array[OldToken], offset : Int) -> OldToken? {
 
 ///|
 // OffsetIndexed for ReuseCursor[T,K]: lets lower_bound search the new token
-// stream by byte offset using the same get_start closure already stored in the
+// stream by code-unit offset using the same get_start closure already stored in the
 // cursor. Sorted by tokenizer contract — tokens are emitted left-to-right.
 // [T, K] on impl propagates the cursor's type parameters; the methods only use
 // Self and Int so no additional constraints are needed.

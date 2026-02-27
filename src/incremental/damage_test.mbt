@@ -60,4 +60,3 @@ test "DamageTracker::expand_for_node" {
   inspect(total_range.start, content="8")
   inspect(total_range.end, content="25")
 }
-

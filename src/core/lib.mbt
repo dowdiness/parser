@@ -13,7 +13,7 @@
 priv trait OffsetIndexed {
   /// Total number of elements in the sorted sequence.
   length(Self) -> Int
-  /// The sort key (byte offset) at index i. Must be non-decreasing in i.
+  /// The sort key (code-unit offset) at index i. Must be non-decreasing in i.
   offset_at(Self, Int) -> Int
 }
 
@@ -29,7 +29,7 @@ priv trait OffsetIndexed {
 /// When lo == hi the loop exits and lo is the answer.
 ///
 /// Note: uses < rather than subtraction for comparison to avoid integer
-/// overflow on large byte offsets.
+/// overflow on large offsets.
 fn[S : OffsetIndexed] lower_bound(source : S, target : Int) -> Int {
   let mut lo = 0
   let mut hi = source.length()
@@ -48,8 +48,8 @@ fn[S : OffsetIndexed] lower_bound(source : S, target : Int) -> Int {
 /// Generic token with source position. T is the language-specific token type.
 pub struct TokenInfo[T] {
   token : T
-  start : Int // byte offset, inclusive
-  end : Int // byte offset, exclusive
+  start : Int // code-unit offset, inclusive
+  end : Int // code-unit offset, exclusive
 } derive(Show)
 
 ///|
@@ -153,7 +153,7 @@ pub struct ParserContext[T, K] {
   // Incremental reuse — None on a fresh parse, Some(cursor) for incremental.
   mut reuse_cursor : ReuseCursor[T, K]?
   // Diagnostics from the previous parse (optional). When present, reuse hits
-  // replay matching diagnostics by byte span to preserve exact messages.
+  // replay matching diagnostics by code-unit span to preserve exact messages.
   mut reuse_diagnostics : Array[Diagnostic[T]]?
   mut reuse_count : Int
 }
@@ -444,7 +444,7 @@ pub fn[T, K] ParserContext::set_reuse_diagnostics(
 ///
 /// byte_offset uses self.position directly (including any leading trivia) because
 /// seek_node_at matches nodes by their absolute start, and nodes store trivia as
-/// their first children — so the node's start byte IS the trivia's start byte.
+/// their first children — so the node's start offset is the trivia's start offset.
 ///
 /// token_pos must skip past trivia first. leading_token_matches compares the
 /// node's first *non-trivia* token against the token at token_pos in the new
@@ -493,7 +493,7 @@ fn[T, K] ParserContext::emit_node_events(
 
 ///|
 /// Advance position past all tokens (trivia + non-trivia) covered by node.
-/// Byte-based advancing avoids over-consuming when reused subtrees contain
+/// Offset-based advancing avoids over-consuming when reused subtrees contain
 /// zero-width non-trivia leaves (e.g. error placeholders).
 fn[T, K] ParserContext::advance_past_reused(
   self : ParserContext[T, K],

@@ -100,7 +100,7 @@ test "reuse fires: VarRef unchanged after identifier edit" {
 
 ///|
 test "reuse fires: lambda body VarRef unchanged after parameter edit" {
-  // Old: "λx.y"  →  New: "λz.y"  (damage [2,3): only the parameter byte changed)
+  // Old: "λx.y"  →  New: "λz.y"  (damage [2,3): only the parameter code unit changed)
   // LambdaExpr overlaps damage → body runs normally.
   // VarRef("y") at [4,5) inside the body is outside damage → reused.
   let old_source = "λx.y"
