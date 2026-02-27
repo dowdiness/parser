@@ -71,7 +71,10 @@ Full architecture: `docs/architecture/` | Design decisions: `docs/decisions/`
    AI agents — an unlisted file is effectively invisible.
 
 2. **Archive on completion.** When a plan's last task is done:
-   `git mv docs/plans/<plan>.md docs/archive/completed-phases/<plan>.md`
+   - Add `**Status:** Complete` near the top of the plan file
+   - `git mv docs/plans/<plan>.md docs/archive/completed-phases/<plan>.md`
+   - Update `docs/README.md` (move entry from Active Plans → Archive)
+   - `bash check-docs.sh` should show no warnings before committing
    Do this in the same commit that marks the plan complete, not later.
 
 3. **Top-level docs stay slim.** `README.md` and `ROADMAP.md` are summaries with links,
