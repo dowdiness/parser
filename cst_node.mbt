@@ -165,10 +165,13 @@ pub fn CstNode::new(
 }
 
 ///|
+/// Variant-tagged child hash, aligned with `CstElement::Hash`.
+/// Reduces cross-variant collisions: a Token and Node with identical raw
+/// hashes will not produce the same contribution to the parent's cached hash.
 fn child_hash(elem : CstElement) -> Int {
   match elem {
-    Token(t) => t.hash
-    Node(n) => n.hash
+    Token(t) => combine_hash(1, t.hash)
+    Node(n) => combine_hash(2, n.hash)
   }
 }
 
@@ -202,8 +205,8 @@ pub impl Eq for CstNode with equal(self, other) {
 
 ///|
 /// **Stability guarantee:** The `Hash` output is the cached structural content
-/// hash, derived recursively from `kind` and each child's hash via
-/// `combine_hash`. Stable as long as `combine_hash` is stable.
+/// hash, derived recursively from `kind` and each child's variant-tagged hash
+/// via `combine_hash`. Stable as long as `combine_hash` is stable.
 pub impl Hash for CstNode with hash_combine(self, hasher) {
   hasher.combine_int(self.hash)
 }

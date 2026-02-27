@@ -6,6 +6,12 @@
 /// reference. Lookup uses CstNode::Hash (the cached structural hash, O(1))
 /// as a fast path, then CstNode::Eq for collision resolution.
 ///
+/// **trivia_kind invariant:** All `CstNode::new` calls feeding this interner
+/// MUST use the same `trivia_kind` value. `CstNode::Eq` compares `kind` and
+/// `children` but NOT `token_count`, which depends on `trivia_kind`. Mixing
+/// trivia policies within one interner silently canonicalizes to the first-seen
+/// `token_count`, producing incorrect values for subsequent callers.
+///
 /// Lifetime: own one NodeInterner per parse session (e.g. per IncrementalParser).
 /// Not thread-safe.
 pub struct NodeInterner {
