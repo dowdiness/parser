@@ -9,6 +9,7 @@ moon check              # lint
 moon test               # 363 tests
 moon info && moon fmt   # update .mbti interfaces + format (always before commit)
 moon bench --release    # benchmarks (always --release)
+bash check-docs.sh      # validate docs hierarchy (line limits, orphaned files, completed plans)
 ```
 
 Run a single package or file:
