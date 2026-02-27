@@ -21,6 +21,25 @@ pub struct Diagnostic[T] {
 }
 pub impl[T : Show] Show for Diagnostic[T]
 
+pub(all) struct Edit {
+  start : Int
+  old_end : Int
+  new_end : Int
+}
+pub fn Edit::affects_position(Self, Int) -> Bool
+pub fn Edit::apply_to_position(Self, Int) -> Int
+pub fn Edit::delete(Int, Int) -> Self
+pub fn Edit::deleted_length(Self) -> Int
+pub fn Edit::delta(Self) -> Int
+pub fn Edit::insert(Int, Int) -> Self
+pub fn Edit::inserted_length(Self) -> Int
+pub fn Edit::new(Int, Int, Int) -> Self
+pub fn Edit::overlaps_range(Self, Int, Int) -> Bool
+pub fn Edit::replace(Int, Int, Int) -> Self
+pub fn Edit::to_string(Self) -> String
+pub impl Eq for Edit
+pub impl Show for Edit
+
 pub struct LanguageSpec[T, K] {
   kind_to_raw : (K) -> @seam.RawKind
   token_is_eof : (T) -> Bool
@@ -79,6 +98,21 @@ pub fn[T, K] ParserContext::start_at(Self[T, K], Int, K) -> Unit
 pub fn[T, K] ParserContext::start_node(Self[T, K], K) -> Unit
 pub fn[T, K] ParserContext::token_text(Self[T, K], TokenInfo[T]) -> String
 pub fn[T, K] ParserContext::wrap_at(Self[T, K], Int, K, () -> Unit) -> Unit
+
+pub(all) struct Range {
+  start : Int
+  end : Int
+}
+pub fn Range::contains(Self, Int) -> Bool
+pub fn Range::length(Self) -> Int
+pub fn Range::merge(Self, Self) -> Self
+pub fn Range::minimum_by_length(Self, Self) -> Self
+pub fn Range::new(Int, Int) -> Self
+pub fn Range::overlaps(Self, Self) -> Bool
+pub impl Compare for Range
+pub impl Eq for Range
+pub impl Hash for Range
+pub impl Show for Range
 
 pub struct ReuseCursor[T, K] {
   stack : Array[CursorFrame]

@@ -4,9 +4,7 @@ package "dowdiness/parser/incremental"
 import {
   "dowdiness/parser/ast",
   "dowdiness/parser/core",
-  "dowdiness/parser/edit",
   "dowdiness/parser/lexer",
-  "dowdiness/parser/range",
   "dowdiness/parser/token",
   "dowdiness/seam",
 }
@@ -28,16 +26,16 @@ pub let perf_stats : PerfStats
 
 // Types and methods
 pub struct DamageTracker {
-  damaged_ranges : Array[@range.Range]
+  damaged_ranges : Array[@core.Range]
 }
-pub fn DamageTracker::add_range(Self, @range.Range) -> Unit
+pub fn DamageTracker::add_range(Self, @core.Range) -> Unit
 pub fn DamageTracker::empty() -> Self
 pub fn DamageTracker::expand_for_node(Self, Int, Int) -> Unit
 pub fn DamageTracker::expand_for_tree(Self, @ast.AstNode) -> Unit
-pub fn DamageTracker::is_damaged(Self, @range.Range) -> Bool
+pub fn DamageTracker::is_damaged(Self, @core.Range) -> Bool
 pub fn DamageTracker::is_position_damaged(Self, Int) -> Bool
-pub fn DamageTracker::new(@edit.Edit) -> Self
-pub fn DamageTracker::range(Self) -> @range.Range
+pub fn DamageTracker::new(@core.Edit) -> Self
+pub fn DamageTracker::range(Self) -> @core.Range
 pub fn DamageTracker::stats(Self) -> String
 
 pub struct IncrementalParser {
@@ -49,8 +47,8 @@ pub struct IncrementalParser {
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]]
   // private fields
 }
-pub fn IncrementalParser::adjust_tree_positions(Self, @ast.AstNode, @edit.Edit) -> @ast.AstNode
-pub fn IncrementalParser::edit(Self, @edit.Edit, String) -> @ast.AstNode
+pub fn IncrementalParser::adjust_tree_positions(Self, @ast.AstNode, @core.Edit) -> @ast.AstNode
+pub fn IncrementalParser::edit(Self, @core.Edit, String) -> @ast.AstNode
 pub fn IncrementalParser::get_last_reuse_count(Self) -> Int
 pub fn IncrementalParser::get_source(Self) -> String
 pub fn IncrementalParser::get_tree(Self) -> @ast.AstNode?
