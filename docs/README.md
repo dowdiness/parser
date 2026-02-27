@@ -2,6 +2,10 @@
 
 Navigation map for the incremental parser. Start here, go one level deeper for detail.
 
+> **Maintenance rules:** (1) Update this file in the same commit as any `.md` add/move/remove.
+> (2) Move `docs/plans/X` → `docs/archive/completed-phases/X` when a plan is complete.
+> (3) Keep `README.md` ≤60 lines and `ROADMAP.md` ≤450 lines — extract details into sub-docs.
+
 ## Architecture
 
 Understanding how the layers fit together:
