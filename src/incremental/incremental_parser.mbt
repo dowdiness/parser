@@ -22,7 +22,7 @@
 /// objects), call `interner_clear()` between documents to release stale entries.
 pub struct IncrementalParser {
   mut source : String // Current source text
-  mut tree : @ast.AstNode? // Current parse tree
+  mut tree : @ast.AstNode? // output-only: last parse result (never consumed as parse input)
   mut syntax_tree : @seam.SyntaxNode? // Current syntax tree (for subtree reuse)
   mut token_buffer : @lexer.TokenBuffer? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
@@ -154,26 +154,14 @@ pub fn IncrementalParser::edit(
     }
   }
 
-  // Step 2: Get old tree (if any)
-  let old_tree = match self.tree {
-    Some(t) => t
-    None =>
-      // No existing tree, do full parse
-      return self.parse()
+  // Ensure initial parse has been done
+  if self.syntax_tree is None {
+    return self.parse()
   }
 
-  // Step 3: Adjust old tree positions based on edit
-  let adjusted_tree = self.adjust_tree_positions(old_tree, edit)
-
-  // Step 4: Identify damaged range using Wagner-Graham algorithm
-  let damage = DamageTracker::new(edit)
-  damage.expand_for_tree(adjusted_tree)
-
-  // Step 5: Incremental reparse
-  let damaged_range = damage.range()
-  let new_tree = self.incremental_reparse(
-    new_source, damaged_range, adjusted_tree, tokens,
-  )
+  // Compute damaged range directly from edit
+  let damaged_range = @core.Range::new(edit.start, edit.new_end())
+  let new_tree = self.incremental_reparse(new_source, damaged_range, tokens)
   self.tree = Some(new_tree)
   new_tree
 }
@@ -188,18 +176,8 @@ fn IncrementalParser::incremental_reparse(
   self : IncrementalParser,
   source : String,
   damaged_range : @core.Range,
-  adjusted_tree : @ast.AstNode,
   tokens : Array[@token.TokenInfo],
 ) -> @ast.AstNode {
-  // Attempt whole-tree reuse: Can we reuse the entire tree?
-  // Only safe if damage is completely outside tree bounds
-  if self.can_reuse_node(adjusted_tree, damaged_range) &&
-    adjusted_tree.start == 0 &&
-    adjusted_tree.end == source.length() {
-    // Tree is completely unchanged - reuse it
-    return adjusted_tree
-  }
-
   // Create cursor from old CST for subtree reuse
   let cursor = match self.syntax_tree {
     Some(old_syntax) =>
@@ -232,72 +210,6 @@ fn IncrementalParser::incremental_reparse(
 
   // Convert to AstNode
   @parse.syntax_node_to_ast_node(new_syntax, Ref::new(0))
-}
-
-///|
-/// Check if a node can be reused (Wagner-Graham range check)
-///
-/// A node can be reused if it doesn't overlap with the damaged range.
-/// Overlap occurs when: node.start < damaged.end AND node.end > damaged.start
-fn IncrementalParser::can_reuse_node(
-  _self : IncrementalParser,
-  node : @ast.AstNode,
-  damaged_range : @core.Range,
-) -> Bool {
-  // Node is reusable if it doesn't overlap the damaged range
-  // No overlap means: node ends before damage starts OR node starts after damage ends
-  node.end <= damaged_range.start || node.start >= damaged_range.end
-}
-
-///|
-/// Adjust tree positions after an edit
-///
-/// Wagner-Graham position adjustment:
-/// - Nodes before edit: unchanged
-/// - Nodes overlapping edit: marked as damaged
-/// - Nodes after edit: shifted by delta
-pub fn IncrementalParser::adjust_tree_positions(
-  self : IncrementalParser,
-  tree : @ast.AstNode,
-  edit : @core.Edit,
-) -> @ast.AstNode {
-  let delta = edit.delta()
-
-  //  tree.end <= edit.start Doesn't Work!
-  //  When tree.end == edit.start, the new content is inserted immediately adjacent to the tree. In lambda calculus grammar, adjacent terms form function application: (\x.x) 5 → App(Lam, Int).
-
-  //  tree.end < edit.start means:
-  //  - Only reuse the tree if there's a gap between the tree and the edit
-  //  - If tree.end == edit.start (adjacent insertion), force a reparse to check for combinations
-  if tree.end < edit.start {
-    // Node is entirely before edit, no change needed
-    tree
-  } else if tree.start > edit.old_end() {
-    // Node is entirely after edit, shift positions
-    let adjusted_children = tree.children.map(fn(child) {
-      self.adjust_tree_positions(child, edit)
-    })
-    @ast.AstNode::new(
-      tree.kind,
-      tree.start + delta,
-      tree.end + delta,
-      tree.node_id,
-      adjusted_children,
-    )
-  } else {
-    // Node overlaps edit range - will need reparsing
-    // For now, just adjust children and mark range as needing update
-    let adjusted_children = tree.children.map(fn(child) {
-      self.adjust_tree_positions(child, edit)
-    })
-    @ast.AstNode::new(
-      tree.kind,
-      tree.start,
-      tree.end,
-      tree.node_id,
-      adjusted_children,
-    )
-  }
 }
 
 ///|

@@ -91,8 +91,9 @@ test "phase4: reuse preserves correctness on complex expression" {
   let _ = parser.parse()
 
   // Edit only the "1" in "x + 1" -> "2"
-  // "x + 1" is at position 22-27, "1" is at position 26
-  let edit = @core.Edit::replace(26, 27, 27)
+  // Positions are UTF-16 code units (λ = 1 code unit)
+  // "x + 1" is at position 18-23, "1" is at position 22
+  let edit = @core.Edit::replace(22, 23, 23)
   let new_source = "λf.λx.if f x then x + 2 else x - 1"
   let incr_tree = parser.edit(edit, new_source)
   let full_tree = @parse.parse_tree(new_source)
