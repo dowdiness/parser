@@ -1,7 +1,7 @@
 # Design: Remove `adjust_tree_positions` / `expand_for_tree` Holdover
 
 **Created:** 2026-02-28
-**Status:** Approved
+**Status:** Complete
 
 ## Problem
 

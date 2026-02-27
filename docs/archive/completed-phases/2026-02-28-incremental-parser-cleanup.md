@@ -4,6 +4,8 @@
 
 **Goal:** Remove `adjust_tree_positions`, `expand_for_tree`, and the dead whole-tree reuse check from `IncrementalParser`, replacing them with a single direct `Range` construction from the edit.
 
+**Status:** Complete
+
 **Architecture:** Pure deletion — no new logic. The `ReuseCursor` already handles damage overlap correctly, making the two O(n) AstNode walks and the whole-tree reuse check redundant. `self.syntax_tree` replaces `self.tree` as the initial-parse sentinel in `edit()`, making `self.tree` output-only.
 
 **Tech Stack:** MoonBit (`moon check`, `moon test`, `moon info`, `moon fmt`)
