@@ -41,8 +41,7 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
-- [plans/2026-02-25-node-interner-design.md](plans/2026-02-25-node-interner-design.md) — NodeInterner design
-- [plans/2026-02-25-node-interner.md](plans/2026-02-25-node-interner.md) — NodeInterner implementation plan
+_(none — see archive for completed plans)_
 
 ## Archive (Historical / Completed)
 
@@ -51,7 +50,9 @@ Understanding how the layers fit together:
 - [archive/completed-phases/](archive/completed-phases/) — all 18 individual completed phase plan files
 - [archive/completed-phases/2026-02-25-syntax-node-extend.md](archive/completed-phases/2026-02-25-syntax-node-extend.md) — SyntaxNode API extension plan
 - [archive/completed-phases/2026-02-25-syntax-node-first-layer-design.md](archive/completed-phases/2026-02-25-syntax-node-first-layer-design.md) — SyntaxNode-first layer design
-- [archive/completed-phases/2026-02-28-docs-hierarchy-reorganization.md](archive/completed-phases/2026-02-28-docs-hierarchy-reorganization.md) — docs reorganization plan (this work)
+- [archive/completed-phases/2026-02-28-docs-hierarchy-reorganization.md](archive/completed-phases/2026-02-28-docs-hierarchy-reorganization.md) — docs reorganization plan
+- [archive/completed-phases/2026-02-25-node-interner-design.md](archive/completed-phases/2026-02-25-node-interner-design.md) — NodeInterner design
+- [archive/completed-phases/2026-02-25-node-interner.md](archive/completed-phases/2026-02-25-node-interner.md) — NodeInterner implementation plan
 
 **Research notes:**
 - [archive/LEZER_IMPLEMENTATION.md](archive/LEZER_IMPLEMENTATION.md) — Lezer study notes
