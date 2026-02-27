@@ -56,6 +56,21 @@ pub fn EventBuffer::build_tree(
 }
 
 ///|
+/// Build a fully-interned CST from this buffer's accumulated events,
+/// deduplicating both tokens (via `interner`) and interior nodes (via `node_interner`).
+pub fn EventBuffer::build_tree_fully_interned(
+  self : EventBuffer,
+  root_kind : RawKind,
+  interner : Interner,
+  node_interner : NodeInterner,
+  trivia_kind? : RawKind? = None,
+) -> CstNode {
+  build_tree_fully_interned(
+    self.events, root_kind, interner, node_interner, trivia_kind~,
+  )
+}
+
+///|
 /// Build an interned CST from this buffer's accumulated events.
 ///
 /// Shorthand for `build_tree_interned(buf, root_kind, interner, ...)` that
@@ -174,6 +189,77 @@ pub fn build_tree_interned(
     )
   }
   CstNode::new(root_kind, stack[0], trivia_kind~)
+}
+
+///|
+/// Build a CST from a flat event stream, interning both tokens (via `interner`)
+/// and interior nodes (via `node_interner`). Identical subtrees share a single
+/// canonical CstNode reference in memory.
+///
+/// Construction is bottom-up: children are interned before their parent, so
+/// the parent's equality check terminates at hash match without deep recursion.
+///
+/// `trivia_kind`: forwarded to every `CstNode::new` call; leaf tokens with
+/// this kind are excluded from each node's `token_count`.
+pub fn build_tree_fully_interned(
+  events : Array[ParseEvent],
+  root_kind : RawKind,
+  interner : Interner,
+  node_interner : NodeInterner,
+  trivia_kind? : RawKind? = None,
+) -> CstNode {
+  let stack : Array[Array[CstElement]] = [[]]
+  let kinds : Array[RawKind] = [root_kind]
+  for event in events {
+    match event {
+      StartNode(kind) => {
+        stack.push([])
+        kinds.push(kind)
+      }
+      FinishNode => {
+        let children = match stack.pop() {
+          Some(c) => c
+          None =>
+            abort(
+              "build_tree_fully_interned: unbalanced FinishNode — no matching StartNode",
+            )
+        }
+        let kind = match kinds.pop() {
+          Some(k) => k
+          None =>
+            abort(
+              "build_tree_fully_interned: kind stack underflow on FinishNode",
+            )
+        }
+        let node = node_interner.intern_node(
+          CstNode::new(kind, children, trivia_kind~),
+        )
+        match stack.last() {
+          Some(parent) => parent.push(Node(node))
+          None =>
+            abort(
+              "build_tree_fully_interned: parent stack empty when attaching node",
+            )
+        }
+      }
+      Token(kind, text) => {
+        let token = interner.intern_token(kind, text)
+        match stack.last() {
+          Some(top) => top.push(CstElement::Token(token))
+          None =>
+            abort("build_tree_fully_interned: stack empty when adding token")
+        }
+      }
+      Tombstone => ()
+    }
+  }
+  if stack.length() != 1 {
+    abort(
+      "build_tree_fully_interned: unbalanced StartNode — missing FinishNode(s), stack=" +
+      stack.length().to_string(),
+    )
+  }
+  node_interner.intern_node(CstNode::new(root_kind, stack[0], trivia_kind~))
 }
 
 ///|
