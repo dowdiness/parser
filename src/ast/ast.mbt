@@ -23,6 +23,8 @@ pub(all) enum Term {
   Bop(Bop, Term, Term)
   // If-then-else
   If(Term, Term, Term)
+  // Let binding (non-recursive)
+  Let(VarName, Term, Term)
 } derive(Show, Eq)
 
 ///|
@@ -34,6 +36,7 @@ pub(all) enum AstKind {
   App // Application (left is children[0], right is children[1])
   Bop(Bop) // Binary operation (operands in children[0] and children[1])
   If // If-then-else (condition, then, else in children)
+  Let(String) // Let binding (name; init=children[0], body=children[1])
   Error(String) // Error node for recovery
 } derive(Show, Eq, FromJson, ToJson)
 
@@ -142,6 +145,11 @@ pub fn print_ast_node(node : AstNode) -> String {
         }
         "if " + cond + " then " + then_expr + " else " + else_expr
       }
+      AstKind::Let(name) => {
+        let init = if n.children.length() > 0 { go(n.children[0]) } else { "?" }
+        let body = if n.children.length() > 1 { go(n.children[1]) } else { "?" }
+        "let " + name + " = " + init + " in " + body
+      }
       AstKind::Error(msg) => "<error: " + msg + ">"
     }
   }
@@ -160,6 +168,7 @@ pub fn print_term(term : Term) -> String {
       Bop(Plus, t1, t2) => "(" + go(t1) + " + " + go(t2) + ")"
       Bop(Minus, t1, t2) => "(" + go(t1) + " - " + go(t2) + ")"
       If(t1, t2, t3) => "if " + go(t1) + " then " + go(t2) + " else " + go(t3)
+      Let(x, init, body) => "let " + x + " = " + go(init) + " in " + go(body)
     }
   }
 
@@ -223,6 +232,19 @@ pub fn node_to_term(node : AstNode) -> Term {
         abort("If node missing else child")
       }
       Term::If(cond, then_expr, else_expr)
+    }
+    AstKind::Let(name) => {
+      let init = if node.children.length() > 0 {
+        node_to_term(node.children[0])
+      } else {
+        abort("Let node missing init child")
+      }
+      let body = if node.children.length() > 1 {
+        node_to_term(node.children[1])
+      } else {
+        abort("Let node missing body child")
+      }
+      Term::Let(name, init, body)
     }
     AstKind::Error(msg) => abort("Cannot convert error node to Term: " + msg)
   }

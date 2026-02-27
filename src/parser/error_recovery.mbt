@@ -58,7 +58,8 @@ pub fn collect_errors(tree : @ast.AstNode) -> Array[String] {
       | @ast.AstKind::Lam(_)
       | @ast.AstKind::App
       | @ast.AstKind::Bop(_)
-      | @ast.AstKind::If => ()
+      | @ast.AstKind::If
+      | @ast.AstKind::Let(_) => ()
     }
     for child in node.children {
       collect(child, acc)

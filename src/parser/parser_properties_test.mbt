@@ -80,6 +80,7 @@ fn check_well_formed(node : @ast.AstNode) -> Unit raise {
     @ast.AstKind::App => node.children.length() <= 2 // Left, right
     @ast.AstKind::Bop(_) => node.children.length() <= 2 // Left, right
     @ast.AstKind::If => node.children.length() <= 3 // Cond, then, else
+    @ast.AstKind::Let(_) => node.children.length() <= 2 // init, body
     @ast.AstKind::Error(_) => true // Error nodes can have any children
   }
   assert_true(valid)
