@@ -42,6 +42,7 @@ Understanding how the layers fit together:
 ## Active Plans (Future Work)
 
 - [plans/2026-02-28-dead-code-audit-design.md](plans/2026-02-28-dead-code-audit-design.md) — remove `src/crdt/`, fix stale docs, complete package map
+- [plans/2026-02-28-dead-code-audit.md](plans/2026-02-28-dead-code-audit.md) — implementation plan for dead code audit
 
 ## Archive (Historical / Completed)
 
