@@ -264,7 +264,7 @@ fn parse_let_expr(
 ) -> Unit {
   match ctx.peek() {
     @token.Let =>
-      ctx.node(@syntax.LetExpr, fn() {
+      ctx.node(@syntax.LetExpr, () => {
         ctx.emit_token(@syntax.LetKeyword)
         match ctx.peek() {
           @token.Identifier(_) => ctx.emit_token(@syntax.IdentToken)

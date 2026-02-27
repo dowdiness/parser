@@ -691,7 +691,7 @@ test "parse preserves internal whitespace in application" {
 
 ///|
 test "cst: let expression" {
-  let cst = parse_cst("let x = 1 in x") catch { _ => abort("parse failed") }
+  let cst = parse_cst("let x = 1 in x")
   let child = match cst.children[0] {
     @seam.CstElement::Node(n) => n
     @seam.CstElement::Token(_) => abort("Expected node, got token")
@@ -701,9 +701,7 @@ test "cst: let expression" {
 
 ///|
 test "cst: nested let" {
-  let cst = parse_cst("let x = 1 in let y = 2 in x") catch {
-    _ => abort("parse failed")
-  }
+  let cst = parse_cst("let x = 1 in let y = 2 in x")
   let child = match cst.children[0] {
     @seam.CstElement::Node(n) => n
     @seam.CstElement::Token(_) => abort("Expected node, got token")
