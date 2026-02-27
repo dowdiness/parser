@@ -23,6 +23,10 @@ pub(all) enum SyntaxKind {
   VarRef
   ErrorNode
   SourceFile
+  LetKeyword
+  InKeyword
+  EqToken
+  LetExpr
 } derive(Show, Eq)
 
 ///|
@@ -41,7 +45,10 @@ pub fn SyntaxKind::is_token(self : SyntaxKind) -> Bool {
     | IntToken
     | WhitespaceToken
     | ErrorToken
-    | EofToken => true
+    | EofToken
+    | LetKeyword
+    | InKeyword
+    | EqToken => true
     _ => false
   }
 }
@@ -72,6 +79,10 @@ pub fn SyntaxKind::to_raw(self : SyntaxKind) -> @seam.RawKind {
     VarRef => 20
     ErrorNode => 21
     SourceFile => 22
+    LetKeyword => 23
+    InKeyword => 24
+    EqToken => 25
+    LetExpr => 26
   }
   @seam.RawKind(n)
 }
@@ -103,6 +114,10 @@ pub fn SyntaxKind::from_raw(raw : @seam.RawKind) -> SyntaxKind {
     20 => VarRef
     21 => ErrorNode
     22 => SourceFile
+    23 => LetKeyword
+    24 => InKeyword
+    25 => EqToken
+    26 => LetExpr
     _ => ErrorNode
   }
 }
