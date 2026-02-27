@@ -13,7 +13,9 @@
 /// **Lifetime:** `IncrementalParser` is designed to be created once per document
 /// and kept alive for the document's editing session. The internal `Interner`
 /// accumulates one entry per distinct `(kind, text)` token pair ever seen; this
-/// is bounded by the document's token vocabulary, not by edit count.
+/// is bounded by the document's token vocabulary, not by edit count. The internal
+/// `NodeInterner` accumulates one entry per distinct structural subtree ever seen;
+/// this is bounded by the document's subtree vocabulary, not by edit count.
 ///
 /// For scenarios where the same `IncrementalParser` instance is reused across
 /// unrelated documents (e.g., a long-lived LSP process that re-uses parser
@@ -26,6 +28,7 @@ pub struct IncrementalParser {
   mut last_reuse_count : Int // Number of nodes reused in last parse
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]] // Prior parse diagnostics for reuse replay
   priv interner : @seam.Interner // session-scoped token intern table
+  priv node_interner : @seam.NodeInterner // session-scoped node intern table
 }
 
 ///|
@@ -39,6 +42,7 @@ pub fn IncrementalParser::new(source : String) -> IncrementalParser {
     last_reuse_count: 0,
     last_diagnostics: [],
     interner: @seam.Interner::new(),
+    node_interner: @seam.NodeInterner::new(),
   }
 }
 
@@ -49,14 +53,21 @@ pub fn IncrementalParser::interner_size(self : IncrementalParser) -> Int {
 }
 
 ///|
-/// Clear the intern table, releasing all cached token entries.
+/// Number of distinct structural subtrees currently interned. For diagnostics and tests.
+pub fn IncrementalParser::node_interner_size(self : IncrementalParser) -> Int {
+  self.node_interner.size()
+}
+
+///|
+/// Clear both intern tables, releasing all cached token and node entries.
 ///
 /// Only needed when reusing the same `IncrementalParser` across unrelated
 /// documents. For normal single-document use this is never required, since the
-/// parser is created once per document and the intern table stays bounded by
-/// that document's token vocabulary.
+/// parser is created once per document and the intern tables stay bounded by
+/// that document's vocabulary.
 pub fn IncrementalParser::interner_clear(self : IncrementalParser) -> Unit {
   self.interner.clear()
+  self.node_interner.clear()
 }
 
 ///|
@@ -69,6 +80,7 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @ast.AstNode {
     let (cst, diagnostics) = @parse.parse_cst_recover(
       self.source,
       interner=Some(self.interner),
+      node_interner=Some(self.node_interner),
     )
     let syntax = @seam.SyntaxNode::from_cst(cst)
     self.syntax_tree = Some(syntax)
@@ -209,6 +221,7 @@ fn IncrementalParser::incremental_reparse(
     cursor,
     prev_diagnostics=Some(self.last_diagnostics),
     interner=Some(self.interner),
+    node_interner=Some(self.node_interner),
   )
 
   // Update stored syntax tree and reuse stats
