@@ -9,6 +9,8 @@ import {
 // Values
 pub fn lambda_language() -> @pipeline.Language[@ast.AstNode]
 
+pub fn to_dot(@ast.AstNode) -> String
+
 // Errors
 
 // Types and methods

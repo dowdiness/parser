@@ -3,4 +3,5 @@ import {
   "dowdiness/parser/lexer",
   "dowdiness/parser/parser" @parse,
   "dowdiness/parser/ast",
+  "dowdiness/parser/viz" @viz,
 }

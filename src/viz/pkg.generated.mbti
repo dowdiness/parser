@@ -1,12 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/parser/viz"
 
-import {
-  "dowdiness/parser/ast",
-}
-
 // Values
-pub fn ast_node_to_dot(@ast.AstNode) -> String
+pub fn[T : DotNode] to_dot(T) -> String
 
 // Errors
 
@@ -15,4 +11,11 @@ pub fn ast_node_to_dot(@ast.AstNode) -> String
 // Type aliases
 
 // Traits
+pub(open) trait DotNode {
+  node_id(Self) -> Int
+  label(Self) -> String
+  node_attrs(Self) -> String
+  children(Self) -> Array[Self]
+  edge_label(Self, Int) -> String
+}
 

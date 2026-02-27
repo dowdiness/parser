@@ -57,7 +57,7 @@ pub fn incremental(source : String) -> @incremental.IncrementalParser {
 ///|
 /// Convert a AST node tree to DOT format for Graphviz visualization.
 pub fn ast_node_to_dot(node : @ast.AstNode) -> String {
-  @viz.ast_node_to_dot(node)
+  @lambda.to_dot(node)
 }
 
 // ── CRDT ─────────────────────────────────────────────────────
