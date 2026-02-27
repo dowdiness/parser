@@ -1,0 +1,88 @@
+# Parse Pipeline
+
+A description of how source text flows through the parser to produce the final AST, including the incremental pipeline built on top of the canonical pipeline.
+
+## Canonical Pipeline
+
+```
+Source string → Lexer → EventBuffer → CstNode (CST) → SyntaxNode → AstNode → Term
+```
+
+Each stage has a distinct responsibility and output type:
+
+1. **Lexer** — tokenizes the source string into a typed token stream
+2. **CST Parser** — emits `ParseEvent`s into an `EventBuffer`; `build_tree()` constructs the immutable `CstNode` tree
+3. **SyntaxNode** — wraps the `CstNode` to add absolute byte positions on demand
+4. **Conversion** — walks `SyntaxNode` to produce `AstNode` (typed AST with positions)
+5. **Simplification** — converts `AstNode` to `Term` (semantic AST without positions)
+
+## Incremental Pipeline
+
+The incremental pipeline adds memoisation on top of the canonical pipeline:
+
+```
+Signal[String]
+  → Memo[CstNode]   (CST stage)
+  → Memo[AstNode]   (AST stage)
+```
+
+- `Signal[String]` holds the current source text. When an edit arrives the signal is updated.
+- `Memo[CstNode]` re-runs the Lexer + CST Parser only when the source string changes. Two equal strings produce the same `CstNode` without re-parsing.
+- `Memo[AstNode]` re-runs conversion only when the `CstNode` changes. Structurally identical `CstNode`s (same hash) skip conversion.
+
+A `TokenStage` memo between Signal and CstNode was considered and removed. Because the lexer is whitespace-preserving, any source change shifts token positions, making the `TokenStage` almost always unequal to its predecessor. The Signal equality check already handles the identical-string case, so the intermediate memo provided no benefit. See `docs/decisions/2026-02-27-remove-tokenStage-memo.md` for the full rationale.
+
+## Stage Details
+
+### Lexer (`src/lexer/`)
+
+Character-by-character scanning producing `Array[TokenInfo[Token]]`:
+
+- **Whitespace handling** — preserves whitespace as trivia tokens for lossless round-tripping
+- **Keyword recognition** — identifies reserved words (`if`, `then`, `else`)
+- **Number parsing** — reads multi-digit integers as a single `Integer(Int)` token
+- **Identifier reading** — supports alphanumeric variable names starting with a letter
+- **Unicode support** — accepts both `λ` (U+03BB) and `\` for lambda
+
+### CST Parser (`src/parser/cst_parser.mbt`)
+
+Produces a lossless CST using the event buffer pattern (see [seam-model.md](seam-model.md) for the event stream model):
+
+- Grammar functions call `ctx.start_node(kind)` / `ctx.emit_token(kind)` / `ctx.finish_node()`
+- `ctx.mark()` / `ctx.start_at(mark, kind)` enable retroactive wrapping for binary expressions and function application
+- `build_tree()` replays the flat `EventBuffer` to construct the immutable `CstNode` tree
+- All whitespace is preserved as `WhitespaceToken` nodes, keeping the CST lossless
+
+### SyntaxNode (`src/seam/syntax_node.mbt`)
+
+Ephemeral positioned view over a `CstNode`:
+
+- Computes absolute byte offsets from the CST's cumulative text lengths by summing sibling text lengths
+- Maintains parent pointers for upward traversal
+- Created on demand; not stored persistently
+- `children()` returns a lazy iterator; positions are never cached in the `CstNode`
+
+### CST-to-AST Conversion (`src/parser/cst_convert.mbt`)
+
+Converts the CST to typed `AstNode`s using `SyntaxNode` for position computation:
+
+- `convert_syntax_node()` walks the `SyntaxNode` tree, using `syntax.children()` for correct offsets
+- `tight_span()` computes precise start/end positions by skipping leading/trailing whitespace tokens
+- `ParenExpr` nodes are unwrapped to their inner expression's kind in the AST, so parentheses affect grouping but do not appear as AST nodes
+
+### Pretty Printer (`src/ast/`)
+
+`print_term` traverses the `Term` AST and reconstructs source text:
+
+- Adds parentheses for unambiguous output (may add extra parens beyond the minimum needed)
+- Uses `λ` for lambda abstraction
+- Infix notation for binary operations
+- Natural keyword formatting for conditionals: `if … then … else …`
+
+Example round-trip:
+
+```moonbit
+let ast = parse("λx.x + 1")
+let output = print_term(ast)
+// "(λx. (x + 1))"
+```
