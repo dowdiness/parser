@@ -34,6 +34,7 @@ fn run_parse_incremental(
   tokens : Array[@token.TokenInfo],
   source : String,
   interner : @seam.Interner?,
+  node_interner : @seam.NodeInterner?,
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
   prev_diagnostics : Array[@core.Diagnostic[@token.Token]]?,
 ) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int) {
@@ -64,19 +65,24 @@ fn run_parse_incremental(
       " unclosed nodes",
     )
   }
-  (select_build_tree(ctx.events, interner), ctx.errors, ctx.reuse_count)
+  (select_build_tree(ctx.events, interner, node_interner), ctx.errors, ctx.reuse_count)
 }
 
 ///|
 fn select_build_tree(
   buf : @seam.EventBuffer,
   interner : @seam.Interner?,
+  node_interner : @seam.NodeInterner?,
 ) -> @seam.CstNode {
   let ws = raw(@syntax.WhitespaceToken)
-  match interner {
-    Some(i) =>
+  match (interner, node_interner) {
+    (Some(i), Some(ni)) =>
+      buf.build_tree_fully_interned(
+        raw(@syntax.SourceFile), i, ni, trivia_kind=Some(ws),
+      )
+    (Some(i), None) =>
       buf.build_tree_interned(raw(@syntax.SourceFile), i, trivia_kind=Some(ws))
-    None => buf.build_tree(raw(@syntax.SourceFile), trivia_kind=Some(ws))
+    _ => buf.build_tree(raw(@syntax.SourceFile), trivia_kind=Some(ws))
   }
 }
 
@@ -102,6 +108,7 @@ fn run_parse(
   tokens : Array[@token.TokenInfo],
   source : String,
   interner : @seam.Interner?,
+  node_interner : @seam.NodeInterner?,
 ) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) {
   let ctx = @core.ParserContext::new_indexed(
     tokens.length(),
@@ -120,7 +127,7 @@ fn run_parse(
       " unclosed nodes",
     )
   }
-  (select_build_tree(ctx.events, interner), ctx.errors)
+  (select_build_tree(ctx.events, interner, node_interner), ctx.errors)
 }
 
 ///|
@@ -129,9 +136,10 @@ fn run_parse(
 pub fn parse_cst_recover(
   source : String,
   interner? : @seam.Interner? = None,
+  node_interner? : @seam.NodeInterner? = None,
 ) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError {
   let tokens = @lexer.tokenize(source)
-  run_parse(tokens, source, interner)
+  run_parse(tokens, source, interner, node_interner)
 }
 
 ///|
@@ -147,7 +155,7 @@ pub fn parse_cst_with_cursor(
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind],
   prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]? = None,
 ) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int) {
-  run_parse_incremental(tokens, source, None, Some(cursor), prev_diagnostics)
+  run_parse_incremental(tokens, source, None, None, Some(cursor), prev_diagnostics)
 }
 
 ///|
@@ -165,8 +173,9 @@ pub fn parse_cst_recover_with_tokens(
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
   prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]? = None,
   interner? : @seam.Interner? = None,
+  node_interner? : @seam.NodeInterner? = None,
 ) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int) {
-  run_parse_incremental(tokens, source, interner, cursor, prev_diagnostics)
+  run_parse_incremental(tokens, source, interner, node_interner, cursor, prev_diagnostics)
 }
 
 // ─── Grammar helpers ─────────────────────────────────────────────────────────
