@@ -25,9 +25,9 @@ pub fn parse(String) -> @ast.Term raise
 
 pub fn parse_cst(String) -> @seam.CstNode raise
 
-pub fn parse_cst_recover(String, interner? : @seam.Interner?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError
+pub fn parse_cst_recover(String, interner? : @seam.Interner?, node_interner? : @seam.NodeInterner?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError
 
-pub fn parse_cst_recover_with_tokens(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?, prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?, interner? : @seam.Interner?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int)
+pub fn parse_cst_recover_with_tokens(String, Array[@token.TokenInfo], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?, prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?, interner? : @seam.Interner?, node_interner? : @seam.NodeInterner?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int)
 
 pub fn parse_cst_to_ast_node(String) -> @ast.AstNode raise
 

@@ -55,6 +55,7 @@ pub fn IncrementalParser::get_tree(Self) -> @ast.AstNode?
 pub fn IncrementalParser::interner_clear(Self) -> Unit
 pub fn IncrementalParser::interner_size(Self) -> Int
 pub fn IncrementalParser::new(String) -> Self
+pub fn IncrementalParser::node_interner_size(Self) -> Int
 pub fn IncrementalParser::parse(Self) -> @ast.AstNode
 pub fn IncrementalParser::stats(Self) -> String
 

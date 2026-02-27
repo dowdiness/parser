@@ -65,7 +65,11 @@ fn run_parse_incremental(
       " unclosed nodes",
     )
   }
-  (select_build_tree(ctx.events, interner, node_interner), ctx.errors, ctx.reuse_count)
+  (
+    select_build_tree(ctx.events, interner, node_interner),
+    ctx.errors,
+    ctx.reuse_count,
+  )
 }
 
 ///|
@@ -78,7 +82,10 @@ fn select_build_tree(
   match (interner, node_interner) {
     (Some(i), Some(ni)) =>
       buf.build_tree_fully_interned(
-        raw(@syntax.SourceFile), i, ni, trivia_kind=Some(ws),
+        raw(@syntax.SourceFile),
+        i,
+        ni,
+        trivia_kind=Some(ws),
       )
     (Some(i), None) =>
       buf.build_tree_interned(raw(@syntax.SourceFile), i, trivia_kind=Some(ws))
@@ -155,7 +162,14 @@ pub fn parse_cst_with_cursor(
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind],
   prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]? = None,
 ) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int) {
-  run_parse_incremental(tokens, source, None, None, Some(cursor), prev_diagnostics)
+  run_parse_incremental(
+    tokens,
+    source,
+    None,
+    None,
+    Some(cursor),
+    prev_diagnostics,
+  )
 }
 
 ///|
@@ -175,7 +189,9 @@ pub fn parse_cst_recover_with_tokens(
   interner? : @seam.Interner? = None,
   node_interner? : @seam.NodeInterner? = None,
 ) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int) {
-  run_parse_incremental(tokens, source, interner, node_interner, cursor, prev_diagnostics)
+  run_parse_incremental(
+    tokens, source, interner, node_interner, cursor, prev_diagnostics,
+  )
 }
 
 // ─── Grammar helpers ─────────────────────────────────────────────────────────
