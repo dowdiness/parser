@@ -109,7 +109,7 @@ test "tokenize error - invalid character" {
 test "token_buffer update insertion matches full tokenize" {
   let source = "x"
   let new_source = "x + 1"
-  let edit = @edit.Edit::insert(1, 4)
+  let edit = @core.Edit::insert(1, 4)
   let buffer = TokenBuffer::new(source)
   let updated = buffer.update(edit, new_source)
   let full = tokenize(new_source)
@@ -123,7 +123,7 @@ test "token_buffer update insertion matches full tokenize" {
 test "token_buffer update deletion merges identifiers" {
   let source = "x y"
   let new_source = "xy"
-  let edit = @edit.Edit::delete(1, 2)
+  let edit = @core.Edit::delete(1, 2)
   let buffer = TokenBuffer::new(source)
   let updated = buffer.update(edit, new_source)
   let full = tokenize(new_source)
@@ -137,7 +137,7 @@ test "token_buffer update deletion merges identifiers" {
 test "token_buffer update replacement matches full tokenize" {
   let source = "x + 1"
   let new_source = "x + 42"
-  let edit = @edit.Edit::replace(4, 5, 6)
+  let edit = @core.Edit::replace(4, 5, 6)
   let buffer = TokenBuffer::new(source)
   let updated = buffer.update(edit, new_source)
   let full = tokenize(new_source)
@@ -151,7 +151,7 @@ test "token_buffer update replacement matches full tokenize" {
 test "token_buffer update insertion creates keyword" {
   let source = "i"
   let new_source = "if"
-  let edit = @edit.Edit::insert(1, 1)
+  let edit = @core.Edit::insert(1, 1)
   let buffer = TokenBuffer::new(source)
   let updated = buffer.update(edit, new_source)
   let full = tokenize(new_source)

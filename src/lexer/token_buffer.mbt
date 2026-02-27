@@ -31,7 +31,7 @@ pub fn TokenBuffer::get_version(self : TokenBuffer) -> Int {
 ///|
 pub fn TokenBuffer::update(
   self : TokenBuffer,
-  edit : @edit.Edit,
+  edit : @core.Edit,
   new_source : String,
 ) -> Array[@token.TokenInfo] raise TokenizationError {
   let old_tokens = self.tokens
@@ -131,7 +131,7 @@ fn find_right_index(tokens : Array[@token.TokenInfo], pos : Int) -> Int {
 }
 
 ///|
-fn map_start_pos(pos : Int, edit : @edit.Edit) -> Int {
+fn map_start_pos(pos : Int, edit : @core.Edit) -> Int {
   if pos <= edit.start {
     pos
   } else if pos >= edit.old_end {
@@ -142,7 +142,7 @@ fn map_start_pos(pos : Int, edit : @edit.Edit) -> Int {
 }
 
 ///|
-fn map_end_pos(pos : Int, edit : @edit.Edit) -> Int {
+fn map_end_pos(pos : Int, edit : @core.Edit) -> Int {
   if pos < edit.start {
     pos
   } else if pos >= edit.old_end {

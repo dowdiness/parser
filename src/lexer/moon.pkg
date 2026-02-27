@@ -1,6 +1,6 @@
 import {
   "dowdiness/parser/token",
-  "dowdiness/parser/edit",
+  "dowdiness/parser/core" @core,
 }
 
 import {
