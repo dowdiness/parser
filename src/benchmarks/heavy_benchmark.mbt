@@ -171,8 +171,8 @@ test "heavy: large document - cst parse only" (b : @bench.T) {
 test "heavy: typing session - 100 edits at end" (b : @bench.T) {
   let base = make_large_source()
   let chars = [
-    " ", "+", " ", "x", " ", "+", " ", "y", " ", "+", " ", "z", " ", "+", " ",
-    "1", " ", "+", " ", "2",
+    " ", "+", " ", "x", " ", "+", " ", "y", " ", "+", " ", "z", " ", "+", " ", "1",
+    " ", "+", " ", "2",
   ]
   b.bench(fn() {
     let parser = @incremental.IncrementalParser::new(base)
@@ -196,8 +196,8 @@ test "heavy: typing session - 100 edits in middle" (b : @bench.T) {
   let base = make_large_source()
   let mid = base.length() / 2
   let chars = [
-    "x", " ", "+", " ", "y", " ", "+", " ", "1", " ", "+", " ", "2", " ", "+",
-    " ", "z", " ", "+", " ",
+    "x", " ", "+", " ", "y", " ", "+", " ", "1", " ", "+", " ", "2", " ", "+", " ",
+    "z", " ", "+", " ",
   ]
   b.bench(fn() {
     let parser = @incremental.IncrementalParser::new(base)

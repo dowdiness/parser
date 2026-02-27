@@ -146,4 +146,3 @@ test "error recovery - error" (b : @bench.T) {
     b.keep(result)
   })
 }
-
