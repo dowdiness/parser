@@ -224,3 +224,36 @@ test "tokenize trailing whitespace produces whitespace token before EOF" {
   inspect(last_ws.start, content="1")
   inspect(last_ws.end, content="3")
 }
+
+///|
+test "tokenize let keyword" {
+  let tokens = tokenize("let") catch { _ => abort("tokenize failed") }
+  let s = @token.print_token_infos(tokens)
+  inspect(s.contains("let"), content="true")
+  inspect(s.contains("EOF"), content="true")
+}
+
+///|
+test "tokenize in keyword" {
+  let tokens = tokenize("in") catch { _ => abort("tokenize failed") }
+  let s = @token.print_token_infos(tokens)
+  inspect(s.contains("in"), content="true")
+}
+
+///|
+test "tokenize eq" {
+  let tokens = tokenize("=") catch { _ => abort("tokenize failed") }
+  let s = @token.print_token_infos(tokens)
+  inspect(s.contains("="), content="true")
+}
+
+///|
+test "tokenize let expression" {
+  let tokens = tokenize("let x = 1 in x") catch {
+    _ => abort("tokenize failed")
+  }
+  let s = @token.print_token_infos(tokens)
+  inspect(s.contains("let"), content="true")
+  inspect(s.contains("in"), content="true")
+  inspect(s.contains("="), content="true")
+}

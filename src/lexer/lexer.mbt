@@ -109,6 +109,10 @@ fn tokenize_helper(
         acc.push(@token.TokenInfo::new(@token.Minus, pos, pos + 1))
         tokenize_helper(input, pos + 1, acc)
       }
+      Some('=') => {
+        acc.push(@token.TokenInfo::new(@token.Eq, pos, pos + 1))
+        tokenize_helper(input, pos + 1, acc)
+      }
       Some(c) =>
         if is_alphabet(c.to_int()) {
           let (new_pos, identifier) = read_identifier(input, pos, "")
@@ -116,6 +120,8 @@ fn tokenize_helper(
             "if" => @token.Token::If
             "then" => @token.Token::Then
             "else" => @token.Token::Else
+            "let" => @token.Token::Let
+            "in" => @token.Token::In
             _ => @token.Token::Identifier(identifier)
           }
           acc.push(@token.TokenInfo::new(token, pos, new_pos))
