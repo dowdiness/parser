@@ -135,46 +135,6 @@ test "incremental state baseline - similar expressions" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: Damage tracking - localized damage
-test "damage tracking - localized damage" (b : @bench.T) {
-  b.bench(fn() {
-    let edit = @core.Edit::replace(4, 5, 5)
-    let damage = @incremental.DamageTracker::new(edit)
-    let tree = @parse.parse_tree("x + 1") catch {
-      _ => abort("benchmark failed")
-    }
-    damage.expand_for_tree(tree)
-    b.keep(damage)
-  })
-}
-
-///|
-/// Benchmark: Damage tracking - widespread damage
-test "damage tracking - widespread damage" (b : @bench.T) {
-  b.bench(fn() {
-    let edit = @core.Edit::replace(0, 1, 1)
-    let damage = @incremental.DamageTracker::new(edit)
-    let tree = @parse.parse_tree("λf.λx.if f x then x + 1 else x - 1") catch {
-      _ => abort("benchmark failed")
-    }
-    damage.expand_for_tree(tree)
-    b.keep(damage)
-  })
-}
-
-///|
-/// Benchmark: Position adjustment after edit
-test "position adjustment after edit" (b : @bench.T) {
-  b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("λf.λx.f x")
-    let tree = parser.parse()
-    let edit = @core.Edit::insert(7, 4)
-    let adjusted = parser.adjust_tree_positions(tree, edit)
-    b.keep(adjusted)
-  })
-}
-
-///|
 /// Benchmark: Memory pressure - large document
 test "memory pressure - large document" (b : @bench.T) {
   b.bench(fn() {

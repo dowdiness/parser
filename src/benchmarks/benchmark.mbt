@@ -121,10 +121,6 @@ test "damage tracking" (b : @bench.T) {
   b.bench(fn() {
     let edit = @core.Edit::insert(4, 4)
     let damage = @incremental.DamageTracker::new(edit)
-    let tree = @parse.parse_tree("λx.x") catch {
-      _ => abort("benchmark failed")
-    }
-    damage.expand_for_tree(tree)
     b.keep(damage)
   })
 }
