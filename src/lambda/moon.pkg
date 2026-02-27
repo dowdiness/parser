@@ -4,7 +4,3 @@ import {
   "dowdiness/parser/parser" @parse,
   "dowdiness/parser/ast",
 }
-
-import {
-  "dowdiness/parser/incremental",
-} for "test"

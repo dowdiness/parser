@@ -1,5 +1,4 @@
 import {
-  "dowdiness/parser/pipeline" @pipeline,
   "dowdiness/parser/token",
   "dowdiness/parser/range",
   "dowdiness/parser/ast",
@@ -8,7 +7,6 @@ import {
   "dowdiness/parser/core" @core,
   "dowdiness/parser/parser" @parse,
   "dowdiness/seam" @seam,
-  "dowdiness/incr" @incr,
 }
 
 import {

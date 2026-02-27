@@ -6,7 +6,6 @@ import {
   "dowdiness/parser/core",
   "dowdiness/parser/edit",
   "dowdiness/parser/lexer",
-  "dowdiness/parser/pipeline",
   "dowdiness/parser/range",
   "dowdiness/parser/token",
   "dowdiness/seam",
@@ -61,15 +60,6 @@ pub fn IncrementalParser::new(String) -> Self
 pub fn IncrementalParser::parse(Self) -> @ast.AstNode
 pub fn IncrementalParser::stats(Self) -> String
 
-pub struct ParserDb {
-  // private fields
-}
-pub fn ParserDb::cst(Self) -> @pipeline.CstStage
-pub fn ParserDb::diagnostics(Self) -> Array[String]
-pub fn ParserDb::new(String) -> Self
-pub fn ParserDb::set_source(Self, String) -> Unit
-pub fn ParserDb::term(Self) -> @ast.AstNode
-
 pub struct PerfStats {
   enabled : Ref[Bool]
   try_reuse_calls : Ref[Int]
@@ -81,13 +71,6 @@ pub struct PerfStats {
   find_node_steps : Ref[Int]
   count_tokens_calls : Ref[Int]
 }
-
-pub(all) enum TokenStage {
-  Ok(Array[@token.TokenInfo])
-  Err(String)
-}
-pub impl Eq for TokenStage
-pub impl Show for TokenStage
 
 // Type aliases
 

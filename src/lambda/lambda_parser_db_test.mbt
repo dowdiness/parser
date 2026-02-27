@@ -112,23 +112,23 @@ test "LambdaParserDb: set_source from lex error to valid clears is_lex_error" {
   assert_eq(@lambda.LambdaParserDb::cst(db).is_lex_error, false)
 }
 
-// ── Parity with @incremental.ParserDb ────────────────────────────────────────
+// ── Parity with direct parse ──────────────────────────────────────────────────
 
 ///|
-/// Cross-checks LambdaParserDb (generic two-memo) against the lambda-specific
-/// three-memo @incremental.ParserDb on a set of representative inputs.
-/// The two pipelines must produce structurally equal ASTs for all valid sources.
-test "LambdaParserDb: parity with incremental.ParserDb" {
+/// Cross-checks LambdaParserDb (two-memo pipeline) against parse_cst_to_ast_node
+/// (direct, pipeline-free parse) on a set of valid inputs.
+/// The pipeline must not change AST semantics vs the baseline parser.
+/// Error-recovery inputs are tested separately via the lex/parse error path tests.
+test "LambdaParserDb: parity with parse_cst_to_ast_node" {
   let sources : Array[String] = [
     "λx.x      +                   1   ", "λx.x λy.y + x", "if true then 1 else 4",
-    "1 + 5993 +", "λa.λb.λc. if c then a b else 124321 - 31 + a c", "10 - 3 + 1",
+    "λa.λb.λc. if c then a b else 124321 - 31 + a c", "10 - 3 + 1",
   ]
   for source in sources {
-    let lambda_db = @lambda.LambdaParserDb::new(source)
-    let incr_db = @incremental.ParserDb::new(source)
-    assert_eq(
-      @lambda.LambdaParserDb::term(lambda_db).to_string(),
-      @incremental.ParserDb::term(incr_db).to_string(),
-    )
+    let db = @lambda.LambdaParserDb::new(source)
+    let direct = @parse.parse_cst_to_ast_node(source) catch {
+      _ => abort("unexpected parse error in valid source: " + source)
+    }
+    assert_eq(@lambda.LambdaParserDb::term(db).to_string(), direct.to_string())
   }
 }

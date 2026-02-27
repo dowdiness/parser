@@ -1,5 +1,5 @@
 // ParserDb benchmarks: Signal/Memo pipeline overhead and backdating effectiveness.
-// Compares cold vs warm pipeline cost and ParserDb vs IncrementalParser for edits.
+// All benchmarks use @lambda.LambdaParserDb (the two-memo pipeline).
 // Run with: moon bench --package dowdiness/parser/benchmarks --release
 
 ///|
@@ -7,7 +7,7 @@
 /// Measures full pipeline construction + Signal/Memo wiring + parse cost.
 test "parserdb: cold - new + term()" (b : @bench.T) {
   b.bench(fn() {
-    let db = @incremental.ParserDb::new("λf.λx.if f x then x + 1 else x - 1")
+    let db = @lambda.LambdaParserDb::new("λf.λx.if f x then x + 1 else x - 1")
     b.keep(db.term())
   })
 }
@@ -17,7 +17,7 @@ test "parserdb: cold - new + term()" (b : @bench.T) {
 /// Memos are already valid after the first evaluation; subsequent calls
 /// only check staleness and return the cached value.
 test "parserdb: warm - term() with no source change" (b : @bench.T) {
-  let db = @incremental.ParserDb::new("λf.λx.if f x then x + 1 else x - 1")
+  let db = @lambda.LambdaParserDb::new("λf.λx.if f x then x + 1 else x - 1")
   let _ = db.term() // prime: run once so Memos are valid before measuring
   b.bench(fn() { b.keep(db.term()) })
 }
@@ -28,7 +28,7 @@ test "parserdb: warm - term() with no source change" (b : @bench.T) {
 /// Should be nearly as cheap as the warm path.
 test "parserdb: signal no-op - set_source(same) + term()" (b : @bench.T) {
   let source = "λf.λx.if f x then x + 1 else x - 1"
-  let db = @incremental.ParserDb::new(source)
+  let db = @lambda.LambdaParserDb::new(source)
   let _ = db.term() // prime
   b.bench(fn() {
     db.set_source(source) // String::Eq → Signal no-op → Memos stay valid
@@ -38,10 +38,10 @@ test "parserdb: signal no-op - set_source(same) + term()" (b : @bench.T) {
 
 ///|
 /// Full recompute: set_source() with a different value + term().
-/// Both tokens_memo and cst_memo must recompute from scratch.
+/// Both cst_memo and term_memo must recompute from scratch.
 /// This is the cost of a genuine source edit via the ParserDb API.
 test "parserdb: full recompute - set_source(new) + term()" (b : @bench.T) {
-  let db = @incremental.ParserDb::new("λf.λx.if f x then x + 1 else x - 1")
+  let db = @lambda.LambdaParserDb::new("λf.λx.if f x then x + 1 else x - 1")
   let _ = db.term() // prime
   b.bench(fn() {
     db.set_source("λf.λx.if f x then x + 2 else x - 1")
@@ -54,12 +54,12 @@ test "parserdb: full recompute - set_source(new) + term()" (b : @bench.T) {
 
 ///|
 /// Undo/redo cycle: alternate between two sources.
-/// Neither String::Eq nor TokenStage::Eq fires — both directions are full recomputes.
+/// Neither String::Eq nor CstStage::Eq fires — both directions are full recomputes.
 /// Measures the full pipeline cost for a real-world edit+undo pattern.
 test "parserdb: undo/redo cycle" (b : @bench.T) {
   let s1 = "λf.λx.if f x then x + 1 else x - 1"
   let s2 = "λf.λx.if f x then x + 2 else x - 1"
-  let db = @incremental.ParserDb::new(s1)
+  let db = @lambda.LambdaParserDb::new(s1)
   let _ = db.term()
   b.bench(fn() {
     db.set_source(s2)
@@ -71,25 +71,13 @@ test "parserdb: undo/redo cycle" (b : @bench.T) {
 
 ///|
 /// Diagnostics path: set_source() to malformed input + diagnostics().
-/// Exercises the error path: TokenStage::Ok → CstStage with non-empty diagnostics.
+/// Exercises the error path: CstStage with non-empty diagnostics.
 test "parserdb: diagnostics - malformed input" (b : @bench.T) {
-  let db = @incremental.ParserDb::new("λx.")
+  let db = @lambda.LambdaParserDb::new("λx.")
   b.bench(fn() {
     db.set_source("λ" + "x.")
     b.keep(db.diagnostics())
     db.set_source("λx.")
     let _ = db.diagnostics()
-  })
-}
-
-///|
-/// Smoke benchmark: LambdaParserDb (generic two-memo pipeline) cold start.
-/// Exercises the language-agnostic ParserDb[AstNode] path via LambdaLanguage.
-/// Comparable to "parserdb: cold" above; difference reflects the cost of the
-/// missing TokenStage memo (one fewer caching layer vs the three-memo pipeline).
-test "lambda_parserdb: cold - new + term()" (b : @bench.T) {
-  b.bench(fn() {
-    let db = @lambda.LambdaParserDb::new("λf.λx.if f x then x + 1 else x - 1")
-    b.keep(db.term())
   })
 }
