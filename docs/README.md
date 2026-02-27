@@ -47,6 +47,7 @@ Understanding how the layers fit together:
 - [archive/completed-phases/](archive/completed-phases/) — all completed phase plan files (15 files)
 - [archive/LEZER_IMPLEMENTATION.md](archive/LEZER_IMPLEMENTATION.md) — Lezer study notes
 - [archive/LEZER_FRAGMENT_REUSE.md](archive/LEZER_FRAGMENT_REUSE.md) — fragment reuse research
+- [archive/lezer.md](archive/lezer.md) — original Lezer research notes (pre-reorganization)
 - [archive/green-tree-extraction.md](archive/green-tree-extraction.md)
 - [archive/IMPLEMENTATION_SUMMARY.md](archive/IMPLEMENTATION_SUMMARY.md)
 - [archive/IMPLEMENTATION_COMPLETE.md](archive/IMPLEMENTATION_COMPLETE.md)
