@@ -434,8 +434,9 @@ test "heavy: reuse ratio over 50 edits at end" {
 ///|
 fn bench_incremental_single_edit(source : String, b : @bench.T) -> Unit {
   let len = source.length()
-  let new_source = slice(source, 0, len - 1) + "0"
-  let edit = @core.Edit::replace(len - 1, len, len)
+  let last = slice(source, len - 1, len)
+  let replacement = if last == "0" { "1" } else { "0" }
+  let (new_source, edit) = apply_char_replace(source, len - 1, replacement)
   b.bench(fn() {
     let p = @incremental.IncrementalParser::new(source)
     let _ = p.parse()
