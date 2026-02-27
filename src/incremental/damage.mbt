@@ -104,40 +104,6 @@ pub fn DamageTracker::expand_for_node(
 }
 
 ///|
-/// Expand damage for an entire tree
-///
-/// Wagner-Graham damage expansion:
-/// Walk the tree and mark nodes that overlap damaged regions
-pub fn DamageTracker::expand_for_tree(
-  self : DamageTracker,
-  tree : @ast.AstNode,
-) -> Unit {
-  // Check if this node overlaps any damaged range
-  let node_range = @core.Range::new(tree.start, tree.end)
-  let mut overlaps_damage = false
-  for damaged in self.damaged_ranges {
-    if damaged.overlaps(node_range) {
-      overlaps_damage = true
-      break
-    }
-  }
-  if overlaps_damage {
-    // This node overlaps damage, expand damage to include entire node
-    self.add_range(node_range)
-
-    // Recursively expand damage for children
-    for child in tree.children {
-      self.expand_for_tree(child)
-    }
-  } else {
-    // Node doesn't overlap damage, but children might
-    for child in tree.children {
-      self.expand_for_tree(child)
-    }
-  }
-}
-
-///|
 /// Get the total damaged range (union of all ranges)
 pub fn DamageTracker::range(self : DamageTracker) -> @core.Range {
   if self.damaged_ranges.length() == 0 {

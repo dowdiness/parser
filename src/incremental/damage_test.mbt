@@ -61,17 +61,3 @@ test "DamageTracker::expand_for_node" {
   inspect(total_range.end, content="25")
 }
 
-///|
-test "DamageTracker::expand_for_tree" {
-  let edit = @core.Edit::new(10, 5, 10)
-  let tracker = DamageTracker::new(edit)
-
-  // Create a simple tree by parsing
-  let tree = @parse.parse_tree("1 + 2")
-  tracker.expand_for_tree(tree)
-
-  // Tree should be damaged (overlaps with edit range 10-20)
-  // Since the tree spans 0-5, and edit is 10-20, they don't overlap
-  // But if we adjust the test...
-  inspect(tracker.damaged_ranges.length() > 0, content="true")
-}
