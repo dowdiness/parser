@@ -83,7 +83,7 @@ test "incremental - small edit" (b : @bench.T) {
   b.bench(fn() {
     let parser = @incremental.IncrementalParser::new("x")
     let _ = parser.parse()
-    let edit = @edit.Edit::insert(1, 4)
+    let edit = @core.Edit::insert(1, 4)
     let result = parser.edit(edit, "x + 1")
     b.keep(result)
   })
@@ -95,9 +95,9 @@ test "incremental - multiple edits" (b : @bench.T) {
   b.bench(fn() {
     let parser = @incremental.IncrementalParser::new("x")
     let _ = parser.parse()
-    let edit1 = @edit.Edit::insert(1, 4)
+    let edit1 = @core.Edit::insert(1, 4)
     let _ = parser.edit(edit1, "x + 1")
-    let edit2 = @edit.Edit::replace(4, 5, 5)
+    let edit2 = @core.Edit::replace(4, 5, 5)
     let result = parser.edit(edit2, "x + 2")
     b.keep(result)
   })
@@ -109,7 +109,7 @@ test "incremental - replacement" (b : @bench.T) {
   b.bench(fn() {
     let parser = @incremental.IncrementalParser::new("λx.x")
     let _ = parser.parse()
-    let edit = @edit.Edit::replace(0, 1, 1)
+    let edit = @core.Edit::replace(0, 1, 1)
     let result = parser.edit(edit, "\\x.x")
     b.keep(result)
   })
@@ -119,7 +119,7 @@ test "incremental - replacement" (b : @bench.T) {
 /// Benchmark: Damage tracking
 test "damage tracking" (b : @bench.T) {
   b.bench(fn() {
-    let edit = @edit.Edit::insert(4, 4)
+    let edit = @core.Edit::insert(4, 4)
     let damage = @incremental.DamageTracker::new(edit)
     let tree = @parse.parse_tree("λx.x") catch {
       _ => abort("benchmark failed")
@@ -188,7 +188,7 @@ test "parsed document - edit" (b : @bench.T) {
   b.bench(fn() {
     let doc = @crdt.ParsedDocument::new("x")
     doc.parse()
-    let edit = @edit.Edit::insert(1, 4)
+    let edit = @core.Edit::insert(1, 4)
     doc.edit(edit, "x + 1")
     b.keep(doc)
   })
