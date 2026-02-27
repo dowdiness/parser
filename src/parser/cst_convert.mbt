@@ -225,6 +225,30 @@ fn convert_syntax_node(
         children,
       )
     }
+    @syntax.LetExpr => {
+      let name = node
+        .find_token(@syntax.IdentToken.to_raw())
+        .map(t => t.text())
+        .unwrap_or("")
+      let (tight_start, _) = node.tight_span(trivia_kind=Some(ws))
+      let children : Array[@ast.AstNode] = []
+      let syntax_children = node.children()
+      for child in syntax_children {
+        children.push(convert_syntax_node(child, counter))
+      }
+      let let_end = if children.length() > 0 {
+        children[children.length() - 1].end
+      } else {
+        node.end()
+      }
+      @ast.AstNode::new(
+        @ast.AstKind::Let(name),
+        tight_start,
+        let_end,
+        next_id(),
+        children,
+      )
+    }
     @syntax.ParenExpr => {
       let (tight_start, tight_end) = node.tight_span(trivia_kind=Some(ws))
       let syntax_children = node.children()
