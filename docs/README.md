@@ -43,6 +43,7 @@ Understanding how the layers fit together:
 
 - [plans/2026-02-28-grammar-expansion-let.md](plans/2026-02-28-grammar-expansion-let.md) — implementation plan for expression-level `let` binding
 - [plans/2026-02-28-text-delta-design.md](plans/2026-02-28-text-delta-design.md) — design for TextDelta → Edit adapter
+- [plans/2026-02-28-text-delta.md](plans/2026-02-28-text-delta.md) — implementation plan for TextDelta → Edit adapter
 
 ## Archive (Historical / Completed)
 
