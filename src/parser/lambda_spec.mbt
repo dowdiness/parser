@@ -13,6 +13,9 @@ fn syntax_kind_to_token_kind(kind : @seam.RawKind) -> @token.Token? {
     @syntax.IfKeyword => Some(@token.If)
     @syntax.ThenKeyword => Some(@token.Then)
     @syntax.ElseKeyword => Some(@token.Else)
+    @syntax.LetKeyword => Some(@token.Let)
+    @syntax.InKeyword => Some(@token.In)
+    @syntax.EqToken => Some(@token.Eq)
     _ => None
   }
 }

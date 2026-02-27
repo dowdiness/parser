@@ -205,3 +205,24 @@ test "parse_cst_recover_with_tokens: preserves prior diagnostic messages on reus
   inspect(errors.length(), content="1")
   inspect(errors[0].message, content="Expected parameter after λ")
 }
+
+///|
+test "reuse fires: let init IntLiteral reused after body edit" {
+  // Old: "let x = 1 in y"  →  New: "let x = 1 in z"  (damage [13,14))
+  // IntLiteral(1) at [8,9) is outside damage and text is unchanged.
+  // Its TRAILING context token is InKeyword("in").  Without InKeyword
+  // in syntax_kind_to_token_kind, trailing_context_matches returns false
+  // and IntLiteral(1) is never reused — a regression on every let-body edit.
+  let old_source = "let x = 1 in y"
+  let (old_tree, _) = parse_cst_recover(old_source)
+  let new_source = "let x = 1 in z"
+  let new_tokens = @lexer.tokenize(new_source)
+  let cursor = make_reuse_cursor(old_tree, 13, 14, new_tokens)
+  let (new_tree, errors, reuse_count) = parse_cst_with_cursor(
+    new_source, new_tokens, cursor,
+  )
+  let (full_tree, _) = parse_cst_recover(new_source)
+  inspect(new_tree == full_tree, content="true")
+  inspect(errors.length(), content="0")
+  inspect(reuse_count > 0, content="true")
+}
