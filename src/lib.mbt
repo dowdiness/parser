@@ -12,7 +12,8 @@
 //   dowdiness/parser/parser       - parse, parse_tree, parse_with_error_recovery
 //   dowdiness/parser/incremental  - IncrementalParser, DamageTracker
 //   dowdiness/parser/crdt         - CRDTNode, ParsedDocument
-//   dowdiness/parser/viz          - ast_node_to_dot
+//   dowdiness/parser/viz          - DotNode (trait), to_dot[T : DotNode]
+//   dowdiness/parser/lambda       - LambdaParserDb, LambdaLanguage, DotNode impl for AstNode
 
 // ── Parsing ──────────────────────────────────────────────────
 

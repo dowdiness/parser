@@ -51,12 +51,13 @@ impl @viz.DotNode for DotAstNode with node_attrs(self) {
     let font = prepend_sharp_if_not_exist(font)
     "color=\"\{c}\", fillcolor=\"\{fill}\", fontcolor=\"\{font}\""
   }
-  // Hint: Error → `color="#ff0000", fillcolor="#ff000022", fontcolor="#ff6b6b"`
-  //       Lam   → `color="#c586c0", fillcolor="#c586c022", fontcolor="#c586c0"`
-  //       Var   → `color="#9cdcfe", fillcolor="#9cdcfe22", fontcolor="#9cdcfe"`
-  //       Int   → `color="#b5cea8", fillcolor="#b5cea822", fontcolor="#b5cea8"`
-  //       Bop   → `color="#d4d4d4", fillcolor="#d4d4d422", fontcolor="#d4d4d4"`
-  //       App, If → "" (use default graph-wide styling)
+  // Color palette (VSCode dark theme hues):
+  //   Error  #ff0000 / #ff000022 / #ff6b6b
+  //   Lam    #c586c0 / #c586c022 / #c586c0  (purple — binders)
+  //   Var    #9cdcfe / #9cdcfe22 / #9cdcfe  (blue — identifiers)
+  //   Int    #b5cea8 / #b5cea822 / #b5cea8  (green — literals)
+  //   Bop    #d4d4d4 / #d4d4d422 / #d4d4d4  (grey — operators)
+  //   App, If  "" — use default graph-wide node style
   match self.node.kind {
     If | App => ""
     Bop(_) => color("d4d4d4", "d4d4d422", "d4d4d4")
