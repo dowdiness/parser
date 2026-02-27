@@ -6,6 +6,3 @@ import {
   "dowdiness/parser/parser" @parse,
   "dowdiness/seam" @seam,
 }
-
-import {
-} for "test"
