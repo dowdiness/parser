@@ -6,7 +6,7 @@
 
 **Status:** Complete
 
-**Architecture:** No logic changes — pure deletion + comment fixes. Every change is independently verifiable with `moon test` (368 tests must still pass) and `bash check-docs.sh`.
+**Architecture:** No logic changes — pure deletion + comment fixes. Every change is independently verifiable with `moon test` (353/353 passed — 18 crdt tests removed) and `bash check-docs.sh`.
 
 **Tech Stack:** MoonBit (`moon test`, `moon info`, `moon fmt`), bash (`check-docs.sh`)
 
