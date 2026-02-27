@@ -23,7 +23,7 @@ Before planning forward, we need an unflinching look at where we are. The existi
 
 5. **Data structures** - `TermNode`, `TermKind`, `Edit`, `Range` are well-designed and tested.
 
-6. **Test suite** - 272 tests passing, including property-based tests and Phase 3 fuzz tests. Good coverage.
+6. **Test suite** - 363 tests passing, including property-based tests and Phase 3 fuzz tests. Good coverage.
 
 ### What Does Not Work (Architectural Gaps)
 
@@ -65,7 +65,7 @@ Before planning forward, we need an unflinching look at where we are. The existi
 | Subtree reuse | **Complete** (Phase 4) — `ReuseCursor` with 4-condition protocol |
 | Generic parser framework | **Complete** (Phase 5) — `ParserContext[T,K]`, `LanguageSpec`, `parse_with` |
 | Generic incremental reuse | **Complete** (Phase 6) — `ReuseCursor[T,K]` in `src/core/`, `node()`/`wrap_at()` |
-| Reactive pipeline | **Complete** (Phase 7) — `ParserDb`: `Signal`→`Memo[TokenStage]`→`Memo[CstStage]` |
+| Reactive pipeline | **Complete** (Phase 7; TokenStage removed — see ADR 2026-02-27) — `ParserDb`: `Signal[String]`→`Memo[CstStage]`→`Memo[AstNode]` |
 | SyntaxNode API | **Complete** — `SyntaxToken`, `SyntaxElement`, `all_children`, `find_at`, `tight_span` |
 | `cst` field privacy | **Complete** — `.cst` is private; all callers use `SyntaxNode` methods |
 | CRDT integration | **Conversion functions** — `ast_to_crdt`, `crdt_to_source`; no conflict logic |
@@ -229,7 +229,7 @@ depend on what follows it. O(depth) per lookup via stateful frame stack.
 
 **Goal:** Build `ParserDb`, a `Signal`/`Memo`-backed Salsa-style incremental pipeline using `CstNode` value equality for automatic stage backdating.
 
-**Architecture:** `source_text : Signal[String]` → `tokens : Memo[TokenStage]` → `cst : Memo[CstStage]`
+**Architecture (updated per ADR 2026-02-27):** `source_text : Signal[String]` → `cst : Memo[CstStage]` → `ast : Memo[AstNode]`
 
 **What was built:**
 - `dowdiness/incr` added as git submodule dependency
@@ -262,144 +262,28 @@ depend on what follows it. O(depth) per lookup via stateful frame stack.
 
 ---
 
-## Phase 5 (original plan): Grammar Expansion and CST Maturity
+## Grammar Expansion (Future Work)
 
-**Goal:** Expand the language beyond bare lambda calculus. Each new construct creates more natural boundaries for incremental reuse.
+> Formerly "Phase 5 original plan" — superseded as Phase 5 by the Generic Parser Framework.
 
-### 5.1 Let Bindings
-
-```
-let x = expr in body
-```
-
-Let bindings are the most important expansion because they create **top-level boundaries**. A file with multiple let bindings:
-
-```
-let id = λx.x
-let two = λf.λx.f (f x)
-let result = id two
-```
-
-Each let binding is an independent subtree. Editing `id` doesn't require re-parsing `two` or `result`. This is where incremental parsing has massive impact.
-
-Grammar addition:
-```
-Expression ::= 'let' Identifier '=' Expression 'in' Expression
-             | BinaryOp
-```
-
-### 5.2 Type Annotations
-
-```
-let id : (a -> a) = λx.x
-```
-
-Type annotations add structure that helps both error recovery (more synchronization points) and incremental reuse (type signatures are often unchanged).
-
-### 5.3 Comments
-
-```
--- This is a comment
-let id = λx.x  -- inline comment
-```
-
-Comments are preserved in the CST as `CommentToken` green nodes. They participate in whitespace trivia but don't affect the semantic tree.
-
-### 5.4 Multi-Expression Files
-
-Support files with multiple top-level definitions separated by newlines or semicolons:
-
-```
-SourceFile
-  LetDecl
-    ...
-  LetDecl
-    ...
-  Expression
-    ...
-```
-
-This is the structure that makes incremental parsing most valuable - editing one declaration doesn't touch others.
-
-### 5.5 Whitespace Trivia
-
-In the CST, whitespace and comments attach to tokens as leading/trailing trivia:
-
-```
-GreenToken {
-  kind: IdentToken,
-  leading_trivia: [WhitespaceToken("  ")],
-  text: "x",
-  trailing_trivia: [WhitespaceToken(" "), CommentToken("-- variable")]
-}
-```
-
-This makes the CST fully lossless - you can reconstruct the original source exactly from the CST, including all whitespace and comments.
-
-**Exit criteria:**
-- Let bindings, type annotations, and comments fully supported
-- Multi-expression files parse correctly
-- CST round-trips to identical source text
-- Incremental reuse works across let-binding boundaries
-- All new constructs have comprehensive tests
+**Goal:** Extend the lambda grammar with let bindings, type annotations, comments, and multi-expression files.
+Key outcome: independent top-level subtrees (one per let binding) make incremental reuse genuinely impactful — editing one binding won't re-parse any other.
+Exit criteria: let bindings + type annotations parse correctly; CST round-trips to identical source text; reuse fires across let-binding boundaries.
 
 ---
 
 ## Phase 6: CRDT Exploration (Research)
 
-**Goal:** Investigate how the incremental parser integrates with CRDT-based collaborative editing. This phase is exploratory — the CRDT design space is large and the right approach depends on decisions not yet made.
+**Goal:** Integrate the incremental parser with CRDT-based collaborative editing.
+**Status: Research phase.** `crdt_integration.mbt` provides AST↔CRDTNode conversion only; no conflict logic.
 
-**Status: This is a research phase, not an implementation plan.** The existing `crdt_integration.mbt` provides AST↔CRDTNode conversion functions but contains no actual CRDT logic (no conflict resolution, no causal ordering, no concurrent edit handling). Building genuine CRDT integration requires answering fundamental design questions first.
+**Recommended architecture:** text-level CRDT + incremental parser on merge. Each peer maintains source text via a text CRDT (Fugue/RGA); after merging remote operations, the incremental parser re-parses the affected region. Avoids tree CRDTs entirely.
 
-### 6.1 Open Design Questions
+### What to Build
 
-**Q1: What layer does the CRDT operate on?**
+1. **Green tree diff utility:** Changed subtrees with positions, using pointer equality for O(1) unchanged-subtree skips.
 
-| Layer | CRDT Type | Pros | Cons |
-|-------|-----------|------|------|
-| Characters | RGA / Fugue | Well-studied, text CRDTs work | No structural awareness; parser must re-parse after every merge |
-| Tokens | Custom sequence CRDT | Preserves token boundaries | Token identity is fragile (edits create/destroy tokens) |
-| AST nodes | Tree CRDT (e.g., MRDT) | Structural edits are first-class | Complex; AST changes are derived from text changes, not direct |
-| Source text + parse on merge | Text CRDT + incremental parser | Simplest; leverages Phases 1-4 | No semantic merge (text conflicts may produce invalid syntax) |
-
-The simplest viable approach is likely **text-level CRDT + incremental parser on merge**. Each peer maintains source text via a text CRDT (e.g., Fugue or RGA). After merging remote operations into the local text, the incremental parser re-parses the affected region. This requires no custom tree CRDT and fully leverages the incremental parsing infrastructure.
-
-**Q2: What does "tree diff" mean for green trees?**
-
-The green tree enables efficient structural comparison via pointer equality (unchanged subtrees are the same object). A diff algorithm can skip pointer-equal subtrees in O(1). But the output of a diff is a sequence of tree edits (insert node, delete node, replace node), and it's not yet clear whether these map cleanly to CRDT operations or whether they're even needed. If using a text-level CRDT, tree diffs are informational (for UI updates), not operational.
-
-**Q3: What convergence guarantees are needed?**
-
-- **Text convergence:** All peers see the same source text after merging all operations. This is provided by the text CRDT.
-- **Parse convergence:** All peers produce the same parse tree for the same source text. This is provided by the parser being deterministic.
-- **Semantic convergence:** Concurrent edits to different declarations don't interfere. This is provided by text convergence + incremental parsing (editing one let binding doesn't affect others).
-
-### 6.2 Recommended Starting Point
-
-```
-Peer A                          Peer B
-  |                               |
-  | local edit                    | local edit
-  v                               v
-Text CRDT  ---sync operations-->  Text CRDT
-  |                               |
-  | merged text                   | merged text
-  v                               v
-Incremental Parser              Incremental Parser
-  |                               |
-  | green tree                    | green tree (identical)
-  v                               v
-UI update                       UI update
-```
-
-This avoids the complexity of tree CRDTs entirely. The incremental parser provides the "structure-aware" layer — it knows which subtrees changed and can update the UI efficiently. The CRDT handles text convergence, which is well-solved.
-
-### 6.3 What to Build
-
-1. **Green tree diff utility:** Given old and new green trees, produce a list of changed subtrees with their positions. Uses pointer equality for O(1) skip of unchanged subtrees. This is useful for UI updates regardless of CRDT choice.
-
-2. **Text CRDT adapter:** Translate CRDT text operations into the `Edit` type that the incremental parser accepts. The concrete pipeline is:
-
+2. **Text CRDT adapter:** Translate CRDT operations into `Edit`:
    ```
    TextDelta (Retain | Insert | Delete)   ← Loro/Quill Delta format
      ↓ .to_edits()
@@ -407,23 +291,11 @@ This avoids the complexity of tree CRDTs entirely. The incremental parser provid
      ↓ implements
    pub trait Editable                     ← IncrementalParser accepts T : Editable
    ```
+   `Delete(n)` → `old_len = n`, `Insert(s)` → `new_len = s.length()`, `Retain(n)` → advance cursor.
 
-   `Edit` now stores lengths (`old_len`, `new_len`) as primitive fields, which makes this conversion direct: `Delete(n)` maps to `old_len = n`, `Insert(s)` maps to `new_len = s.length()`, `Retain(n)` advances the cursor by `n`. No subtraction needed. `Editable` is already implemented for `Edit`; any future adapter type (e.g., a lazy `PendingEdit` that defers string allocation) can implement the same trait without touching `IncrementalParser`.
+3. **Integration test harness:** Two simulated peers; verify identical text and parse trees after sync.
 
-3. **Integration test harness:** Simulate two peers making concurrent edits. Verify that after sync, both peers have identical source text and identical parse trees.
-
-### 6.4 What NOT to Build (Yet)
-
-- Custom tree CRDT for AST nodes (premature — text CRDT may be sufficient)
-- Semantic merge (resolving conflicts at the declaration level — research problem)
-- Real-time operational transformation (CRDT handles this at the text layer)
-
-**Exit criteria for this phase:**
-- Design document answering Q1-Q3 with evidence from prototyping
-- Green tree diff utility implemented and tested
-- `TextDelta.to_edits()` producing values that implement `Editable` ✅ trait defined and `Edit` impl complete
-- Integration test: two simulated peers converge on same parse tree
-- Clear recommendation on whether to pursue tree-level CRDT or stay with text-level
+**Exit criteria:** Green tree diff tested; `TextDelta.to_edits()` values implement `Editable` ✅; two-peer convergence test; recommendation on tree-level vs text-level CRDT.
 
 ---
 
@@ -465,142 +337,27 @@ Next candidates: NodeInterner, Typed SyntaxNode views, ParserDb benchmarks, Gram
 
 ## Cross-Cutting Concern: Incremental Correctness Testing
 
-The fundamental correctness property — **for any edit, incremental parse produces a tree structurally identical to a full reparse** — must be continuously verified across all phases. This is not a Phase 4 concern alone; it applies from the moment the first incremental operation is introduced (Phase 1's incremental lexer).
+**Invariant:** For any edit, incremental parse must produce a tree structurally identical to full reparse.
 
-### Differential Testing Oracle
-
-Every incremental operation must be shadow-verified against its non-incremental equivalent:
-
-```
-fn verify_incremental_correctness(
-  source : String,
-  edit : Edit,
-  new_source : String,
-) -> Bool {
-  // Path 1: Incremental
-  let parser = IncrementalParser::new(source)
-  parser.parse()
-  let incremental_result = parser.edit(edit, new_source)
-
-  // Path 2: Full reparse (oracle)
-  let full_result = parse(new_source)
-
-  // Compare structure, ignoring node IDs and other metadata
-  structurally_equal(incremental_result, full_result)
-}
-```
-
-This oracle runs in CI on every commit. It is not optional.
-
-### Property-Based Fuzzing
-
-Use QuickCheck (already a dependency) to generate random test cases:
-
-1. **Random source generation:** Generate random well-formed lambda calculus expressions. The grammar is small enough that a recursive generator with size bounds produces good coverage.
-
-2. **Random edit generation:** For a given source string, generate random edits: insertions, deletions, and replacements at random positions with random content.
-
-3. **Edit sequence testing:** Apply sequences of 10-100 random edits, verifying the correctness invariant after each one. This catches state accumulation bugs that single-edit tests miss.
-
-4. **Adversarial edits:** Specifically target edit boundaries: edits that split tokens, create keywords from identifiers (`i` → `if`), remove parentheses, insert at position 0, append at end, delete everything, etc.
-
-### Phase-Specific Testing Requirements
-
-| Phase | What to verify | Oracle | Status |
-|-------|---------------|--------|--------|
-| Phase 1 (Incremental Lexer) | Incremental tokenization == full tokenization | `incremental_lex(edit) == tokenize(new_source)` | ✅ Verified |
-| Phase 2 (Green Tree) | Green tree → Term matches old parser's Term | `green_to_term(green_parse(s)) == parse(s)` | ✅ Verified |
-| Phase 3 (Error Recovery) | Parser terminates on all inputs; valid inputs unchanged | Fuzzing with random tokens; regression suite | ✅ Verified |
-| Phase 4 (Subtree Reuse) | Incremental parse == full reparse | Full differential oracle | ✅ Verified |
-| Phase 5 (Grammar Expansion) | New constructs parse correctly; old constructs unchanged | Existing test suite + new construct tests | Pending |
-
-### Regression Suite
-
-Every bug found during development becomes a permanent regression test. The test captures:
-- The source before the edit
-- The edit
-- The expected tree after the edit
-- A comment explaining what went wrong
-
-This suite grows monotonically — tests are never removed.
-
-### CI Integration
-
-The full test suite (including property-based fuzzing with 10,000+ random cases) runs on every push. Benchmarks run on tagged commits to detect performance regressions. The differential oracle is always enabled, even in release builds during testing.
+Verified via differential oracle (random source + random edits → compare incremental vs full reparse result).
+Property-based fuzzing with sequences of 10-100 random edits catches state accumulation bugs. Status: ✅ verified through Phase 4. Grammar Expansion will require extending the oracle when new constructs are added.
 
 ---
 
-## Milestones and Confidence Levels
+## Milestones
 
-### Milestone 1: Honest Foundation (Phase 0)
-**Confidence: Certain**
-
-Removing dead code and establishing honest benchmarks requires no architectural risk. This is purely cleanup work.
-
-### Milestone 2: Incremental Lexer (Phase 1) ✅ COMPLETE
-**Confidence: Certain (completed)**
-
-Incremental lexing implemented with splice-based TokenBuffer updates. Conservative boundary expansion handles keyword formation edge cases. Benchmarked on 110-token input: incremental update is 1.3-1.7x faster than full re-tokenize, with all operations under 3 us. Property tests verify correctness (incremental lex == full lex).
-
-### Milestone 3: Green Tree (Phase 2)
-**Confidence: High**
-
-The red-green tree architecture is proven in production compilers (Roslyn, rust-analyzer, swift-syntax). The design is well-documented. The main work is migrating the parser to use a tree builder.
-
-Known risk: Performance characteristics in MoonBit may differ from Rust/C#. Mitigated by benchmarking early and adjusting allocation strategies.
-
-### Milestone 4: Error Recovery (Phase 3)
-**Confidence: Medium-High**
-
-Synchronization-point error recovery in recursive descent is well-established. The challenge is choosing good synchronization points for lambda calculus (which has few keywords) and avoiding cascading errors.
-
-Known risk: Lambda calculus has less syntactic structure than typical programming languages, making recovery points scarcer. Mitigated by parentheses and keywords (`if`/`then`/`else`) as anchors.
-
-### Milestone 5: Subtree Reuse (Phase 4)
-**Confidence: Medium**
-
-This is the most novel part. Checkpoint-based reuse in hand-written recursive descent is less established than LR-based reuse. The approach is sound in principle (the call stack provides parser state), but the implementation details matter.
-
-Known risks:
-- **Trailing context sensitivity:** A node's parse can depend on what follows it. Left-associative application is particularly sensitive — `parse_application` greedily consumes atoms based on the next token. The trailing-context check (section 4.2.1) addresses this, but the exact boundary conditions need careful testing.
-- **Reuse cursor synchronization:** Keeping the cursor aligned with the parser requires careful bookkeeping. If the cursor falls out of sync (e.g., after error recovery skips tokens), all subsequent reuse checks may fail silently.
-- **Edge cases at edit boundaries:** Edits that create or destroy token boundaries (e.g., inserting a space to split an identifier) stress both the incremental lexer and the reuse protocol simultaneously.
-- **Tree shape limits gains:** Lambda calculus produces left-leaning spines with O(N) depth, so the spine must always be rebuilt. The real win comes after Phase 5 adds let bindings.
-
-Mitigated by: The differential testing oracle (see Cross-Cutting Concern section) catches all correctness bugs. Property-based fuzzing with random edits runs on every commit. Reuse can be conservatively disabled (fall back to full reparse) if any check is uncertain — correctness is never sacrificed for performance.
-
-**Findings (correctness/edge cases):**
-- Trailing-context check enforces follow-token equality (Option B): the first non-whitespace token after the node's end offset must be identical in both old and new token streams. Prevents identifier/integer boundary merges.
-- Leading token match for integers requires both numeric value equality and canonical text equality (e.g., `007` does not match `7`).
-- Reuse is conservative around leading whitespace because reuse is anchored to the first non-whitespace token offset, reducing reuse on whitespace-only edits.
-- Adjacent damage is treated as unsafe (strict inequality), which prevents false reuse for grammar-sensitive boundaries like application.
-
-**Findings (performance profiling):**
-- Hot path for root-invalidating edits was `find_node_at_offset` recursion (many
-  calls, zero reuse hits), causing search overhead to dominate when reuse is
-  unlikely.
-- **Implemented optimizations:**
-  1. **Fast path skip:** When byte offset is within damaged range [start, end),
-     skip tree search immediately. For root-invalidating edits, this avoids all
-     `find_node_at_offset` calls (measured: `fast_path_skips: 45`,
-     `find_node_calls: 0`).
-  2. **Stateful cursor:** `ReuseCursor` maintains a stack of `CursorFrame`s
-     tracking position in the tree. Sequential lookups are O(depth) instead of
-     O(tree). Measured: 4 lookups in 10 total steps (avg 2.5 steps/lookup).
-- **Why timing benchmarks show minimal change:** Lambda calculus trees are
-  small (~15-30 tokens), and Wagner-Graham damage expansion causes any edit to
-  expand damage to the entire root for single-expression files. The real win
-  comes with Phase 5's `let` bindings creating independent subtrees.
-
-### Milestone 6: Grammar Expansion (Phase 5)
-**Confidence: High**
-
-Adding let bindings and type annotations to a recursive descent parser is straightforward. The green tree architecture supports new node kinds naturally.
-
-### Milestone 7: CRDT Exploration (Phase 6)
-**Confidence: Low-Medium (research phase)**
-
-This is explicitly exploratory. The most likely outcome is "text-level CRDT + incremental parser on merge," which is architecturally simple but requires answering design questions about convergence guarantees and the value of tree-level awareness. The green tree diff utility is the concrete deliverable; the CRDT architecture decision is the intellectual deliverable.
+| Milestone | Phase | Status |
+|-----------|-------|--------|
+| Honest Foundation | Phase 0 | ✅ Complete (2026-02-01) |
+| Incremental Lexer | Phase 1 | ✅ Complete (2026-02-02) |
+| Green Tree / CST | Phase 2 | ✅ Complete (2026-02-19) |
+| Error Recovery | Phase 3 | ✅ Complete (2026-02-03) |
+| Subtree Reuse | Phase 4 | ✅ Complete (2026-02-03) |
+| Generic Parser Framework | Phase 5 | ✅ Complete (2026-02-23) |
+| Generic Incremental Reuse | Phase 6 | ✅ Complete (2026-02-24) |
+| Reactive Pipeline (ParserDb) | Phase 7 | ✅ Complete (2026-02-25) |
+| Grammar Expansion | Future | Confidence: High |
+| CRDT Exploration | Future | Confidence: Low-Medium (research) |
 
 ---
 

@@ -28,6 +28,7 @@ Understanding how the layers fit together:
 
 - [performance/PERFORMANCE_ANALYSIS.md](performance/PERFORMANCE_ANALYSIS.md) — benchmarks and analysis
 - [performance/benchmark_history.md](performance/benchmark_history.md) — historical benchmark log
+- [../BENCHMARKS.md](../BENCHMARKS.md) — benchmark results and raw data (root-level)
 
 ## Architecture Decisions (ADRs)
 
@@ -36,19 +37,26 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
-- [plans/2026-02-25-node-interner-design.md](plans/2026-02-25-node-interner-design.md)
-- [plans/2026-02-25-node-interner.md](plans/2026-02-25-node-interner.md)
-- [plans/2026-02-25-syntax-node-extend.md](plans/2026-02-25-syntax-node-extend.md)
-- [plans/2026-02-25-syntax-node-first-layer-design.md](plans/2026-02-25-syntax-node-first-layer-design.md)
+- [plans/2026-02-25-node-interner-design.md](plans/2026-02-25-node-interner-design.md) — NodeInterner design
+- [plans/2026-02-25-node-interner.md](plans/2026-02-25-node-interner.md) — NodeInterner implementation plan
 
 ## Archive (Historical / Completed)
 
-- [archive/completed-phases/phases-0-4.md](archive/completed-phases/phases-0-4.md) — Phases 0–4 full implementation notes
-- [archive/completed-phases/](archive/completed-phases/) — all completed phase plan files (15 files)
+**Completed phase plans:**
+- [archive/completed-phases/phases-0-4.md](archive/completed-phases/phases-0-4.md) — Phases 0–4 consolidated notes
+- [archive/completed-phases/](archive/completed-phases/) — all 18 individual completed phase plan files
+- [archive/completed-phases/2026-02-25-syntax-node-extend.md](archive/completed-phases/2026-02-25-syntax-node-extend.md) — SyntaxNode API extension plan
+- [archive/completed-phases/2026-02-25-syntax-node-first-layer-design.md](archive/completed-phases/2026-02-25-syntax-node-first-layer-design.md) — SyntaxNode-first layer design
+- [archive/completed-phases/2026-02-28-docs-hierarchy-reorganization.md](archive/completed-phases/2026-02-28-docs-hierarchy-reorganization.md) — docs reorganization plan (this work)
+
+**Research notes:**
 - [archive/LEZER_IMPLEMENTATION.md](archive/LEZER_IMPLEMENTATION.md) — Lezer study notes
 - [archive/LEZER_FRAGMENT_REUSE.md](archive/LEZER_FRAGMENT_REUSE.md) — fragment reuse research
 - [archive/lezer.md](archive/lezer.md) — original Lezer research notes (pre-reorganization)
-- [archive/green-tree-extraction.md](archive/green-tree-extraction.md)
+- [archive/green-tree-extraction.md](archive/green-tree-extraction.md) — early extraction task notes (see also `completed-phases/2026-02-19-green-tree-extraction.md` for full plan)
+
+**Historical status docs:**
+- [archive/TODO.md](archive/TODO.md) — completed-task log (Phases 1–7)
 - [archive/IMPLEMENTATION_SUMMARY.md](archive/IMPLEMENTATION_SUMMARY.md)
 - [archive/IMPLEMENTATION_COMPLETE.md](archive/IMPLEMENTATION_COMPLETE.md)
 - [archive/COMPLETION_SUMMARY.md](archive/COMPLETION_SUMMARY.md)
