@@ -4,8 +4,8 @@
 // References:
 // - Wagner-Graham (1998): https://harmonia.cs.berkeley.edu/papers/twagner-parsing.pdf
 //
-// Strategy: Wagner-Graham damage tracking with whole-tree reuse
-// or full reparse. Appropriate for recursive descent + small grammars.
+// Strategy: Damage range derived from edit bounds; cursor-based subtree
+// reuse via ReuseCursor. Appropriate for recursive descent + small grammars.
 
 ///|
 /// Incremental parser state
@@ -105,10 +105,10 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @ast.AstNode {
 ///|
 /// Apply an edit and incrementally reparse
 ///
-/// This implements the Wagner-Graham incremental parsing algorithm:
-/// 1. Update source text
-/// 2. Identify damaged region (edit range)
-/// 3. Reparse damaged region, reusing whole tree where possible
+/// Wagner-Graham incremental parsing:
+/// 1. Update source text and token buffer
+/// 2. Compute damaged range from edit bounds
+/// 3. Reparse, reusing undamaged subtrees via ReuseCursor
 pub fn IncrementalParser::edit(
   self : IncrementalParser,
   edit : @core.Edit,
@@ -167,11 +167,10 @@ pub fn IncrementalParser::edit(
 }
 
 ///|
-/// Incremental reparse with Wagner-Graham approach and subtree reuse
+/// Incremental reparse with cursor-based subtree reuse
 ///
-/// Strategy:
-/// 1. Attempt whole-tree reuse if damage is completely outside tree bounds
-/// 2. Otherwise use cursor-based subtree reuse during parsing
+/// Any CST node that does not overlap [damaged_range.start, damaged_range.end)
+/// is a candidate for reuse by ReuseCursor.
 fn IncrementalParser::incremental_reparse(
   self : IncrementalParser,
   source : String,

@@ -31,7 +31,6 @@ pub struct DamageTracker {
 pub fn DamageTracker::add_range(Self, @core.Range) -> Unit
 pub fn DamageTracker::empty() -> Self
 pub fn DamageTracker::expand_for_node(Self, Int, Int) -> Unit
-pub fn DamageTracker::expand_for_tree(Self, @ast.AstNode) -> Unit
 pub fn DamageTracker::is_damaged(Self, @core.Range) -> Bool
 pub fn DamageTracker::is_position_damaged(Self, Int) -> Bool
 pub fn DamageTracker::new(@core.Edit) -> Self
@@ -47,7 +46,6 @@ pub struct IncrementalParser {
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]]
   // private fields
 }
-pub fn IncrementalParser::adjust_tree_positions(Self, @ast.AstNode, @core.Edit) -> @ast.AstNode
 pub fn IncrementalParser::edit(Self, @core.Edit, String) -> @ast.AstNode
 pub fn IncrementalParser::get_last_reuse_count(Self) -> Int
 pub fn IncrementalParser::get_source(Self) -> String
