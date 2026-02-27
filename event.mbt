@@ -66,7 +66,11 @@ pub fn EventBuffer::build_tree_fully_interned(
   trivia_kind? : RawKind? = None,
 ) -> CstNode {
   build_tree_fully_interned(
-    self.events, root_kind, interner, node_interner, trivia_kind~,
+    self.events,
+    root_kind,
+    interner,
+    node_interner,
+    trivia_kind~,
   )
 }
 

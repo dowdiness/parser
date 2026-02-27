@@ -114,8 +114,20 @@ test "build_tree_fully_interned: identical subtrees share canonical reference" {
   let events : Array[ParseEvent] = [Token(RawKind(1), "x")]
   let ws = RawKind(99)
   let root_kind = RawKind(0)
-  let t1 = build_tree_fully_interned(events, root_kind, interner, ni, trivia_kind=Some(ws))
-  let t2 = build_tree_fully_interned(events, root_kind, interner, ni, trivia_kind=Some(ws))
+  let t1 = build_tree_fully_interned(
+    events,
+    root_kind,
+    interner,
+    ni,
+    trivia_kind=Some(ws),
+  )
+  let t2 = build_tree_fully_interned(
+    events,
+    root_kind,
+    interner,
+    ni,
+    trivia_kind=Some(ws),
+  )
   inspect(t1 == t2, content="true")
   inspect(ni.size() <= 2, content="true") // root + child, no duplication
 }

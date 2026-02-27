@@ -22,7 +22,10 @@ pub fn NodeInterner::new() -> NodeInterner {
 /// Return the canonical CstNode structurally equal to `node`.
 /// First call for a given structure: stores and returns `node`.
 /// Subsequent calls with an equal structure: returns the first-seen reference.
-pub fn NodeInterner::intern_node(self : NodeInterner, node : CstNode) -> CstNode {
+pub fn NodeInterner::intern_node(
+  self : NodeInterner,
+  node : CstNode,
+) -> CstNode {
   if self.nodes.get(node) is Some(n) {
     n
   } else {
