@@ -1,7 +1,7 @@
 # Design: Grammar Expansion — Expression-level `let` Binding
 
 **Created:** 2026-02-28
-**Status:** Approved
+**Status:** Complete
 
 ## Problem
 

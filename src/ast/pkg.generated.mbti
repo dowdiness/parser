@@ -22,6 +22,7 @@ pub(all) enum AstKind {
   App
   Bop(Bop)
   If
+  Let(String)
   Error(String)
 }
 pub impl Eq for AstKind
@@ -59,6 +60,7 @@ pub(all) enum Term {
   App(Term, Term)
   Bop(Bop, Term, Term)
   If(Term, Term, Term)
+  Let(String, Term, Term)
 }
 pub impl Eq for Term
 pub impl Show for Term

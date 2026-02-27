@@ -255,8 +255,8 @@ test "heavy: refactoring session - 100 scattered replacements" (b : @bench.T) {
 test "heavy: FULL REPARSE - 100 edits at end" (b : @bench.T) {
   let base = make_large_source()
   let chars = [
-    " ", "+", " ", "x", " ", "+", " ", "y", " ", "+", " ", "z", " ", "+", " ",
-    "1", " ", "+", " ", "2",
+    " ", "+", " ", "x", " ", "+", " ", "y", " ", "+", " ", "z", " ", "+", " ", "1",
+    " ", "+", " ", "2",
   ]
   b.bench(fn() {
     let mut source = base
@@ -281,8 +281,8 @@ test "heavy: FULL REPARSE - 100 edits in middle" (b : @bench.T) {
   let base = make_large_source()
   let mid = base.length() / 2
   let chars = [
-    "x", " ", "+", " ", "y", " ", "+", " ", "1", " ", "+", " ", "2", " ", "+",
-    " ", "z", " ", "+", " ",
+    "x", " ", "+", " ", "y", " ", "+", " ", "1", " ", "+", " ", "2", " ", "+", " ",
+    "z", " ", "+", " ",
   ]
   b.bench(fn() {
     let mut source = base

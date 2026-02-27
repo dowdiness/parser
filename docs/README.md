@@ -41,7 +41,6 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
-- [plans/2026-02-28-grammar-expansion-let-design.md](plans/2026-02-28-grammar-expansion-let-design.md) — design for expression-level `let` binding
 - [plans/2026-02-28-grammar-expansion-let.md](plans/2026-02-28-grammar-expansion-let.md) — implementation plan for expression-level `let` binding
 
 ## Archive (Historical / Completed)

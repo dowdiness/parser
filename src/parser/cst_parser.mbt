@@ -201,7 +201,8 @@ fn at_stop_token(
   ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
 ) -> Bool {
   match ctx.peek() {
-    @token.RightParen | @token.Then | @token.Else | @token.In | @token.EOF => true
+    @token.RightParen | @token.Then | @token.Else | @token.In | @token.EOF =>
+      true
     _ => false
   }
 }

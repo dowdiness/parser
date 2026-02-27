@@ -10,8 +10,8 @@ pub(all) enum Token {
   Then // then
   Else // else
   Let // let
-  In  // in
-  Eq  // =
+  In // in
+  Eq // =
   Identifier(String) // variable names
   Integer(Int) // integer literals
   Whitespace // whitespace (spaces, tabs, newlines)
