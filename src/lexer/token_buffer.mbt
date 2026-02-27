@@ -45,7 +45,7 @@ pub fn TokenBuffer::update(
   }
   let eof_index = old_len - 1
   let mut left_index = find_left_index(old_tokens, edit.start)
-  let mut right_index = find_right_index(old_tokens, edit.old_end)
+  let mut right_index = find_right_index(old_tokens, edit.old_end())
   // Roadmap §1.3 (conservative): expand left by one token to ensure boundary edits
   // are re-lexed. This catches keyword formation (i→if), identifier splits/merges,
   // and edits that occur in leading whitespace before the first token.
@@ -65,8 +65,8 @@ pub fn TokenBuffer::update(
     left_offset_old = edit.start
   }
   let mut right_offset_old = old_tokens[right_index].end
-  if edit.old_end > right_offset_old {
-    right_offset_old = edit.old_end
+  if edit.old_end() > right_offset_old {
+    right_offset_old = edit.old_end()
   }
   let left_offset_new = map_start_pos(left_offset_old, edit)
   let right_offset_new = map_end_pos(right_offset_old, edit)
@@ -134,7 +134,7 @@ fn find_right_index(tokens : Array[@token.TokenInfo], pos : Int) -> Int {
 fn map_start_pos(pos : Int, edit : @core.Edit) -> Int {
   if pos <= edit.start {
     pos
-  } else if pos >= edit.old_end {
+  } else if pos >= edit.old_end() {
     pos + edit.delta()
   } else {
     edit.start
@@ -145,10 +145,10 @@ fn map_start_pos(pos : Int, edit : @core.Edit) -> Int {
 fn map_end_pos(pos : Int, edit : @core.Edit) -> Int {
   if pos < edit.start {
     pos
-  } else if pos >= edit.old_end {
+  } else if pos >= edit.old_end() {
     pos + edit.delta()
   } else {
-    edit.new_end
+    edit.new_end()
   }
 }
 

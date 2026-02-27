@@ -11,7 +11,7 @@ pub struct DamageTracker {
 /// Create a new damage tracker from an edit
 pub fn DamageTracker::new(edit : @core.Edit) -> DamageTracker {
   // Initial damaged range is the edit range (adjusted for new source)
-  let initial_range = @core.Range::new(edit.start, edit.new_end)
+  let initial_range = @core.Range::new(edit.start, edit.new_end())
   { damaged_ranges: [initial_range] }
 }
 

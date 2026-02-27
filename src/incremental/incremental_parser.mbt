@@ -259,7 +259,7 @@ pub fn IncrementalParser::adjust_tree_positions(
   if tree.end < edit.start {
     // Node is entirely before edit, no change needed
     tree
-  } else if tree.start > edit.old_end {
+  } else if tree.start > edit.old_end() {
     // Node is entirely after edit, shift positions
     let adjusted_children = tree.children.map(fn(child) {
       self.adjust_tree_positions(child, edit)

@@ -23,8 +23,8 @@ pub impl[T : Show] Show for Diagnostic[T]
 
 pub(all) struct Edit {
   start : Int
-  old_end : Int
-  new_end : Int
+  old_len : Int
+  new_len : Int
 }
 pub fn Edit::affects_position(Self, Int) -> Bool
 pub fn Edit::apply_to_position(Self, Int) -> Int
@@ -34,9 +34,12 @@ pub fn Edit::delta(Self) -> Int
 pub fn Edit::insert(Int, Int) -> Self
 pub fn Edit::inserted_length(Self) -> Int
 pub fn Edit::new(Int, Int, Int) -> Self
+pub fn Edit::new_end(Self) -> Int
+pub fn Edit::old_end(Self) -> Int
 pub fn Edit::overlaps_range(Self, Int, Int) -> Bool
 pub fn Edit::replace(Int, Int, Int) -> Self
 pub fn Edit::to_string(Self) -> String
+pub impl Editable for Edit
 pub impl Eq for Edit
 pub impl Show for Edit
 
@@ -143,4 +146,9 @@ pub impl[T : Show] Show for TokenInfo[T]
 // Type aliases
 
 // Traits
+pub trait Editable {
+  start(Self) -> Int
+  old_len(Self) -> Int
+  new_len(Self) -> Int
+}
 

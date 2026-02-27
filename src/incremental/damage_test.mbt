@@ -2,7 +2,7 @@
 
 ///|
 test "DamageTracker::new from edit" {
-  let edit = @core.Edit::new(10, 15, 20)
+  let edit = @core.Edit::new(10, 5, 10)
   let tracker = DamageTracker::new(edit)
   inspect(tracker.damaged_ranges.length(), content="1")
   inspect(tracker.damaged_ranges[0].start, content="10")
@@ -11,7 +11,7 @@ test "DamageTracker::new from edit" {
 
 ///|
 test "DamageTracker::is_damaged" {
-  let edit = @core.Edit::new(10, 15, 20)
+  let edit = @core.Edit::new(10, 5, 10)
   let tracker = DamageTracker::new(edit)
   inspect(tracker.is_damaged(@core.Range::new(5, 8)), content="false")
   inspect(tracker.is_damaged(@core.Range::new(12, 18)), content="true")
@@ -20,7 +20,7 @@ test "DamageTracker::is_damaged" {
 
 ///|
 test "DamageTracker::is_position_damaged" {
-  let edit = @core.Edit::new(10, 15, 20)
+  let edit = @core.Edit::new(10, 5, 10)
   let tracker = DamageTracker::new(edit)
   inspect(tracker.is_position_damaged(5), content="false")
   inspect(tracker.is_position_damaged(12), content="true")
@@ -51,7 +51,7 @@ test "DamageTracker::add_range keeps non-overlapping separate" {
 
 ///|
 test "DamageTracker::expand_for_node" {
-  let edit = @core.Edit::new(10, 15, 20)
+  let edit = @core.Edit::new(10, 5, 10)
   let tracker = DamageTracker::new(edit)
 
   // Expand to include a node that overlaps
@@ -63,7 +63,7 @@ test "DamageTracker::expand_for_node" {
 
 ///|
 test "DamageTracker::expand_for_tree" {
-  let edit = @core.Edit::new(10, 15, 20)
+  let edit = @core.Edit::new(10, 5, 10)
   let tracker = DamageTracker::new(edit)
 
   // Create a simple tree by parsing
