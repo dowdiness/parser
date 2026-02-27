@@ -3,7 +3,7 @@ package "dowdiness/parser/crdt"
 
 import {
   "dowdiness/parser/ast",
-  "dowdiness/parser/edit",
+  "dowdiness/parser/core",
   "dowdiness/parser/incremental",
   "moonbitlang/core/hashmap",
 }
@@ -31,7 +31,7 @@ pub struct ParsedDocument {
   parser : @incremental.IncrementalParser
   mut crdt_tree : CRDTNode?
 }
-pub fn ParsedDocument::edit(Self, @edit.Edit, String) -> Unit
+pub fn ParsedDocument::edit(Self, @core.Edit, String) -> Unit
 pub fn ParsedDocument::get_crdt_tree(Self) -> CRDTNode?
 pub fn ParsedDocument::get_source(Self) -> String
 pub fn ParsedDocument::new(String) -> Self

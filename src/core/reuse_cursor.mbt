@@ -6,8 +6,8 @@
 //   cst_token_matches            — match old leaf (RawKind + text) to new token T
 //   token_is_trivia / token_is_eof — classify new token stream values
 //
-// Uses (damage_start, damage_end : Int) instead of @range.Range to avoid
-// adding a range-package dependency to core.
+// Uses (damage_start, damage_end : Int) instead of Range to keep the
+// ReuseCursor::new signature uniform and avoid coupling it to the Range type.
 
 ///|
 /// Frame in the cursor stack, tracking position within a node.

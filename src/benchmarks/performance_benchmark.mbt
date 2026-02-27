@@ -45,7 +45,7 @@ test "incremental vs full - edit at start" (b : @bench.T) {
       "λf.λx.if f x then x + 1 else x - 1",
     )
     let _ = parser.parse()
-    let edit = @edit.Edit::replace(0, 1, 1)
+    let edit = @core.Edit::replace(0, 1, 1)
     let result = parser.edit(edit, "\\f.λx.if f x then x + 1 else x - 1")
     b.keep(result)
   })
@@ -59,7 +59,7 @@ test "incremental vs full - edit at end" (b : @bench.T) {
       "λf.λx.if f x then x + 1 else x - 1",
     )
     let _ = parser.parse()
-    let edit = @edit.Edit::replace(32, 33, 33)
+    let edit = @core.Edit::replace(32, 33, 33)
     let result = parser.edit(edit, "λf.λx.if f x then x + 1 else x - 2")
     b.keep(result)
   })
@@ -73,7 +73,7 @@ test "incremental vs full - edit in middle" (b : @bench.T) {
       "λf.λx.if f x then x + 1 else x - 1",
     )
     let _ = parser.parse()
-    let edit = @edit.Edit::replace(14, 15, 15)
+    let edit = @core.Edit::replace(14, 15, 15)
     let result = parser.edit(edit, "λf.λx.if f x then y + 1 else x - 1")
     b.keep(result)
   })
@@ -86,7 +86,7 @@ test "sequential edits - typing simulation" (b : @bench.T) {
     // Simulate typing by making progressive edits
     let parser1 = @incremental.IncrementalParser::new("x")
     let _ = parser1.parse()
-    let edit1 = @edit.Edit::insert(1, 4)
+    let edit1 = @core.Edit::insert(1, 4)
     let result = parser1.edit(edit1, "x + 1")
     b.keep(result)
   })
@@ -99,7 +99,7 @@ test "sequential edits - backspace simulation" (b : @bench.T) {
     // Simulate backspacing by deleting text
     let parser = @incremental.IncrementalParser::new("x + 1")
     let _ = parser.parse()
-    let edit = @edit.Edit::delete(2, 5) // Delete " + 1"
+    let edit = @core.Edit::delete(2, 5) // Delete " + 1"
     let result = parser.edit(edit, "x")
     b.keep(result)
   })
@@ -113,11 +113,11 @@ test "incremental state baseline - repeated parsing" (b : @bench.T) {
     let _ = parser.parse()
 
     // Make edit
-    let edit = @edit.Edit::insert(4, 8)
+    let edit = @core.Edit::insert(4, 8)
     let _ = parser.edit(edit, "λx.x + 1")
 
     // Undo edit (should hit cache ideally)
-    let edit2 = @edit.Edit::delete(4, 8)
+    let edit2 = @core.Edit::delete(4, 8)
     let _ = parser.edit(edit2, "λx.x")
   })
 }
@@ -138,7 +138,7 @@ test "incremental state baseline - similar expressions" (b : @bench.T) {
 /// Benchmark: Damage tracking - localized damage
 test "damage tracking - localized damage" (b : @bench.T) {
   b.bench(fn() {
-    let edit = @edit.Edit::replace(4, 5, 5)
+    let edit = @core.Edit::replace(4, 5, 5)
     let damage = @incremental.DamageTracker::new(edit)
     let tree = @parse.parse_tree("x + 1") catch {
       _ => abort("benchmark failed")
@@ -152,7 +152,7 @@ test "damage tracking - localized damage" (b : @bench.T) {
 /// Benchmark: Damage tracking - widespread damage
 test "damage tracking - widespread damage" (b : @bench.T) {
   b.bench(fn() {
-    let edit = @edit.Edit::replace(0, 1, 1)
+    let edit = @core.Edit::replace(0, 1, 1)
     let damage = @incremental.DamageTracker::new(edit)
     let tree = @parse.parse_tree("λf.λx.if f x then x + 1 else x - 1") catch {
       _ => abort("benchmark failed")
@@ -168,7 +168,7 @@ test "position adjustment after edit" (b : @bench.T) {
   b.bench(fn() {
     let parser = @incremental.IncrementalParser::new("λf.λx.f x")
     let tree = parser.parse()
-    let edit = @edit.Edit::insert(7, 4)
+    let edit = @core.Edit::insert(7, 4)
     let adjusted = parser.adjust_tree_positions(tree, edit)
     b.keep(adjusted)
   })
@@ -214,7 +214,7 @@ test "memory pressure - large document" (b : @bench.T) {
     let _ = parser.parse()
 
     // Make small edit - change first variable
-    let edit = @edit.Edit::replace(3, 4, 4) // Replace 'f' with 'g'
+    let edit = @core.Edit::replace(3, 4, 4) // Replace 'f' with 'g'
     let new_expr = "λg.λx.if g x then (λy.y + 1) x else (λz.z - 1) (g x)"
     let result = parser.edit(edit, new_expr)
     b.keep(result)
@@ -231,7 +231,7 @@ test "worst case - full invalidation" (b : @bench.T) {
     let _ = parser.parse()
 
     // Change at start affects everything (λ → \)
-    let edit = @edit.Edit::replace(0, 1, 1)
+    let edit = @core.Edit::replace(0, 1, 1)
     let result = parser.edit(edit, "\\f.λx.if f x then x + 1 else x - 1")
     b.keep(result)
   })
@@ -245,7 +245,7 @@ test "best case - cosmetic change" (b : @bench.T) {
     let _ = parser.parse()
 
     // Change just the constant
-    let edit = @edit.Edit::replace(4, 5, 5)
+    let edit = @core.Edit::replace(4, 5, 5)
     let result = parser.edit(edit, "x + 2")
     b.keep(result)
   })
@@ -294,7 +294,7 @@ test "phase1: full tokenize - 110 tokens" (b : @bench.T) {
 test "phase1: incremental tokenize - edit at start (110 tokens)" (b : @bench.T) {
   let source = make_token_source()
   let new_source = make_token_source_replace(1)
-  let edit = @edit.Edit::replace(0, 1, 2)
+  let edit = @core.Edit::replace(0, 1, 2)
   b.bench(fn() {
     let buf = @lexer.TokenBuffer::new(source) catch {
       _ => abort("benchmark failed")
@@ -312,7 +312,7 @@ test "phase1: incremental tokenize - edit at start (110 tokens)" (b : @bench.T) 
 test "phase1: incremental tokenize - edit in middle (110 tokens)" (b : @bench.T) {
   let source = make_token_source()
   let new_source = make_token_source_replace(28)
-  let edit = @edit.Edit::replace(126, 128, 128)
+  let edit = @core.Edit::replace(126, 128, 128)
   b.bench(fn() {
     let buf = @lexer.TokenBuffer::new(source) catch {
       _ => abort("benchmark failed")
@@ -330,7 +330,7 @@ test "phase1: incremental tokenize - edit in middle (110 tokens)" (b : @bench.T)
 test "phase1: incremental tokenize - edit at end (110 tokens)" (b : @bench.T) {
   let source = make_token_source()
   let new_source = make_token_source_replace(55)
-  let edit = @edit.Edit::replace(261, 263, 263)
+  let edit = @core.Edit::replace(261, 263, 263)
   b.bench(fn() {
     let buf = @lexer.TokenBuffer::new(source) catch {
       _ => abort("benchmark failed")

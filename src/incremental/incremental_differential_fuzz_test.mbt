@@ -82,7 +82,7 @@ fn idf_apply_random_edit(
   source : String,
   seed : Int,
   allow_invalid : Bool,
-) -> (String, @edit.Edit, Int) {
+) -> (String, @core.Edit, Int) {
   let len = source.length()
   let mut s = idf_next_seed(seed)
   let op = s.abs() % 3 // 0 insert, 1 delete, 2 replace
@@ -97,10 +97,10 @@ fn idf_apply_random_edit(
     match (left, right) {
       (Some(l), Some(r)) => {
         let new_source = l + frag + r
-        let edit = @edit.Edit::insert(start, frag.length())
+        let edit = @core.Edit::insert(start, frag.length())
         (new_source, edit, s)
       }
-      _ => (source, @edit.Edit::insert(0, 0), s)
+      _ => (source, @core.Edit::insert(0, 0), s)
     }
   } else {
     let start_raw = s.abs() % (len + 1)
@@ -117,15 +117,15 @@ fn idf_apply_random_edit(
         if op == 1 {
           // Delete
           let new_source = l + r
-          let edit = @edit.Edit::delete(from, to)
+          let edit = @core.Edit::delete(from, to)
           (new_source, edit, s)
         } else {
           // Replace
           let new_source = l + frag + r
-          let edit = @edit.Edit::replace(from, to, from + frag.length())
+          let edit = @core.Edit::replace(from, to, from + frag.length())
           (new_source, edit, s)
         }
-      _ => (source, @edit.Edit::insert(0, 0), s)
+      _ => (source, @core.Edit::insert(0, 0), s)
     }
   }
 }
@@ -204,7 +204,7 @@ test "differential-fast: malformed input sequences terminate" {
 
     // After malformed churn, parser should still recover on valid input.
     let repair = "x + 1"
-    let repair_edit = @edit.Edit::replace(0, source.length(), repair.length())
+    let repair_edit = @core.Edit::replace(0, source.length(), repair.length())
     let repaired = parser.edit(repair_edit, repair)
     let full_repaired = @parse.parse_tree(repair)
     idf_assert_incremental_matches_full(

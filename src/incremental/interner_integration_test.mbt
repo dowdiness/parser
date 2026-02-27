@@ -16,7 +16,7 @@ test "Interner: edit result unchanged with interner" {
   let parser = IncrementalParser::new("λx.x + 1")
   let _ = parser.parse()
 
-  let edit = @edit.Edit::replace(7, 8, 8) // "1" -> "2"
+  let edit = @core.Edit::replace(7, 8, 8) // "1" -> "2"
   let incr_tree = parser.edit(edit, "λx.x + 2")
   let full_tree = @parse.parse_tree("λx.x + 2")
   inspect(
@@ -51,7 +51,7 @@ test "Interner: size does not grow on identical re-parse" {
   let size_after_initial = parser.interner_size()
 
   // Zero-length edit: source is unchanged
-  let edit = @edit.Edit::insert(4, 0)
+  let edit = @core.Edit::insert(4, 0)
   let _ = parser.edit(edit, "λx.x")
   let size_after_noop = parser.interner_size()
 

@@ -58,7 +58,7 @@ fn prop_token_buffer_insert(input : (Int, Int, Int, Int)) -> Bool {
   match (left, right) {
     (Some(l), Some(r)) => {
       let new_source = l + insert + r
-      let edit = @edit.Edit::insert(pos, insert.length())
+      let edit = @core.Edit::insert(pos, insert.length())
       let buffer_res : Result[TokenBuffer, TokenizationError] = try? TokenBuffer::new(
         base,
       )
@@ -98,7 +98,7 @@ fn prop_token_buffer_delete(input : (Int, Int, Int)) -> Bool {
   match (left, right) {
     (Some(l), Some(r)) => {
       let new_source = l + r
-      let edit = @edit.Edit::delete(from, to)
+      let edit = @core.Edit::delete(from, to)
       let buffer_res : Result[TokenBuffer, TokenizationError] = try? TokenBuffer::new(
         base,
       )
@@ -139,7 +139,7 @@ fn prop_token_buffer_replace(input : (Int, Int, Int, Int)) -> Bool {
   match (left, right) {
     (Some(l), Some(r)) => {
       let new_source = l + insert + r
-      let edit = @edit.Edit::replace(from, to, from + insert.length())
+      let edit = @core.Edit::replace(from, to, from + insert.length())
       let buffer_res : Result[TokenBuffer, TokenizationError] = try? TokenBuffer::new(
         base,
       )

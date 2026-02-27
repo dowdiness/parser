@@ -182,7 +182,7 @@ pub fn ParsedDocument::parse(self : ParsedDocument) -> Unit {
 /// 3. Convert to CRDT tree
 pub fn ParsedDocument::edit(
   self : ParsedDocument,
-  edit : @edit.Edit,
+  edit : @core.Edit,
   new_source : String,
 ) -> Unit {
   // Update source

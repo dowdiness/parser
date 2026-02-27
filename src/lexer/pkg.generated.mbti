@@ -2,7 +2,7 @@
 package "dowdiness/parser/lexer"
 
 import {
-  "dowdiness/parser/edit",
+  "dowdiness/parser/core",
   "dowdiness/parser/token",
 }
 
@@ -26,7 +26,7 @@ pub fn TokenBuffer::get_source(Self) -> String
 pub fn TokenBuffer::get_tokens(Self) -> Array[@token.TokenInfo]
 pub fn TokenBuffer::get_version(Self) -> Int
 pub fn TokenBuffer::new(String) -> Self raise TokenizationError
-pub fn TokenBuffer::update(Self, @edit.Edit, String) -> Array[@token.TokenInfo] raise TokenizationError
+pub fn TokenBuffer::update(Self, @core.Edit, String) -> Array[@token.TokenInfo] raise TokenizationError
 
 // Type aliases
 

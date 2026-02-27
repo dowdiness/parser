@@ -119,7 +119,7 @@ test "ParsedDocument::edit updates tree" {
   doc.parse()
 
   // Edit: x -> x + 1
-  let edit = @edit.Edit::insert(1, 4)
+  let edit = @core.Edit::insert(1, 4)
   doc.edit(edit, "x + 1")
   let tree = doc.get_crdt_tree()
   match tree {
@@ -165,11 +165,11 @@ test "CRDT integration with incremental edits" {
   doc.parse()
 
   // First edit
-  let edit1 = @edit.Edit::insert(1, 4)
+  let edit1 = @core.Edit::insert(1, 4)
   doc.edit(edit1, "x + 1")
 
   // Second edit
-  let edit2 = @edit.Edit::replace(4, 5, 5)
+  let edit2 = @core.Edit::replace(4, 5, 5)
   doc.edit(edit2, "x + 2")
   let source = doc.reconstruct_source()
   inspect(source.contains("2"), content="true")
