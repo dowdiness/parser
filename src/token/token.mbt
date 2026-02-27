@@ -9,6 +9,9 @@ pub(all) enum Token {
   If // if
   Then // then
   Else // else
+  Let // let
+  In // in
+  Eq // =
   Identifier(String) // variable names
   Integer(Int) // integer literals
   Whitespace // whitespace (spaces, tabs, newlines)
@@ -59,6 +62,9 @@ pub fn print_token(token : Token) -> String {
     If => "if"
     Then => "then"
     Else => "else"
+    Let => "let"
+    In => "in"
+    Eq => "="
     Identifier(name) => name
     Integer(n) => n.to_string()
     Whitespace => "whitespace"

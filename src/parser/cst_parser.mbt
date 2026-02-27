@@ -201,7 +201,8 @@ fn at_stop_token(
   ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
 ) -> Bool {
   match ctx.peek() {
-    @token.RightParen | @token.Then | @token.Else | @token.EOF => true
+    @token.RightParen | @token.Then | @token.Else | @token.In | @token.EOF =>
+      true
     _ => false
   }
 }
@@ -254,7 +255,31 @@ fn parse_lambda_root(
 fn parse_expression(
   ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
 ) -> Unit {
-  parse_binary_op(ctx)
+  parse_let_expr(ctx)
+}
+
+///|
+fn parse_let_expr(
+  ctx : @core.ParserContext[@token.Token, @syntax.SyntaxKind],
+) -> Unit {
+  match ctx.peek() {
+    @token.Let =>
+      ctx.node(@syntax.LetExpr, () => {
+        ctx.emit_token(@syntax.LetKeyword)
+        match ctx.peek() {
+          @token.Identifier(_) => ctx.emit_token(@syntax.IdentToken)
+          _ => {
+            ctx.error("Expected variable name after 'let'")
+            ctx.emit_error_placeholder()
+          }
+        }
+        lambda_expect(ctx, @token.Eq, @syntax.EqToken)
+        parse_let_expr(ctx)
+        lambda_expect(ctx, @token.In, @syntax.InKeyword)
+        parse_let_expr(ctx)
+      })
+    _ => parse_binary_op(ctx)
+  }
 }
 
 ///|

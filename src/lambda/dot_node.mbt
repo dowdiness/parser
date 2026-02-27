@@ -28,6 +28,7 @@ impl @viz.DotNode for DotAstNode with label(self) {
     Bop(Minus) => "-"
     App => "App"
     Lam(param) => "λ" + param
+    Let(name) => "let " + name
     Var(name) => name
     Int(n) => n.to_string()
     Error(err) => err
@@ -61,7 +62,7 @@ impl @viz.DotNode for DotAstNode with node_attrs(self) {
   match self.node.kind {
     If | App => ""
     Bop(_) => color("d4d4d4", "d4d4d422", "d4d4d4")
-    Lam(_) => color("c586c0", "c586c022", "c586c0")
+    Lam(_) | Let(_) => color("c586c0", "c586c022", "c586c0")
     Var(_) => color("9cdcfe", "9cdcfe22", "9cdcfe")
     Int(_) => color("b5cea8", "b5cea822", "b5cea8")
     Error(_) => color("ff0000", "ff000022", "ff6b6b")

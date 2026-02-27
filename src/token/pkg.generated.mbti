@@ -23,6 +23,9 @@ pub(all) enum Token {
   If
   Then
   Else
+  Let
+  In
+  Eq
   Identifier(String)
   Integer(Int)
   Whitespace

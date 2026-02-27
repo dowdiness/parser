@@ -688,3 +688,23 @@ test "parse preserves internal whitespace in application" {
   let texts = collect_leaf_texts(tree)
   inspect(texts, content="f  x")
 }
+
+///|
+test "cst: let expression" {
+  let cst = parse_cst("let x = 1 in x")
+  let child = match cst.children[0] {
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
+  }
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="LetExpr")
+}
+
+///|
+test "cst: nested let" {
+  let cst = parse_cst("let x = 1 in let y = 2 in x")
+  let child = match cst.children[0] {
+    @seam.CstElement::Node(n) => n
+    @seam.CstElement::Token(_) => abort("Expected node, got token")
+  }
+  inspect(@syntax.SyntaxKind::from_raw(child.kind), content="LetExpr")
+}

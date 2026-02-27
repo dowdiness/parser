@@ -256,3 +256,29 @@ test "parse complex expression with all features" {
   inspect(printed.contains("+"), content="true")
   inspect(printed.contains("-"), content="true")
 }
+
+///|
+test "parse let expression" {
+  let expr = parse("let x = 1 in x") catch { _ => abort("parse failed") }
+  inspect(@ast.print_term(expr), content="let x = 1 in x")
+}
+
+///|
+test "parse let with binary op in body" {
+  let expr = parse("let x = 3 in x + 1") catch { _ => abort("parse failed") }
+  inspect(@ast.print_term(expr), content="let x = 3 in (x + 1)")
+}
+
+///|
+test "parse nested let" {
+  let expr = parse("let x = 1 in let y = 2 in x + y") catch {
+    _ => abort("parse failed")
+  }
+  inspect(@ast.print_term(expr), content="let x = 1 in let y = 2 in (x + y)")
+}
+
+///|
+test "parse let with lambda" {
+  let expr = parse("let f = λx.x in f 42") catch { _ => abort("parse failed") }
+  inspect(@ast.print_term(expr), content="let f = (λx. x) in (f 42)")
+}
