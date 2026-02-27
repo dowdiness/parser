@@ -217,7 +217,10 @@ test "build_tree_fully_interned - x + x, cold" (b : @bench.T) {
     let interner = @seam.Interner::new()
     let ni = @seam.NodeInterner::new()
     let tree = @seam.build_tree_fully_interned(
-      events, @seam.RawKind(22), interner, ni,
+      events,
+      @seam.RawKind(22),
+      interner,
+      ni,
     )
     b.keep(tree)
   })
@@ -231,11 +234,17 @@ test "build_tree_fully_interned - x + x, warm" (b : @bench.T) {
   let interner = @seam.Interner::new()
   let ni = @seam.NodeInterner::new()
   let _ = @seam.build_tree_fully_interned(
-    events, @seam.RawKind(22), interner, ni,
+    events,
+    @seam.RawKind(22),
+    interner,
+    ni,
   )
   b.bench(fn() {
     let tree = @seam.build_tree_fully_interned(
-      events, @seam.RawKind(22), interner, ni,
+      events,
+      @seam.RawKind(22),
+      interner,
+      ni,
     )
     b.keep(tree)
   })

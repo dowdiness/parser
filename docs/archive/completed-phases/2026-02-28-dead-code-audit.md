@@ -4,7 +4,9 @@
 
 **Goal:** Remove the conceptual-only `src/crdt/` package and its traces from benchmarks, the root facade, and documentation, then complete the CLAUDE.md package map.
 
-**Architecture:** No logic changes — pure deletion + comment fixes. Every change is independently verifiable with `moon test` (368 tests must still pass) and `bash check-docs.sh`.
+**Status:** Complete
+
+**Architecture:** No logic changes — pure deletion + comment fixes. Every change is independently verifiable with `moon test` (353/353 passed — 18 crdt tests removed) and `bash check-docs.sh`.
 
 **Tech Stack:** MoonBit (`moon test`, `moon info`, `moon fmt`), bash (`check-docs.sh`)
 

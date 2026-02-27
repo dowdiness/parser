@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 ```bash
 moon check              # lint
-moon test               # 363 tests
+moon test               # 353 tests
 moon info && moon fmt   # update .mbti interfaces + format (always before commit)
 moon bench --release    # benchmarks (always --release)
 bash check-docs.sh      # validate docs hierarchy (line limits, orphaned files, completed plans)
@@ -22,6 +22,8 @@ moon test -p dowdiness/parser/src/lexer -f lexer_test.mbt
 
 | Package | Purpose |
 |---------|---------|
+| `src/token/` | `Token` enum + `TokenInfo` — the lambda token type (`T` in `ParserContext[T, K]`) |
+| `src/syntax/` | `SyntaxKind` enum — symbolic kind names → `RawKind` integers for the CST |
 | `src/lexer/` | Tokenizer + incremental `TokenBuffer` |
 | `src/parser/` | CST parser, CST→AST conversion, lambda `LanguageSpec` |
 | `src/seam/` | Language-agnostic CST (`CstNode`, `SyntaxNode`, `EventBuffer`) |
@@ -31,6 +33,7 @@ moon test -p dowdiness/parser/src/lexer -f lexer_test.mbt
 | `src/incremental/` | `IncrementalParser`, damage tracking |
 | `src/viz/` | DOT graph renderer (`DotNode` trait) |
 | `src/lambda/` | Lambda-specific `LambdaLanguage`, `LambdaParserDb` |
+| `src/benchmarks/` | Performance benchmarks for all pipeline layers |
 
 ## Architecture
 

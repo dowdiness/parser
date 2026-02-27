@@ -1,7 +1,7 @@
 # Design: Dead Code Audit — Remove `src/crdt/` and Fix Documentation
 
 **Created:** 2026-02-28
-**Status:** Approved
+**Status:** Complete
 
 ## Problem
 
@@ -67,7 +67,7 @@ Add the three undocumented packages:
 
 ## Success Criteria
 
-- `moon test` still passes (368 tests, no regressions)
+- `moon test` still passes (353/353 — 18 crdt tests correctly removed, no regressions)
 - `bash check-docs.sh` passes
 - `src/pkg.generated.mbti` no longer references `@crdt`
 - CLAUDE.md package map lists all 11 packages
