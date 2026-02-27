@@ -43,6 +43,7 @@ Understanding how the layers fit together:
 
 - [plans/2026-02-28-dead-code-audit-design.md](plans/2026-02-28-dead-code-audit-design.md) — remove `src/crdt/`, fix stale docs, complete package map
 - [plans/2026-02-28-dead-code-audit.md](plans/2026-02-28-dead-code-audit.md) — implementation plan for dead code audit
+- [plans/2026-02-28-incremental-parser-cleanup-design.md](plans/2026-02-28-incremental-parser-cleanup-design.md) — remove `adjust_tree_positions` / `expand_for_tree` holdover
 
 ## Archive (Historical / Completed)
 
