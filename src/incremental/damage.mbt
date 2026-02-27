@@ -4,14 +4,14 @@
 ///|
 /// Damage tracker that maintains damaged ranges
 pub struct DamageTracker {
-  damaged_ranges : Array[@range.Range] // Sorted, non-overlapping ranges
+  damaged_ranges : Array[@core.Range] // Sorted, non-overlapping ranges
 }
 
 ///|
 /// Create a new damage tracker from an edit
-pub fn DamageTracker::new(edit : @edit.Edit) -> DamageTracker {
+pub fn DamageTracker::new(edit : @core.Edit) -> DamageTracker {
   // Initial damaged range is the edit range (adjusted for new source)
-  let initial_range = @range.Range::new(edit.start, edit.new_end)
+  let initial_range = @core.Range::new(edit.start, edit.new_end)
   { damaged_ranges: [initial_range] }
 }
 
@@ -25,7 +25,7 @@ pub fn DamageTracker::empty() -> DamageTracker {
 /// Add a range to the damaged regions
 pub fn DamageTracker::add_range(
   self : DamageTracker,
-  range : @range.Range,
+  range : @core.Range,
 ) -> Unit {
   if range.length() == 0 {
     return
@@ -33,7 +33,7 @@ pub fn DamageTracker::add_range(
 
   // Find overlapping ranges and merge them
   let mut merged = range
-  let new_ranges : Array[@range.Range] = []
+  let new_ranges : Array[@core.Range] = []
   for existing in self.damaged_ranges {
     if existing.overlaps(merged) {
       merged = merged.merge(existing)
@@ -57,7 +57,7 @@ pub fn DamageTracker::add_range(
 /// Check if a range is damaged
 pub fn DamageTracker::is_damaged(
   self : DamageTracker,
-  range : @range.Range,
+  range : @core.Range,
 ) -> Bool {
   for damaged in self.damaged_ranges {
     if damaged.overlaps(range) {
@@ -91,7 +91,7 @@ pub fn DamageTracker::expand_for_node(
   node_start : Int,
   node_end : Int,
 ) -> Unit {
-  let node_range = @range.Range::new(node_start, node_end)
+  let node_range = @core.Range::new(node_start, node_end)
 
   // Check if this node overlaps any damaged range
   for damaged in self.damaged_ranges {
@@ -113,7 +113,7 @@ pub fn DamageTracker::expand_for_tree(
   tree : @ast.AstNode,
 ) -> Unit {
   // Check if this node overlaps any damaged range
-  let node_range = @range.Range::new(tree.start, tree.end)
+  let node_range = @core.Range::new(tree.start, tree.end)
   let mut overlaps_damage = false
   for damaged in self.damaged_ranges {
     if damaged.overlaps(node_range) {
@@ -139,9 +139,9 @@ pub fn DamageTracker::expand_for_tree(
 
 ///|
 /// Get the total damaged range (union of all ranges)
-pub fn DamageTracker::range(self : DamageTracker) -> @range.Range {
+pub fn DamageTracker::range(self : DamageTracker) -> @core.Range {
   if self.damaged_ranges.length() == 0 {
-    return @range.Range::new(0, 0)
+    return @core.Range::new(0, 0)
   }
   let mut min_start = self.damaged_ranges[0].start
   let mut max_end = self.damaged_ranges[0].end
@@ -153,7 +153,7 @@ pub fn DamageTracker::range(self : DamageTracker) -> @range.Range {
       max_end = range.end
     }
   }
-  @range.Range::new(min_start, max_end)
+  @core.Range::new(min_start, max_end)
 }
 
 ///|

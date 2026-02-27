@@ -33,7 +33,7 @@ test "phase4: correctness on 50+ token input - localized edit" {
 
   // Edit only the last letter "z" -> "1"
   let len = source.length()
-  let edit = @edit.Edit::replace(len - 1, len, len)
+  let edit = @core.Edit::replace(len - 1, len, len)
   let new_source = source[0:len - 1].to_string() + "1"
   let incr_tree = parser.edit(edit, new_source)
   let full_tree = @parse.parse_tree(new_source)
@@ -53,7 +53,7 @@ test "phase4: reuse on application chain" {
   let _ = parser.parse()
 
   // Edit only the last identifier "e" -> "x"
-  let edit = @edit.Edit::replace(10, 11, 11)
+  let edit = @core.Edit::replace(10, 11, 11)
   let incr_tree = parser.edit(edit, "f a b c d x")
   let full_tree = @parse.parse_tree("f a b c d x")
 
@@ -73,7 +73,7 @@ test "phase4: reuse on nested lambdas" {
 
   // Edit only the body "x" -> "y"
   let len = source.length()
-  let edit = @edit.Edit::replace(len - 1, len, len)
+  let edit = @core.Edit::replace(len - 1, len, len)
   let incr_tree = parser.edit(edit, "λa.λb.λc.λd.y")
   let full_tree = @parse.parse_tree("λa.λb.λc.λd.y")
 
@@ -92,7 +92,7 @@ test "phase4: reuse preserves correctness on complex expression" {
 
   // Edit only the "1" in "x + 1" -> "2"
   // "x + 1" is at position 22-27, "1" is at position 26
-  let edit = @edit.Edit::replace(26, 27, 27)
+  let edit = @core.Edit::replace(26, 27, 27)
   let new_source = "λf.λx.if f x then x + 2 else x - 1"
   let incr_tree = parser.edit(edit, new_source)
   let full_tree = @parse.parse_tree(new_source)
@@ -115,7 +115,7 @@ test "phase4: edit at binary operator boundary" {
   let _ = parser.parse()
 
   // Change "-" to "+"
-  let edit = @edit.Edit::replace(6, 7, 7)
+  let edit = @core.Edit::replace(6, 7, 7)
   let incr_tree = parser.edit(edit, "a + b + c")
   let full_tree = @parse.parse_tree("a + b + c")
   inspect(
@@ -133,7 +133,7 @@ test "phase4: edit changes structure - app to binary" {
 
   // Change space to " - " making it "x + y - z"
   // This changes the structure entirely
-  let edit = @edit.Edit::replace(5, 6, 8)
+  let edit = @core.Edit::replace(5, 6, 8)
   let incr_tree = parser.edit(edit, "x + y - z")
   let full_tree = @parse.parse_tree("x + y - z")
 
@@ -151,7 +151,7 @@ test "phase4: edit changes app to standalone var" {
   let _ = parser.parse()
 
   // Delete " x" making it just "f"
-  let edit = @edit.Edit::delete(1, 3)
+  let edit = @core.Edit::delete(1, 3)
   let incr_tree = parser.edit(edit, "f")
   let full_tree = @parse.parse_tree("f")
   inspect(
@@ -167,7 +167,7 @@ test "phase4: edit extends expression" {
   let _ = parser.parse()
 
   // Append " y" making it "x y"
-  let edit = @edit.Edit::insert(1, 2)
+  let edit = @core.Edit::insert(1, 2)
   let incr_tree = parser.edit(edit, "x y")
   let full_tree = @parse.parse_tree("x y")
   inspect(
@@ -186,19 +186,19 @@ test "phase4: multiple sequential edits maintain correctness" {
   let _ = parser.parse()
 
   // Edit 1: change "a" to "1"
-  let edit1 = @edit.Edit::replace(0, 1, 1)
+  let edit1 = @core.Edit::replace(0, 1, 1)
   let tree1 = parser.edit(edit1, "1 + b + c")
   let full1 = @parse.parse_tree("1 + b + c")
   inspect(@ast.print_ast_node(tree1), content=@ast.print_ast_node(full1))
 
   // Edit 2: change "b" to "2"
-  let edit2 = @edit.Edit::replace(4, 5, 5)
+  let edit2 = @core.Edit::replace(4, 5, 5)
   let tree2 = parser.edit(edit2, "1 + 2 + c")
   let full2 = @parse.parse_tree("1 + 2 + c")
   inspect(@ast.print_ast_node(tree2), content=@ast.print_ast_node(full2))
 
   // Edit 3: change "c" to "3"
-  let edit3 = @edit.Edit::replace(8, 9, 9)
+  let edit3 = @core.Edit::replace(8, 9, 9)
   let tree3 = parser.edit(edit3, "1 + 2 + 3")
   let full3 = @parse.parse_tree("1 + 2 + 3")
   inspect(@ast.print_ast_node(tree3), content=@ast.print_ast_node(full3))
@@ -212,13 +212,13 @@ test "phase4: typing simulation - building expression char by char" {
   let _ = parser.parse()
 
   // Type " +"
-  let edit1 = @edit.Edit::insert(1, 2)
+  let edit1 = @core.Edit::insert(1, 2)
   let tree1 = parser.edit(edit1, "1 +")
   // Intermediate state may have errors, just check it parses
   inspect(tree1.node_id >= 0, content="true")
 
   // Type " 2"
-  let edit2 = @edit.Edit::insert(3, 2)
+  let edit2 = @core.Edit::insert(3, 2)
   let tree2 = parser.edit(edit2, "1 + 2")
   let full = @parse.parse_tree("1 + 2")
   inspect(@ast.print_ast_node(tree2), content=@ast.print_ast_node(full))
@@ -235,7 +235,7 @@ test "phase4: empty to non-empty" {
   let _ = parser.parse()
 
   // Replace with completely different expression
-  let edit = @edit.Edit::replace(0, 1, 13)
+  let edit = @core.Edit::replace(0, 1, 13)
   let incr_tree = parser.edit(edit, "λf.λx.f (f x)")
   let full_tree = @parse.parse_tree("λf.λx.f (f x)")
   inspect(
@@ -251,7 +251,7 @@ test "phase4: whitespace-only changes" {
   let _ = parser.parse()
 
   // Add spaces: "x + y"
-  let edit = @edit.Edit::replace(0, 3, 5)
+  let edit = @core.Edit::replace(0, 3, 5)
   let incr_tree = parser.edit(edit, "x + y")
   let full_tree = @parse.parse_tree("x + y")
   inspect(
@@ -267,7 +267,7 @@ test "phase4: parentheses changes" {
   let _ = parser.parse()
 
   // Wrap in parens: "(x + y)"
-  let edit = @edit.Edit::replace(0, 5, 7)
+  let edit = @core.Edit::replace(0, 5, 7)
   let incr_tree = parser.edit(edit, "(x + y)")
   let full_tree = @parse.parse_tree("(x + y)")
   inspect(
@@ -283,7 +283,7 @@ test "phase4: if-then-else edit in condition" {
   let _ = parser.parse()
 
   // Change condition "x" to "y"
-  let edit = @edit.Edit::replace(3, 4, 4)
+  let edit = @core.Edit::replace(3, 4, 4)
   let incr_tree = parser.edit(edit, "if y then 1 else 2")
   let full_tree = @parse.parse_tree("if y then 1 else 2")
   inspect(
@@ -299,7 +299,7 @@ test "phase4: if-then-else edit in else branch" {
   let _ = parser.parse()
 
   // Change else branch "2" to "3"
-  let edit = @edit.Edit::replace(17, 18, 18)
+  let edit = @core.Edit::replace(17, 18, 18)
   let incr_tree = parser.edit(edit, "if x then 1 else 3")
   let full_tree = @parse.parse_tree("if x then 1 else 3")
   inspect(

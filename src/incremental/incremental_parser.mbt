@@ -99,7 +99,7 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @ast.AstNode {
 /// 3. Reparse damaged region, reusing whole tree where possible
 pub fn IncrementalParser::edit(
   self : IncrementalParser,
-  edit : @edit.Edit,
+  edit : @core.Edit,
   new_source : String,
 ) -> @ast.AstNode {
   // Step 1: Update source
@@ -175,7 +175,7 @@ pub fn IncrementalParser::edit(
 fn IncrementalParser::incremental_reparse(
   self : IncrementalParser,
   source : String,
-  damaged_range : @range.Range,
+  damaged_range : @core.Range,
   adjusted_tree : @ast.AstNode,
   tokens : Array[@token.TokenInfo],
 ) -> @ast.AstNode {
@@ -229,7 +229,7 @@ fn IncrementalParser::incremental_reparse(
 fn IncrementalParser::can_reuse_node(
   _self : IncrementalParser,
   node : @ast.AstNode,
-  damaged_range : @range.Range,
+  damaged_range : @core.Range,
 ) -> Bool {
   // Node is reusable if it doesn't overlap the damaged range
   // No overlap means: node ends before damage starts OR node starts after damage ends
@@ -246,7 +246,7 @@ fn IncrementalParser::can_reuse_node(
 pub fn IncrementalParser::adjust_tree_positions(
   self : IncrementalParser,
   tree : @ast.AstNode,
-  edit : @edit.Edit,
+  edit : @core.Edit,
 ) -> @ast.AstNode {
   let delta = edit.delta()
 
