@@ -244,6 +244,100 @@ test "heavy: refactoring session - 100 scattered replacements" (b : @bench.T) {
   })
 }
 
+// ─── Comparison: full reparse (no optimization) vs incremental ───────────────
+//
+// "Unoptimized" = full reparse from scratch on every edit.
+// No TokenBuffer, no ReuseCursor, no Interner, no NodeInterner.
+// Just parse_tree(new_source) each time — the naive approach.
+
+///|
+/// Benchmark: 100 edits at end — full reparse every time (no incremental).
+test "heavy: FULL REPARSE - 100 edits at end" (b : @bench.T) {
+  let base = make_large_source()
+  let chars = [
+    " ", "+", " ", "x", " ", "+", " ", "y", " ", "+", " ", "z", " ", "+", " ",
+    "1", " ", "+", " ", "2",
+  ]
+  b.bench(fn() {
+    let mut source = base
+    let (initial, _) = @parse.parse_with_error_recovery(source)
+    let mut tree = initial
+    for i = 0; i < 100; i = i + 1 {
+      let ch = chars[i % chars.length()]
+      let pos = source.length()
+      let (new_source, _edit) = apply_char_insert(source, pos, ch)
+      // Full reparse — no incremental state, no interning
+      let (t, _) = @parse.parse_with_error_recovery(new_source)
+      tree = t
+      source = new_source
+    }
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: 100 edits in middle — full reparse every time (no incremental).
+test "heavy: FULL REPARSE - 100 edits in middle" (b : @bench.T) {
+  let base = make_large_source()
+  let mid = base.length() / 2
+  let chars = [
+    "x", " ", "+", " ", "y", " ", "+", " ", "1", " ", "+", " ", "2", " ", "+",
+    " ", "z", " ", "+", " ",
+  ]
+  b.bench(fn() {
+    let mut source = base
+    let (initial, _) = @parse.parse_with_error_recovery(source)
+    let mut tree = initial
+    let mut insert_pos = mid
+    for i = 0; i < 100; i = i + 1 {
+      let ch = chars[i % chars.length()]
+      let (new_source, _edit) = apply_char_insert(source, insert_pos, ch)
+      let (t, _) = @parse.parse_with_error_recovery(new_source)
+      tree = t
+      source = new_source
+      insert_pos = insert_pos + ch.length()
+    }
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: 100 scattered replacements — full reparse every time (no incremental).
+test "heavy: FULL REPARSE - 100 scattered replacements" (b : @bench.T) {
+  let base = make_large_source()
+  let replacements = ["x", "y", "z", "a", "b", "c", "d", "e"]
+  b.bench(fn() {
+    let mut source = base
+    let (initial, _) = @parse.parse_with_error_recovery(source)
+    let mut tree = initial
+    let mut seed = 42
+    for i = 0; i < 100; i = i + 1 {
+      seed = heavy_next_seed(seed)
+      let len = source.length()
+      if len < 2 {
+        continue i
+      }
+      let pos = seed.abs() % (len - 1)
+      let ch = replacements[i % replacements.length()]
+      let (new_source, _edit) = apply_char_replace(source, pos, ch)
+      let (t, _) = @parse.parse_with_error_recovery(new_source)
+      tree = t
+      source = new_source
+    }
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: Large document initial parse — full reparse baseline (no interning).
+test "heavy: FULL REPARSE - large document initial parse" (b : @bench.T) {
+  let source = make_large_source()
+  b.bench(fn() {
+    let (result, _) = @parse.parse_with_error_recovery(source)
+    b.keep(result)
+  })
+}
+
 // ─── Tier 4: Interner growth & sharing metrics (tests, not timed benches) ────
 
 ///|
@@ -329,18 +423,20 @@ test "heavy: reuse ratio over 50 edits at end" {
   inspect(total_edits, content="50")
 }
 
+// ─── Tier 5: Scaling comparison — incremental vs full reparse ────────────────
+//
+// Wide arithmetic at increasing sizes (100, 500, 1000 terms).
+// Each size compares:
+//   - Full reparse baseline (parse_with_error_recovery, no incremental state)
+//   - Incremental single edit near end (best case for reuse)
+//   - 50-edit typing session (incremental vs full reparse)
+
 ///|
-/// Benchmark: Wide arithmetic 100 terms, edit near end — best case for reuse.
-test "heavy: wide arithmetic 100 terms - edit near end" (b : @bench.T) {
-  let source = make_wide_arithmetic(100)
-  let parser = @incremental.IncrementalParser::new(source)
-  let _ = parser.parse()
+fn bench_incremental_single_edit(source : String, b : @bench.T) -> Unit {
   let len = source.length()
-  // Replace last digit: "100" -> "999"
-  let new_source = slice(source, 0, len - 3) + "999"
-  let edit = @core.Edit::replace(len - 3, len, len)
+  let new_source = slice(source, 0, len - 1) + "0"
+  let edit = @core.Edit::replace(len - 1, len, len)
   b.bench(fn() {
-    // Reset parser state for each iteration
     let p = @incremental.IncrementalParser::new(source)
     let _ = p.parse()
     let result = p.edit(edit, new_source)
@@ -349,12 +445,112 @@ test "heavy: wide arithmetic 100 terms - edit near end" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: Full reparse of wide arithmetic 100 terms (baseline comparison).
-test "heavy: wide arithmetic 100 terms - full reparse baseline" (b : @bench.T) {
-  let source = make_wide_arithmetic(100)
+fn bench_full_reparse(source : String, b : @bench.T) -> Unit {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new(source)
-    let result = parser.parse()
+    let (result, _) = @parse.parse_with_error_recovery(source)
     b.keep(result)
   })
+}
+
+///|
+fn bench_session_incremental(source : String, n : Int, b : @bench.T) -> Unit {
+  let chars = [" ", "+", " ", "1"]
+  b.bench(fn() {
+    let parser = @incremental.IncrementalParser::new(source)
+    let _ = parser.parse()
+    let mut s = source
+    for i = 0; i < n; i = i + 1 {
+      let ch = chars[i % chars.length()]
+      let pos = s.length()
+      let (new_s, edit) = apply_char_insert(s, pos, ch)
+      let _ = parser.edit(edit, new_s)
+      s = new_s
+    }
+    b.keep(parser.get_tree())
+  })
+}
+
+///|
+fn bench_session_full_reparse(source : String, n : Int, b : @bench.T) -> Unit {
+  let chars = [" ", "+", " ", "1"]
+  b.bench(fn() {
+    let mut s = source
+    let (initial, _) = @parse.parse_with_error_recovery(s)
+    let mut tree = initial
+    for i = 0; i < n; i = i + 1 {
+      let ch = chars[i % chars.length()]
+      let pos = s.length()
+      let (new_s, _edit) = apply_char_insert(s, pos, ch)
+      let (t, _) = @parse.parse_with_error_recovery(new_s)
+      tree = t
+      s = new_s
+    }
+    b.keep(tree)
+  })
+}
+
+// --- 100 terms (~200 tokens) ---
+
+///|
+test "scale: 100 terms - full reparse" (b : @bench.T) {
+  bench_full_reparse(make_wide_arithmetic(100), b)
+}
+
+///|
+test "scale: 100 terms - incremental single edit" (b : @bench.T) {
+  bench_incremental_single_edit(make_wide_arithmetic(100), b)
+}
+
+///|
+test "scale: 100 terms - 50-edit session incremental" (b : @bench.T) {
+  bench_session_incremental(make_wide_arithmetic(100), 50, b)
+}
+
+///|
+test "scale: 100 terms - 50-edit session full reparse" (b : @bench.T) {
+  bench_session_full_reparse(make_wide_arithmetic(100), 50, b)
+}
+
+// --- 500 terms (~1000 tokens) ---
+
+///|
+test "scale: 500 terms - full reparse" (b : @bench.T) {
+  bench_full_reparse(make_wide_arithmetic(500), b)
+}
+
+///|
+test "scale: 500 terms - incremental single edit" (b : @bench.T) {
+  bench_incremental_single_edit(make_wide_arithmetic(500), b)
+}
+
+///|
+test "scale: 500 terms - 50-edit session incremental" (b : @bench.T) {
+  bench_session_incremental(make_wide_arithmetic(500), 50, b)
+}
+
+///|
+test "scale: 500 terms - 50-edit session full reparse" (b : @bench.T) {
+  bench_session_full_reparse(make_wide_arithmetic(500), 50, b)
+}
+
+// --- 1000 terms (~2000 tokens) ---
+
+///|
+test "scale: 1000 terms - full reparse" (b : @bench.T) {
+  bench_full_reparse(make_wide_arithmetic(1000), b)
+}
+
+///|
+test "scale: 1000 terms - incremental single edit" (b : @bench.T) {
+  bench_incremental_single_edit(make_wide_arithmetic(1000), b)
+}
+
+///|
+test "scale: 1000 terms - 50-edit session incremental" (b : @bench.T) {
+  bench_session_incremental(make_wide_arithmetic(1000), 50, b)
+}
+
+///|
+test "scale: 1000 terms - 50-edit session full reparse" (b : @bench.T) {
+  bench_session_full_reparse(make_wide_arithmetic(1000), 50, b)
 }

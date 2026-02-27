@@ -210,6 +210,36 @@ are reused from the previous parse tree.
 - Typing at end vs middle shows ~7% difference, suggesting most cost is in tree rebuilding, not damage tracking
 - Scattered replacements are faster (~55 µs) than sequential typing (~84 µs) because single-char replacements don't grow the source
 
+### Incremental vs Full Reparse — Honest Comparison
+
+*Measured 2026-02-28, `moon bench --release`*
+
+**100-edit sessions on ~200-token nested lambda document:**
+
+| Session type | Full Reparse | Incremental | Ratio |
+|-------------|-------------|-------------|-------|
+| Typing at end | 5.37 ms | 8.03 ms | 1.5× slower |
+| Typing in middle | 5.50 ms | 8.75 ms | 1.6× slower |
+| Scattered replacements | 3.83 ms | 5.39 ms | 1.4× slower |
+
+**Scaling with document size (wide arithmetic, 50-edit sessions):**
+
+| Size | Full Reparse (1 parse) | Incr. Single Edit | Session: Reparse | Session: Incremental | Ratio |
+|------|----------------------|-------------------|-----------------|---------------------|-------|
+| 100 terms (~200 tok) | 71 µs | 201 µs | 3.79 ms | 9.62 ms | **2.5× slower** |
+| 500 terms (~1000 tok) | 352 µs | 1.07 ms | 18.2 ms | 101 ms | **5.6× slower** |
+| 1000 terms (~2000 tok) | 718 µs | 2.23 ms | 40.1 ms | 381 ms | **9.5× slower** |
+
+**Why incremental is currently slower:**
+- Lambda calculus trees are left-leaning (`BinaryExpr` spine) — every edit invalidates the root, so subtree reuse never fires meaningfully
+- Incremental overhead (damage tracking, position adjustment, cursor construction, interning) scales with tree depth
+- Full reparse has zero overhead — just parse and return
+- The ratio *worsens* at larger sizes because the overhead grows with the tree
+
+**When incremental will win:**
+- Grammar expansion with `let` bindings creates **independent sibling subtrees** — editing one binding won't invalidate others
+- At that point, incremental cost becomes O(edited-binding) while full reparse stays O(N)
+
 ### Phase 7: ParserDb Signal/Memo Pipeline
 
 *Measured 2026-02-25, `moon bench --release`*
