@@ -1,7 +1,7 @@
 # Design: Dead Code Audit — Remove `src/crdt/` and Fix Documentation
 
 **Created:** 2026-02-28
-**Status:** Approved
+**Status:** Complete
 
 ## Problem
 

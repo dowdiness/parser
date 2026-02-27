@@ -41,12 +41,10 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
-- [plans/2026-02-28-dead-code-audit-design.md](plans/2026-02-28-dead-code-audit-design.md) — remove `src/crdt/`, fix stale docs, complete package map
-- [plans/2026-02-28-dead-code-audit.md](plans/2026-02-28-dead-code-audit.md) — implementation plan for dead code audit
 - [plans/2026-02-28-incremental-parser-cleanup-design.md](plans/2026-02-28-incremental-parser-cleanup-design.md) — remove `adjust_tree_positions` / `expand_for_tree` holdover
 - [plans/2026-02-28-incremental-parser-cleanup.md](plans/2026-02-28-incremental-parser-cleanup.md) — implementation plan for IncrementalParser holdover cleanup
 
 ## Archive (Historical / Completed)
 
-- [archive/completed-phases/](archive/completed-phases/) — all completed phase plans (Phases 0–7, SyntaxNode-first layer, NodeInterner, docs reorganization)
+- [archive/completed-phases/](archive/completed-phases/) — all completed phase plans (Phases 0–7, SyntaxNode-first layer, NodeInterner, docs reorganization, dead-code audit)
 - [archive/](archive/) — research notes (Lezer, fragment reuse) and historical status docs
