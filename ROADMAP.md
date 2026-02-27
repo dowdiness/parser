@@ -228,7 +228,7 @@ The token buffer is the single source of truth for tokens. It is updated increme
 
 When an edit arrives:
 
-1. **Map edit to token range:** Find the first token whose range overlaps or follows `edit.start`, and the last token whose range overlaps or precedes `edit.old_end`. These define the "dirty" token span.
+1. **Map edit to token range:** Find the first token whose range overlaps or follows `edit.start`, and the last token whose range overlaps or precedes `edit.old_end()`. These define the "dirty" token span.
 
 2. **Re-lex the dirty region:** Extract the substring of the new source that covers the dirty region (with some context margin for multi-character tokens). Tokenize just that substring.
 
@@ -248,7 +248,7 @@ After splice: [T0][T1][T2'][T3'][TX][T4'][T5'][T6']
 
 The margin for re-lexing needs to be conservative:
 - Extend left to the start of the token containing `edit.start`
-- Extend right to the end of the token containing `edit.old_end`, plus one more token (for lookahead effects like keyword boundaries)
+- Extend right to the end of the token containing `edit.old_end()`, plus one more token (for lookahead effects like keyword boundaries)
 - If the edit is at a whitespace/token boundary, extend to include the adjacent tokens
 
 The token-boundary rules above (extend to enclosing token starts/ends) are the correct approach. Do not use a fixed character margin — an identifier can be arbitrarily long, and a fixed margin could split it.
@@ -987,7 +987,17 @@ This avoids the complexity of tree CRDTs entirely. The incremental parser provid
 
 1. **Green tree diff utility:** Given old and new green trees, produce a list of changed subtrees with their positions. Uses pointer equality for O(1) skip of unchanged subtrees. This is useful for UI updates regardless of CRDT choice.
 
-2. **Text CRDT adapter:** Translate CRDT text operations (insert character at position, delete range) into the `Edit` type that the incremental parser accepts. This is a thin mapping layer.
+2. **Text CRDT adapter:** Translate CRDT text operations into the `Edit` type that the incremental parser accepts. The concrete pipeline is:
+
+   ```
+   TextDelta (Retain | Insert | Delete)   ← Loro/Quill Delta format
+     ↓ .to_edits()
+   Edit { start, old_len, new_len }       ← lengths, not endpoints
+     ↓ implements
+   pub trait Editable                     ← IncrementalParser accepts T : Editable
+   ```
+
+   `Edit` now stores lengths (`old_len`, `new_len`) as primitive fields, which makes this conversion direct: `Delete(n)` maps to `old_len = n`, `Insert(s)` maps to `new_len = s.length()`, `Retain(n)` advances the cursor by `n`. No subtraction needed. `Editable` is already implemented for `Edit`; any future adapter type (e.g., a lazy `PendingEdit` that defers string allocation) can implement the same trait without touching `IncrementalParser`.
 
 3. **Integration test harness:** Simulate two peers making concurrent edits. Verify that after sync, both peers have identical source text and identical parse trees.
 
@@ -1000,7 +1010,7 @@ This avoids the complexity of tree CRDTs entirely. The incremental parser provid
 **Exit criteria for this phase:**
 - Design document answering Q1-Q3 with evidence from prototyping
 - Green tree diff utility implemented and tested
-- Text CRDT adapter producing valid `Edit` objects
+- `TextDelta.to_edits()` producing values that implement `Editable` ✅ trait defined and `Edit` impl complete
 - Integration test: two simulated peers converge on same parse tree
 - Clear recommendation on whether to pursue tree-level CRDT or stay with text-level
 
@@ -1228,6 +1238,12 @@ The parser is stabilized when:
 ### Error Recovery
 - [Error Recovery in Recursive Descent Parsers](https://www.cs.tufts.edu/~nr/cs257/archive/donn-seeley/repair.pdf)
 - [Panic Mode Recovery](https://en.wikipedia.org/wiki/Panic_mode) - Classical approach we adapt
+
+### CRDT and Collaborative Editing
+- Gentle et al. (2024) - [eg-walker: Mergeable Tree Structures](https://arxiv.org/abs/2409.14252) - The algorithm this project implements; uses length-based edit representation throughout
+- [diamond-types](https://github.com/josephg/diamond-types) - Rust reference implementation of eg-walker; `PositionalComponent { Ins { len }, Del(len) }` stores lengths not endpoints
+- [Loro](https://loro.dev) - Production CRDT library; `TextDelta (Retain | Insert | Delete)` follows Quill Delta format with lengths as primitives; directly motivates the `Edit { start, old_len, new_len }` design
+- [Quill Delta format](https://quilljs.com/docs/delta/) - Retain/Insert/Delete with lengths; the industry-standard representation for collaborative text operations
 
 ### MoonBit
 - [MoonBit Language Reference](https://www.moonbitlang.com/docs/syntax)

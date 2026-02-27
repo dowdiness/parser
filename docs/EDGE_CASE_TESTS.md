@@ -236,6 +236,8 @@ test "Edge case: insertion that creates error node"
 
 **Fix:** Changed to `tree.start > edit.old_end` at [incremental_parser.mbt:335](incremental_parser.mbt#L335)
 
+**Note (2026-02-28):** After the `Edit` struct refactor, `old_end` is now a computed method (`edit.old_end()`) rather than a struct field. The condition in `incremental_parser.mbt` was updated accordingly; the logic is unchanged.
+
 **Tests That Caught This:**
 - "Edge case: insertion at position 0"
 - "Edge case: nested lambda insertion at start"

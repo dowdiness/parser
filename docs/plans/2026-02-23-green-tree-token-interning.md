@@ -565,7 +565,7 @@ test "IncrementalParser: interner size bounded by vocabulary across re-parses" {
   let p = @incremental.IncrementalParser::new("x + y")
   let _ = p.parse()
   // Apply an edit that doesn't introduce new token text
-  let edit = @edit.Edit::{ start: 4, old_end: 5, new_end: 5, new_text: "y" }
+  let edit = @edit.Edit::{ start: 4, old_len: 1, new_len: 1, new_text: "y" }
   let _ = p.edit(edit, "x + y")
   // x, +, y, whitespace — small bounded set regardless of parse count
   assert_true!(p.interner_size() <= 10)
@@ -579,8 +579,8 @@ test "IncrementalParser: re-parse of identical source yields pointer-equal token
   // No-op edit: replace source with itself
   let edit = @edit.Edit::{
     start: 0,
-    old_end: source.length(),
-    new_end: source.length(),
+    old_len: source.length(),
+    new_len: source.length(),
     new_text: source,
   }
   // After re-parse, "x" tokens should still be from the same interned object
