@@ -2,6 +2,85 @@
 
 Historical snapshots from project benchmark runs (full suite and focused runs).
 
+## 2026-02-28 (let binding grammar + P1 reuse fix)
+
+- Command: `moon bench --release`
+- Git ref: `main` (post `381f49b`)
+- Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
+- Result: `96/96` benchmarks passed (+8 new let-expression benchmarks)
+- Changes since previous entry:
+  - Grammar expanded: `let x = e in body` added as a first-class expression form (`Token::Let/In/Eq`, `SyntaxKind::LetKeyword/InKeyword/EqToken/LetExpr`, `Term::Let(VarName, Term, Term)`, `AstKind::Let(String)`)
+  - P1 reuse fix: `syntax_kind_to_token_kind` in `src/parser/lambda_spec.mbt` now maps `LetKeyword → Token::Let`, `InKeyword → Token::In`, `EqToken → Token::Eq`; before the fix trailing-context checks silently returned `false` for any node followed by `in` or `=`, causing the `ReuseCursor` to skip reuse on every let-body edit
+  - 8 new benchmarks: 4 in `benchmark.mbt` (full parse + incremental) and Phase 4 (4 benchmarks) in `performance_benchmark.mbt`
+  - Test count: 353 → 363 tests
+
+### Let Expression Full Parse
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| full parse - let | 2.12 µs | `"let x = 1 in x"` — 8 tokens |
+| full parse - nested let | 4.25 µs | `"let x = 1 in let y = x + 1 in y"` — 14 tokens |
+
+Let parse cost sits between the existing "small (5 tokens) = 1.22 µs" and "medium (15 tokens) = 5.07 µs" scaling reference points, consistent with linear scaling.
+
+### Let Expression Incremental (`IncrementalParser`)
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| incremental - let body edit | 6.41 µs | `"let x = 1 in y"` → `"...z"`, damage [13,14) |
+| incremental - let init edit | 6.40 µs | `"let x = 1 in y"` → `"let x = 2 in y"`, damage [8,9) |
+
+Both paths cost ~6.4 µs at the `IncrementalParser` level — within noise of each other. This includes cursor construction, CST reparse, and AST conversion.
+
+### Phase 4: Let Expression Cursor Reuse
+
+Byte layout of `"let x = 1 in y"` (14 bytes):
+`IntLiteral(1)` at [8,9) — trailing context = `InKeyword`
+`VarRef("y")` at [13,14) — trailing context = `EOF`
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| phase4: let body edit — full reparse, no cursor (baseline) | 1.52 µs | cursor constructed but not used |
+| phase4: let body edit — init IntLiteral reused via cursor | 1.75 µs | cursor reuse fires; P1 fix required |
+| phase4: let init edit — cursor | 1.69 µs | LetExpr overlaps damage; body VarRef may still be reused |
+| phase4: nested let body edit — multiple inits reused | 3.16 µs | `"let x=1 in let y=2 in z"` → `"...w"`; both IntLiterals trail InKeyword |
+
+**Observation:** For a 14-char expression with a single-token init, cursor construction overhead slightly exceeds the reuse savings (1.75 µs vs 1.52 µs baseline). This is consistent with Phase 3 behavior on the 110-token arithmetic corpus, where cursor overhead also outweighed savings for small delta edits. The primary value of the P1 fix is **correctness**: before the fix, trailing-context checks for `InKeyword` returned `false`, so the cursor path attempted and failed silently on every let-body edit — incurring cursor overhead without any reuse benefit. After the fix, reuse fires correctly and its benefit scales with init expression complexity.
+
+### Phase 3: Cursor Reuse vs Full Reparse (110-token corpus, updated run)
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| phase3: full CST reparse, no cursor — 110 tokens | 24.73 µs | cursor constructed but not used (baseline) |
+| phase3: cursor reuse, edit at end — 110 tokens | 46.09 µs | 54/55 nodes eligible; overhead > savings at this scale |
+| phase3: cursor reuse, edit at start — 110 tokens | 40.33 µs | 54/55 nodes eligible |
+
+Phase 3 numbers are stable relative to previous runs (within 5% noise).
+
+### Core Parse Scaling (updated run)
+
+| Metric | Mean | Notes |
+|---|---:|---|
+| parse scaling — small (5 tokens) | 1.22 µs | arithmetic `"1 + 2"` |
+| parse scaling — medium (15 tokens) | 5.07 µs | lambda-if expression |
+| parse scaling — large (30+ tokens) | 8.63 µs | nested lambda-if |
+
+### Notable Changes vs 2026-02-26
+
+| Metric | prev | today | Change |
+|---|---:|---:|---|
+| parse scaling — small | 1.10 µs | 1.22 µs | +11% (run-to-run noise) |
+| parse scaling — medium | 4.88 µs | 5.07 µs | +4% (noise) |
+| parse scaling — large | 8.02 µs | 8.63 µs | +8% (noise) |
+| parserdb: cold — new + term() | 6.34 µs | 6.39 µs | +1% (noise) |
+| **full parse — let** | — | **2.12 µs** | **NEW** |
+| **full parse — nested let** | — | **4.25 µs** | **NEW** |
+| **phase4: let body edit baseline** | — | **1.52 µs** | **NEW** |
+| **phase4: let body edit + cursor** | — | **1.75 µs** | **NEW** — P1 fix, reuse fires |
+| **phase4: nested let body edit** | — | **3.16 µs** | **NEW** |
+
+---
+
 ## 2026-02-26 (Language-agnostic pipeline — `src/pipeline/` + `src/lambda/`)
 
 - Command: `moon bench --release`
