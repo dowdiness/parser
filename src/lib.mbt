@@ -4,16 +4,15 @@
 // import subpackages directly:
 //
 //   dowdiness/parser/token        - Token, TokenInfo
-//   dowdiness/parser/range        - Range
-//   dowdiness/parser/edit         - Edit
-//   dowdiness/parser/ast          - Ast, AstNode, AstKind, Bop
+//   dowdiness/parser/core         - Edit, Range, ReuseSlot (shared primitives)
+//   dowdiness/parser/ast          - AstNode, AstKind, Term, Bop
 //   dowdiness/parser/lexer        - tokenize, TokenBuffer
-//   dowdiness/parser/syntax       - CstNode, CstToken, SyntaxKind
+//   dowdiness/parser/syntax       - SyntaxKind enum (token + node kind names)
 //   dowdiness/parser/parser       - parse, parse_tree, parse_with_error_recovery
 //   dowdiness/parser/incremental  - IncrementalParser, DamageTracker
-//   dowdiness/parser/crdt         - CRDTNode, ParsedDocument
 //   dowdiness/parser/viz          - DotNode (trait), to_dot[T : DotNode]
 //   dowdiness/parser/lambda       - LambdaParserDb, LambdaLanguage, DotNode impl for AstNode
+//   dowdiness/parser/pipeline     - ParserDb — reactive incremental pipeline
 
 // ── Parsing ──────────────────────────────────────────────────
 
@@ -59,18 +58,4 @@ pub fn incremental(source : String) -> @incremental.IncrementalParser {
 /// Convert a AST node tree to DOT format for Graphviz visualization.
 pub fn ast_node_to_dot(node : @ast.AstNode) -> String {
   @lambda.to_dot(node)
-}
-
-// ── CRDT ─────────────────────────────────────────────────────
-
-///|
-/// Convert a AST node tree to a CRDT representation.
-pub fn ast_to_crdt(node : @ast.AstNode) -> @crdt.CRDTNode {
-  @crdt.ast_to_crdt(node)
-}
-
-///|
-/// Reconstruct source code from a CRDT tree.
-pub fn crdt_to_source(node : @crdt.CRDTNode) -> String {
-  @crdt.crdt_to_source(node)
 }
