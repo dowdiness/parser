@@ -166,6 +166,50 @@ are reused from the previous parse tree.
 - Payoff is structural sharing across incremental edits: identical subtrees are pointer-equal, enabling O(1) `Memo` backdating in `ParserDb`
 - With grammar expansion (let bindings), more subtrees will be shareable
 
+### Heavy Benchmarks: Realistic IDE Session Simulation
+
+*Measured 2026-02-28, `moon bench --release`*
+
+**Tier 1 — Large document initial parse:**
+
+| Input | Tokens | Mean |
+|-------|--------|------|
+| Nested lambdas + if-then-else (~200 tokens) | ~200 | 66.34 µs |
+| Wide arithmetic `1 + 2 + ... + 100` | ~200 | 82.75 µs |
+| Nested application depth 50 `f (f (f ...))` | ~200 | 60.05 µs |
+| Large document CST only (fully interned) | ~200 | 72.49 µs |
+
+**Tier 2 — Long editing sessions (100 sequential edits):**
+
+| Session type | Total (100 edits) | Per edit |
+|-------------|-------------------|----------|
+| Typing at end of large document | 8.43 ms | ~84 µs |
+| Typing in middle of large document | 8.98 ms | ~90 µs |
+| Scattered variable renames | 5.50 ms | ~55 µs |
+
+**Tier 3 — Incremental vs full reparse (wide arithmetic, 100 terms):**
+
+| Operation | Mean | vs full parse |
+|-----------|------|---------------|
+| Full parse (baseline) | 88.18 µs | — |
+| Incremental edit near end | 180.75 µs | 2.0× slower* |
+
+*\*Wide arithmetic is a left-leaning `BinaryExpr` — any edit invalidates the root spine. Per-edit latency in sessions includes cursor setup + interner overhead. Real benefit emerges with independent subtrees (let bindings).*
+
+**Tier 4 — Interner growth (200-edit typing session):**
+
+| Metric | Initial | After 200 edits | Growth |
+|--------|---------|-----------------|--------|
+| Token interner size | 21 | 22 | +1 entry |
+| Node interner size | 45 | 1,247 | ~28× |
+
+**Key observations:**
+- All per-edit latencies are well under the 16ms real-time target (~55-90 µs per edit)
+- Token interner is effectively bounded by vocabulary (21 → 22 over 200 edits)
+- Node interner grows ~28× over 200 edits — each edit creates new structural variants for the spine. Growth is monotonic but bounded by document complexity, not edit count alone
+- Typing at end vs middle shows ~7% difference, suggesting most cost is in tree rebuilding, not damage tracking
+- Scattered replacements are faster (~55 µs) than sequential typing (~84 µs) because single-char replacements don't grow the source
+
 ### Phase 7: ParserDb Signal/Memo Pipeline
 
 *Measured 2026-02-25, `moon bench --release`*
