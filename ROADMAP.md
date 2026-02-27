@@ -2,7 +2,7 @@
 
 **Created:** 2026-02-01
 **Updated:** 2026-02-28
-**Status:** Active — Phases 0-7 complete; next: NodeInterner, Typed SyntaxNode views, or Grammar Expansion
+**Status:** Active — Phases 0-7 + NodeInterner complete; next: Typed SyntaxNode views, Grammar Expansion, or ParserDb benchmarks
 **Goal:** A genuinely incremental, architecturally sound parser for lambda calculus (and beyond) with confidence in every layer.
 
 ---
@@ -69,7 +69,7 @@ Before planning forward, we need an unflinching look at where we are. The existi
 | SyntaxNode API | **Complete** — `SyntaxToken`, `SyntaxElement`, `all_children`, `find_at`, `tight_span` |
 | `cst` field privacy | **Complete** — `.cst` is private; all callers use `SyntaxNode` methods |
 | CRDT integration | **Conversion functions** — `ast_to_crdt`, `crdt_to_source`; no conflict logic |
-| NodeInterner | **Planned** — design doc at `docs/plans/2026-02-25-node-interner-design.md` |
+| NodeInterner | **Complete** (2026-02-28) — `Interner` + `NodeInterner` wired into `IncrementalParser` and `parse_cst_recover` |
 | Typed SyntaxNode views | **Planned** — Phase 3 of SyntaxNode-first layer design |
 
 ---
@@ -323,15 +323,15 @@ Phase 0: Reckoning                  ✅ COMPLETE (2026-02-01)
                 |
                 +------ Phase 7: ParserDb (reactive)    ✅ COMPLETE (2026-02-25)
                 |
-                +------ NodeInterner                    ← PLANNED
+                +------ NodeInterner                    ✅ COMPLETE (2026-02-28)
                 |
                 +------ Grammar Expansion               ← PLANNED (original Phase 5)
                 |
                 +------ CRDT Exploration               ← PLANNED (original Phase 6)
 ```
 
-Phases 0-7 and the SyntaxNode-First Layer (Phase 1+2) are complete.
-Next candidates: NodeInterner, Typed SyntaxNode views, ParserDb benchmarks, Grammar Expansion.
+Phases 0-7, SyntaxNode-First Layer (Phase 1+2), and NodeInterner are complete.
+Next candidates: Typed SyntaxNode views, ParserDb benchmarks, Grammar Expansion.
 
 ---
 
