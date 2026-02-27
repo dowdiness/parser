@@ -44,6 +44,7 @@ Understanding how the layers fit together:
 - [plans/2026-02-28-incremental-parser-cleanup-design.md](plans/2026-02-28-incremental-parser-cleanup-design.md) — remove `adjust_tree_positions` / `expand_for_tree` holdover
 - [plans/2026-02-28-incremental-parser-cleanup.md](plans/2026-02-28-incremental-parser-cleanup.md) — implementation plan for IncrementalParser holdover cleanup
 - [plans/2026-02-28-grammar-expansion-let-design.md](plans/2026-02-28-grammar-expansion-let-design.md) — design for expression-level `let` binding
+- [plans/2026-02-28-grammar-expansion-let.md](plans/2026-02-28-grammar-expansion-let.md) — implementation plan for expression-level `let` binding
 
 ## Archive (Historical / Completed)
 
