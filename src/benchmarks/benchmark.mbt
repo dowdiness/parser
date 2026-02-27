@@ -130,31 +130,6 @@ test "damage tracking" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: AST to CRDT conversion
-test "ast to crdt" (b : @bench.T) {
-  b.bench(fn() {
-    let ast = @parse.parse_tree("λf.λx.f x") catch {
-      _ => abort("benchmark failed")
-    }
-    let result = @crdt.ast_to_crdt(ast)
-    b.keep(result)
-  })
-}
-
-///|
-/// Benchmark: CRDT to source reconstruction
-test "crdt to source" (b : @bench.T) {
-  b.bench(fn() {
-    let ast = @parse.parse_tree("λf.λx.f x") catch {
-      _ => abort("benchmark failed")
-    }
-    let crdt = @crdt.ast_to_crdt(ast)
-    let result = @crdt.crdt_to_source(crdt)
-    b.keep(result)
-  })
-}
-
-///|
 /// Benchmark: Error recovery - valid input
 test "error recovery - valid" (b : @bench.T) {
   b.bench(fn() {
@@ -172,24 +147,3 @@ test "error recovery - error" (b : @bench.T) {
   })
 }
 
-///|
-/// Benchmark: ParsedDocument - parse
-test "parsed document - parse" (b : @bench.T) {
-  b.bench(fn() {
-    let doc = @crdt.ParsedDocument::new("42")
-    doc.parse()
-    b.keep(doc)
-  })
-}
-
-///|
-/// Benchmark: ParsedDocument - edit
-test "parsed document - edit" (b : @bench.T) {
-  b.bench(fn() {
-    let doc = @crdt.ParsedDocument::new("x")
-    doc.parse()
-    let edit = @core.Edit::insert(1, 4)
-    doc.edit(edit, "x + 1")
-    b.keep(doc)
-  })
-}

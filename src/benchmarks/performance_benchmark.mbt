@@ -175,36 +175,6 @@ test "position adjustment after edit" (b : @bench.T) {
 }
 
 ///|
-/// Benchmark: CRDT operations - nested structure
-test "crdt operations - nested structure" (b : @bench.T) {
-  b.bench(fn() {
-    let ast = @parse.parse_tree("λf.λx.if f x then x + 1 else x - 1") catch {
-      _ => abort("benchmark failed")
-    }
-    let crdt = @crdt.ast_to_crdt(ast)
-    let source = @crdt.crdt_to_source(crdt)
-    b.keep(source)
-  })
-}
-
-///|
-/// Benchmark: CRDT operations - round trip
-test "crdt operations - round trip" (b : @bench.T) {
-  b.bench(fn() {
-    let original = "λf.λx.f (f x)"
-    let ast = @parse.parse_tree(original) catch {
-      _ => abort("benchmark failed")
-    }
-    let crdt = @crdt.ast_to_crdt(ast)
-    let reconstructed = @crdt.crdt_to_source(crdt)
-    let ast2 = @parse.parse_tree(reconstructed) catch {
-      _ => abort("benchmark failed")
-    }
-    b.keep(ast2)
-  })
-}
-
-///|
 /// Benchmark: Memory pressure - large document
 test "memory pressure - large document" (b : @bench.T) {
   b.bench(fn() {
