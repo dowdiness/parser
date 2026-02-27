@@ -142,3 +142,53 @@ test "error recovery - error" (b : @bench.T) {
     b.keep(result)
   })
 }
+
+///|
+/// Benchmark: Full parse of let expression.
+test "full parse - let" (b : @bench.T) {
+  b.bench(fn() {
+    let result = @parse.parse_tree("let x = 1 in x") catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Full parse of nested let expression.
+test "full parse - nested let" (b : @bench.T) {
+  b.bench(fn() {
+    let result = @parse.parse_tree("let x = 1 in let y = x + 1 in y") catch {
+      _ => abort("benchmark failed")
+    }
+    b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Incremental parser - let body edit.
+/// Common case: edit the body variable while the init expression is unchanged.
+/// The init IntLiteral(1) at [8,9) is outside damage [13,14) → eligible for reuse.
+test "incremental - let body edit" (b : @bench.T) {
+  b.bench(fn() {
+    let parser = @incremental.IncrementalParser::new("let x = 1 in y")
+    let _ = parser.parse()
+    let edit = @core.Edit::replace(13, 14, 14)
+    let result = parser.edit(edit, "let x = 1 in z")
+    b.keep(result)
+  })
+}
+
+///|
+/// Benchmark: Incremental parser - let init edit.
+/// Edit the binding value while the body is unchanged.
+/// The outer LetExpr overlaps damage [8,9); body VarRef("y") is outside damage.
+test "incremental - let init edit" (b : @bench.T) {
+  b.bench(fn() {
+    let parser = @incremental.IncrementalParser::new("let x = 1 in y")
+    let _ = parser.parse()
+    let edit = @core.Edit::replace(8, 9, 9)
+    let result = parser.edit(edit, "let x = 2 in y")
+    b.keep(result)
+  })
+}

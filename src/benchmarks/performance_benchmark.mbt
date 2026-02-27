@@ -434,3 +434,107 @@ test "phase3: cursor reuse, edit at start - 110 tokens" (b : @bench.T) {
     b.keep(tree)
   })
 }
+
+// --- Phase 4: let expression cursor reuse ---
+//
+// Measures the reuse benefit enabled by mapping LetKeyword/InKeyword/EqToken
+// in syntax_kind_to_token_kind.  Before the fix, the init expression in
+// "let x = <init> in <body>" always failed the trailing-context check
+// (trailing token = InKeyword was unmapped → None → false) and was reparsed
+// on every body edit regardless of whether the init changed.
+//
+// Byte offsets for "let x = 1 in y" (14 bytes):
+//   init IntLiteral(1) : [8, 9)   — trailing context = InKeyword
+//   body VarRef("y")   : [13, 14) — trailing context = EOF
+//
+// Byte offsets for "let x = 1 in let y = 2 in z" (27 bytes):
+//   outer init IntLiteral(1) : [8, 9)   — trailing context = InKeyword
+//   inner init IntLiteral(2) : [21, 22) — trailing context = InKeyword
+//   body VarRef("z")         : [26, 27) — trailing context = EOF
+
+///|
+/// Benchmark: full CST reparse of let expression, no cursor (Phase 4 reuse baseline).
+/// Cursor construction overhead is included to keep comparisons fair.
+test "phase4: let body edit - full reparse, no cursor (baseline)" (b : @bench.T) {
+  let old_source = "let x = 1 in y"
+  let new_source = "let x = 1 in z"
+  let (old_tree, _) = @parse.parse_cst_recover(old_source) catch {
+    _ => abort("setup failed")
+  }
+  let new_tokens = @lexer.tokenize(new_source) catch {
+    _ => abort("setup failed")
+  }
+  b.bench(fn() {
+    let _ = @parse.make_reuse_cursor(old_tree, 13, 14, new_tokens)
+    let (tree, _, _) = @parse.parse_cst_recover_with_tokens(
+      new_source, new_tokens, None,
+    )
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: let body edit with cursor — IntLiteral(1) reused via InKeyword context.
+/// "let x = 1 in y" → "let x = 1 in z": damage [13,14).
+/// IntLiteral(1) at [8,9) is undamaged; its trailing token InKeyword is now mapped → reuse fires.
+test "phase4: let body edit - init IntLiteral reused via cursor" (b : @bench.T) {
+  let old_source = "let x = 1 in y"
+  let new_source = "let x = 1 in z"
+  let (old_tree, _) = @parse.parse_cst_recover(old_source) catch {
+    _ => abort("setup failed")
+  }
+  let new_tokens = @lexer.tokenize(new_source) catch {
+    _ => abort("setup failed")
+  }
+  b.bench(fn() {
+    let cursor = @parse.make_reuse_cursor(old_tree, 13, 14, new_tokens)
+    let (tree, _, _) = @parse.parse_cst_with_cursor(
+      new_source, new_tokens, cursor,
+    )
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: let init edit with cursor.
+/// "let x = 1 in y" → "let x = 2 in y": damage [8,9) — init changed.
+/// LetExpr overlaps damage and is reparsed; body VarRef("y") at [13,14) may still be reused.
+test "phase4: let init edit - cursor" (b : @bench.T) {
+  let old_source = "let x = 1 in y"
+  let new_source = "let x = 2 in y"
+  let (old_tree, _) = @parse.parse_cst_recover(old_source) catch {
+    _ => abort("setup failed")
+  }
+  let new_tokens = @lexer.tokenize(new_source) catch {
+    _ => abort("setup failed")
+  }
+  b.bench(fn() {
+    let cursor = @parse.make_reuse_cursor(old_tree, 8, 9, new_tokens)
+    let (tree, _, _) = @parse.parse_cst_with_cursor(
+      new_source, new_tokens, cursor,
+    )
+    b.keep(tree)
+  })
+}
+
+///|
+/// Benchmark: nested let body edit — both init IntLiterals reused via cursor.
+/// "let x = 1 in let y = 2 in z" → "...w": damage [26,27).
+/// IntLiteral(1) at [8,9) and IntLiteral(2) at [21,22) both trail InKeyword → both reused.
+test "phase4: nested let body edit - multiple inits reused" (b : @bench.T) {
+  let old_source = "let x = 1 in let y = 2 in z"
+  let new_source = "let x = 1 in let y = 2 in w"
+  let (old_tree, _) = @parse.parse_cst_recover(old_source) catch {
+    _ => abort("setup failed")
+  }
+  let new_tokens = @lexer.tokenize(new_source) catch {
+    _ => abort("setup failed")
+  }
+  b.bench(fn() {
+    let cursor = @parse.make_reuse_cursor(old_tree, 26, 27, new_tokens)
+    let (tree, _, _) = @parse.parse_cst_with_cursor(
+      new_source, new_tokens, cursor,
+    )
+    b.keep(tree)
+  })
+}
