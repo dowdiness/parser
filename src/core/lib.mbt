@@ -70,6 +70,14 @@ pub suberror LexError {
 }
 
 ///|
+/// Construct a LexError value from any package.
+/// Needed because suberror constructors are read-only outside their defining package.
+/// Usage: `raise @core.make_lex_error(msg)`
+pub fn make_lex_error(msg : String) -> LexError {
+  LexError(msg)
+}
+
+///|
 /// Describes one language to the generic parser infrastructure.
 /// Create one instance at module init — it is reused across all parses.
 ///
