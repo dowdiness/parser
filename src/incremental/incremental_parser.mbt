@@ -24,7 +24,7 @@ pub struct IncrementalParser {
   mut source : String // Current source text
   mut tree : @ast.AstNode? // output-only: last parse result (never consumed as parse input)
   mut syntax_tree : @seam.SyntaxNode? // Current syntax tree (for subtree reuse)
-  mut token_buffer : @lexer.TokenBuffer[@token.Token]? // Incremental token buffer
+  mut token_buffer : @core.TokenBuffer[@token.Token]? // Incremental token buffer
   mut last_reuse_count : Int // Number of nodes reused in last parse
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]] // Prior parse diagnostics for reuse replay
   priv interner : @seam.Interner // session-scoped token intern table
@@ -74,7 +74,7 @@ pub fn IncrementalParser::interner_clear(self : IncrementalParser) -> Unit {
 /// Perform initial full parse
 pub fn IncrementalParser::parse(self : IncrementalParser) -> @ast.AstNode {
   let tree = try {
-    let buffer = @lexer.TokenBuffer::new(
+    let buffer = @core.TokenBuffer::new(
       self.source,
       tokenize_fn=@lexer.tokenize,
       eof_token=@token.EOF,
@@ -93,7 +93,7 @@ pub fn IncrementalParser::parse(self : IncrementalParser) -> @ast.AstNode {
     let parsed_tree = @parse.syntax_node_to_ast_node(syntax, Ref::new(0))
     parsed_tree
   } catch {
-    @lexer.TokenizationError(msg) => {
+    @core.LexError(msg) => {
       let error_msg = "Tokenization error: " + msg
       self.syntax_tree = None
       self.token_buffer = None
@@ -125,7 +125,7 @@ pub fn IncrementalParser::edit(
   let tokens = match self.token_buffer {
     Some(buffer) =>
       buffer.update(edit, self.source) catch {
-        @lexer.TokenizationError(msg) => {
+        @core.LexError(msg) => {
           let error_msg = "Tokenization error: " + msg
           let tree = @ast.AstNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
@@ -138,12 +138,12 @@ pub fn IncrementalParser::edit(
       }
     None => {
       // No token buffer yet - try full tokenize
-      let buffer = @lexer.TokenBuffer::new(
+      let buffer = @core.TokenBuffer::new(
         self.source,
         tokenize_fn=@lexer.tokenize,
         eof_token=@token.EOF,
       ) catch {
-        @lexer.TokenizationError(msg) => {
+        @core.LexError(msg) => {
           let error_msg = "Tokenization error: " + msg
           let tree = @ast.AstNode::error(error_msg, 0, 0)
           self.tree = Some(tree)
