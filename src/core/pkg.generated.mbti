@@ -6,11 +6,16 @@ import {
 }
 
 // Values
+pub fn make_lex_error(String) -> LexError
+
 pub fn[T, K] parse_with(String, LanguageSpec[T, K], (String) -> Array[TokenInfo[T]], (ParserContext[T, K]) -> Unit) -> (@seam.CstNode, Array[Diagnostic[T]])
 
 pub fn to_edits(Array[TextDelta]) -> Array[Edit]
 
 // Errors
+pub suberror LexError {
+  LexError(String)
+}
 
 // Types and methods
 type CursorFrame
@@ -144,6 +149,18 @@ pub(all) enum TextDelta {
 }
 pub impl Eq for TextDelta
 pub impl Show for TextDelta
+
+pub struct TokenBuffer[T] {
+  mut tokens : Array[TokenInfo[T]]
+  mut source : String
+  mut version : Int
+  // private fields
+}
+pub fn[T] TokenBuffer::get_source(Self[T]) -> String
+pub fn[T] TokenBuffer::get_tokens(Self[T]) -> Array[TokenInfo[T]]
+pub fn[T] TokenBuffer::get_version(Self[T]) -> Int
+pub fn[T] TokenBuffer::new(String, tokenize_fn~ : (String) -> Array[TokenInfo[T]] raise LexError, eof_token~ : T) -> Self[T] raise LexError
+pub fn[T] TokenBuffer::update(Self[T], Edit, String) -> Array[TokenInfo[T]] raise LexError
 
 pub struct TokenInfo[T] {
   token : T

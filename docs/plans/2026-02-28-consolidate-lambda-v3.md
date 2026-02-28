@@ -336,12 +336,12 @@ pub fn parse_cst(source : String) -> @seam.CstNode raise {
 
 ///|
 /// Recovering: returns tree with ErrorNodes + diagnostic list.
-/// Only raises for TokenizationError (unrecoverable).
+/// Only raises for LexError (unrecoverable).
 pub fn parse_cst_recover(
   source : String,
   interner? : @seam.Interner? = None,
   node_interner? : @seam.NodeInterner? = None,
-) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError {
+) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @core.LexError {
   let tokens = @lexer.tokenize(source)
   let (cst, diagnostics, _) = @core.parse_tokens_indexed(
     source,
@@ -778,12 +778,12 @@ import {
 pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
   @ast.AstNode,
 ] {
-  let token_buf : Ref[@lexer.TokenBuffer[@token.Token]?] = Ref::new(None)
+  let token_buf : Ref[@core.TokenBuffer[@token.Token]?] = Ref::new(None)
   let last_diags : Ref[Array[@core.Diagnostic[@token.Token]]] = Ref::new([])
   @incremental.IncrementalLanguage::new(
     full_parse=fn(source, interner, node_interner) {
       try {
-        let buffer = @lexer.TokenBuffer::new(
+        let buffer = @core.TokenBuffer::new(
           source,
           tokenize_fn=@lexer.tokenize,
           eof_token=@token.EOF,
@@ -798,7 +798,7 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
         let syntax = @seam.SyntaxNode::from_cst(cst)
         @incremental.ParseOutcome::Tree(syntax, 0)
       } catch {
-        @lexer.TokenizationError(msg) => {
+        @core.LexError(msg) => {
           token_buf.val = None
           last_diags.val = []
           @incremental.ParseOutcome::LexError("Tokenization error: " + msg)
@@ -812,7 +812,7 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
           try {
             buffer.update(edit, source)
           } catch {
-            @lexer.TokenizationError(msg) => {
+            @core.LexError(msg) => {
               token_buf.val = None
               last_diags.val = []
               return @incremental.ParseOutcome::LexError(
@@ -822,7 +822,7 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
           }
         None =>
           try {
-            let buffer = @lexer.TokenBuffer::new(
+            let buffer = @core.TokenBuffer::new(
               source,
               tokenize_fn=@lexer.tokenize,
               eof_token=@token.EOF,
@@ -833,7 +833,7 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
               None => []
             }
           } catch {
-            @lexer.TokenizationError(msg) => {
+            @core.LexError(msg) => {
               last_diags.val = []
               return @incremental.ParseOutcome::LexError(
                 "Tokenization error: " + msg,

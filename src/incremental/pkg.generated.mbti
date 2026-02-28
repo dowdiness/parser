@@ -4,7 +4,6 @@ package "dowdiness/parser/incremental"
 import {
   "dowdiness/parser/ast",
   "dowdiness/parser/core",
-  "dowdiness/parser/lexer",
   "dowdiness/parser/token",
   "dowdiness/seam",
 }
@@ -41,7 +40,7 @@ pub struct IncrementalParser {
   mut source : String
   mut tree : @ast.AstNode?
   mut syntax_tree : @seam.SyntaxNode?
-  mut token_buffer : @lexer.TokenBuffer[@token.Token]?
+  mut token_buffer : @core.TokenBuffer[@token.Token]?
   mut last_reuse_count : Int
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]]
   // private fields
