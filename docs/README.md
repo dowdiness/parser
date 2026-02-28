@@ -41,6 +41,8 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
+- [plans/2026-02-28-consolidate-lambda-v3.md](plans/2026-02-28-consolidate-lambda-v3.md) — move src/parser/ → src/lambda/ + extend @core.LanguageSpec with parse_root + generify IncrementalParser
+- [plans/2026-02-28-generic-token-buffer.md](plans/2026-02-28-generic-token-buffer.md) — generify TokenBuffer[T] + replace @token.TokenInfo with typealias (run after v3)
 - [plans/2026-02-28-text-delta-design.md](plans/2026-02-28-text-delta-design.md) — design for TextDelta → Edit adapter
 - [plans/2026-02-28-text-delta.md](plans/2026-02-28-text-delta.md) — implementation plan for TextDelta → Edit adapter
 
