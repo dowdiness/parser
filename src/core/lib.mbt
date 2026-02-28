@@ -128,7 +128,7 @@ pub fn[T, K] LanguageSpec::new(
   cst_token_matches? : (@seam.RawKind, String, T) -> Bool = fn(_, _, _) {
     false
   },
-  parse_root? : (ParserContext[T, K]) -> Unit = fn(_) { () },
+  parse_root? : (ParserContext[T, K]) -> Unit = _ => (),
 ) -> LanguageSpec[T, K] {
   {
     kind_to_raw,
@@ -810,7 +810,7 @@ fn make_test_fixtures() -> (LanguageSpec[String, Int], Array[TokenInfo[String]])
     raw_is_trivia: fn(_) { false },
     raw_is_error: fn(_) { false },
     cst_token_matches: fn(_, _, _) { false },
-    parse_root: fn(_) { () },
+    parse_root: _ => (),
   }
   let tokens = [
     { token: "a", start: 0, end: 1 },
@@ -855,7 +855,7 @@ test "peek skips trivia tokens" {
     raw_is_trivia: fn(_) { false },
     raw_is_error: fn(_) { false },
     cst_token_matches: fn(_, _, _) { false },
-    parse_root: fn(_) { () },
+    parse_root: _ => (),
   }
   let tokens = [
     { token: " ", start: 0, end: 1 },
@@ -921,7 +921,9 @@ fn[T, K] build_tree_generic(
     (Some(i), Some(ni)) =>
       buf.build_tree_fully_interned(root, i, ni, trivia_kind=Some(ws))
     (Some(i), None) => buf.build_tree_interned(root, i, trivia_kind=Some(ws))
-    _ => buf.build_tree(root, trivia_kind=Some(ws))
+    (None, Some(_)) =>
+      abort("build_tree_generic: node_interner requires interner to be Some")
+    (None, None) => buf.build_tree(root, trivia_kind=Some(ws))
   }
 }
 
