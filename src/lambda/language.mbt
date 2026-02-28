@@ -17,11 +17,7 @@ pub impl @pipeline.Parseable for LambdaLanguage with parse_source(_, s) {
     }
   } noraise {
     tokens => {
-      let (cst, diags, _) = parse_cst_recover_with_tokens(
-        s,
-        tokens,
-        None,
-      )
+      let (cst, diags, _) = parse_cst_recover_with_tokens(s, tokens, None)
       @pipeline.CstStage::{
         cst,
         diagnostics: diags.map(d => {

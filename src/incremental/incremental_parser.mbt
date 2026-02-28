@@ -29,7 +29,9 @@ pub fn[Ast] IncrementalParser::new(
 }
 
 ///|
-pub fn[Ast] IncrementalParser::interner_size(self : IncrementalParser[Ast]) -> Int {
+pub fn[Ast] IncrementalParser::interner_size(
+  self : IncrementalParser[Ast],
+) -> Int {
   self.interner.size()
 }
 
@@ -50,11 +52,8 @@ pub fn[Ast] IncrementalParser::interner_clear(
 
 ///|
 pub fn[Ast] IncrementalParser::parse(self : IncrementalParser[Ast]) -> Ast {
-  let tree = match (self.lang.full_parse)(
-    self.source,
-    self.interner,
-    self.node_interner,
-  ) {
+  let tree = match
+    (self.lang.full_parse)(self.source, self.interner, self.node_interner) {
     Tree(syntax, _) => {
       self.syntax_tree = Some(syntax)
       self.last_reuse_count = 0
@@ -82,13 +81,14 @@ pub fn[Ast] IncrementalParser::edit(
   }
   let new_tree = match self.syntax_tree {
     Some(old_syntax) =>
-      match (self.lang.incremental_parse)(
-        new_source,
-        old_syntax,
-        edit,
-        self.interner,
-        self.node_interner,
-      ) {
+      match
+        (self.lang.incremental_parse)(
+          new_source,
+          old_syntax,
+          edit,
+          self.interner,
+          self.node_interner,
+        ) {
         Tree(new_syntax, reuse_count) => {
           self.syntax_tree = Some(new_syntax)
           self.last_reuse_count = reuse_count

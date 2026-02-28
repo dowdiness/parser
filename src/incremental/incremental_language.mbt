@@ -26,7 +26,13 @@ pub(all) enum ParseOutcome {
 /// `on_lex_error` — build an error Ast from a lex-error message.
 pub struct IncrementalLanguage[Ast] {
   priv full_parse : (String, @seam.Interner, @seam.NodeInterner) -> ParseOutcome
-  priv incremental_parse : (String, @seam.SyntaxNode, @core.Edit, @seam.Interner, @seam.NodeInterner) -> ParseOutcome
+  priv incremental_parse : (
+    String,
+    @seam.SyntaxNode,
+    @core.Edit,
+    @seam.Interner,
+    @seam.NodeInterner,
+  ) -> ParseOutcome
   priv to_ast : (@seam.SyntaxNode) -> Ast
   priv on_lex_error : (String) -> Ast
 }
@@ -35,7 +41,13 @@ pub struct IncrementalLanguage[Ast] {
 /// Constructor for IncrementalLanguage vtable.
 pub fn[Ast] IncrementalLanguage::new(
   full_parse~ : (String, @seam.Interner, @seam.NodeInterner) -> ParseOutcome,
-  incremental_parse~ : (String, @seam.SyntaxNode, @core.Edit, @seam.Interner, @seam.NodeInterner) -> ParseOutcome,
+  incremental_parse~ : (
+    String,
+    @seam.SyntaxNode,
+    @core.Edit,
+    @seam.Interner,
+    @seam.NodeInterner,
+  ) -> ParseOutcome,
   to_ast~ : (@seam.SyntaxNode) -> Ast,
   on_lex_error~ : (String) -> Ast,
 ) -> IncrementalLanguage[Ast] {

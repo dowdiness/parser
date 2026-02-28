@@ -941,10 +941,10 @@ pub fn[T, K] parse_tokens_indexed(
   get_start : (Int) -> Int,
   get_end : (Int) -> Int,
   spec : LanguageSpec[T, K],
-  cursor~ : ReuseCursor[T, K]? = None,
-  prev_diagnostics~ : Array[Diagnostic[T]]? = None,
-  interner~ : @seam.Interner? = None,
-  node_interner~ : @seam.NodeInterner? = None,
+  cursor? : ReuseCursor[T, K]? = None,
+  prev_diagnostics? : Array[Diagnostic[T]]? = None,
+  interner? : @seam.Interner? = None,
+  node_interner? : @seam.NodeInterner? = None,
 ) -> (@seam.CstNode, Array[Diagnostic[T]], Int) {
   let ctx = ParserContext::new_indexed(
     token_count, get_token, get_start, get_end, source, spec,

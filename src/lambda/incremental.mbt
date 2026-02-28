@@ -37,9 +37,7 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
       // Step 1: Update token buffer incrementally
       let tokens = match token_buf.val {
         Some(buffer) =>
-          try {
-            buffer.update(edit, source)
-          } catch {
+          buffer.update(edit, source) catch {
             @core.LexError(msg) => {
               token_buf.val = None
               last_diags.val = []
@@ -145,9 +143,7 @@ pub fn LambdaIncrementalParser::get_source(
 }
 
 ///|
-pub fn LambdaIncrementalParser::stats(
-  self : LambdaIncrementalParser,
-) -> String {
+pub fn LambdaIncrementalParser::stats(self : LambdaIncrementalParser) -> String {
   self.parser.stats()
 }
 

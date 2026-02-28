@@ -47,8 +47,8 @@ pub fn parse_cst_recover(
     fn(i) { tokens[i].start },
     fn(i) { tokens[i].end },
     lambda_spec,
-    interner=interner,
-    node_interner=node_interner,
+    interner~,
+    node_interner~,
   )
   (cst, diagnostics)
 }
@@ -69,7 +69,7 @@ pub fn parse_cst_with_cursor(
     fn(i) { tokens[i].end },
     lambda_spec,
     cursor=Some(cursor),
-    prev_diagnostics=prev_diagnostics,
+    prev_diagnostics~,
   )
 }
 
@@ -90,10 +90,10 @@ pub fn parse_cst_recover_with_tokens(
     fn(i) { tokens[i].start },
     fn(i) { tokens[i].end },
     lambda_spec,
-    cursor=cursor,
-    prev_diagnostics=prev_diagnostics,
-    interner=interner,
-    node_interner=node_interner,
+    cursor~,
+    prev_diagnostics~,
+    interner~,
+    node_interner~,
   )
 }
 
