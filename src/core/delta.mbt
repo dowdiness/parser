@@ -1,8 +1,8 @@
 ///|
 pub(all) enum TextDelta {
-  Retain(Int)    // advance cursor n bytes — no edit emitted
+  Retain(Int) // advance cursor n bytes — no edit emitted
   Insert(String) // insert text at cursor position
-  Delete(Int)    // delete n bytes at cursor position
+  Delete(Int) // delete n bytes at cursor position
 } derive(Show, Eq)
 
 ///|

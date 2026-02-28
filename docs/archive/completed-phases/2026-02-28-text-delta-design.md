@@ -1,7 +1,7 @@
 # Design: TextDelta Adapter
 
 **Created:** 2026-02-28
-**Status:** Approved
+**Status:** Complete
 
 ## Problem
 
