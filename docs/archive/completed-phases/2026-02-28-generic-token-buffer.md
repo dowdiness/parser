@@ -1,5 +1,7 @@
 # Generic TokenBuffer Implementation Plan
 
+**Status:** Complete
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Make `TokenBuffer[T]` language-agnostic by parameterizing it on the token type `T`

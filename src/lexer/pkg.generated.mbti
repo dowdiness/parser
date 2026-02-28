@@ -7,9 +7,9 @@ import {
 }
 
 // Values
-pub fn tokenize(String) -> Array[@token.TokenInfo] raise TokenizationError
+pub fn tokenize(String) -> Array[@core.TokenInfo[@token.Token]] raise TokenizationError
 
-pub fn tokenize_range(String, Int, Int) -> Array[@token.TokenInfo] raise TokenizationError
+pub fn tokenize_range(String, Int, Int) -> Array[@core.TokenInfo[@token.Token]] raise TokenizationError
 
 // Errors
 pub suberror TokenizationError {
@@ -17,16 +17,17 @@ pub suberror TokenizationError {
 }
 
 // Types and methods
-pub struct TokenBuffer {
-  mut tokens : Array[@token.TokenInfo]
+pub struct TokenBuffer[T] {
+  mut tokens : Array[@core.TokenInfo[T]]
   mut source : String
   mut version : Int
+  // private fields
 }
-pub fn TokenBuffer::get_source(Self) -> String
-pub fn TokenBuffer::get_tokens(Self) -> Array[@token.TokenInfo]
-pub fn TokenBuffer::get_version(Self) -> Int
-pub fn TokenBuffer::new(String) -> Self raise TokenizationError
-pub fn TokenBuffer::update(Self, @core.Edit, String) -> Array[@token.TokenInfo] raise TokenizationError
+pub fn[T] TokenBuffer::get_source(Self[T]) -> String
+pub fn[T] TokenBuffer::get_tokens(Self[T]) -> Array[@core.TokenInfo[T]]
+pub fn[T] TokenBuffer::get_version(Self[T]) -> Int
+pub fn[T] TokenBuffer::new(String, tokenize_fn~ : (String) -> Array[@core.TokenInfo[T]] raise TokenizationError, eof_token~ : T) -> Self[T] raise TokenizationError
+pub fn[T] TokenBuffer::update(Self[T], @core.Edit, String) -> Array[@core.TokenInfo[T]] raise TokenizationError
 
 // Type aliases
 

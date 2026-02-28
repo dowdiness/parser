@@ -19,7 +19,7 @@ pub(all) enum Token {
 } derive(Show, Eq)
 
 ///|
-pub using @core { type TokenInfo }
+pub using @core {type TokenInfo}
 
 ///|
 /// Print a TokenInfo

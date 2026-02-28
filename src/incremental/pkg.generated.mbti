@@ -41,7 +41,7 @@ pub struct IncrementalParser {
   mut source : String
   mut tree : @ast.AstNode?
   mut syntax_tree : @seam.SyntaxNode?
-  mut token_buffer : @lexer.TokenBuffer?
+  mut token_buffer : @lexer.TokenBuffer[@token.Token]?
   mut last_reuse_count : Int
   mut last_diagnostics : Array[@core.Diagnostic[@token.Token]]
   // private fields

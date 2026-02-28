@@ -25,7 +25,9 @@ pub fn[T] TokenBuffer::new(
 }
 
 ///|
-pub fn[T] TokenBuffer::get_tokens(self : TokenBuffer[T]) -> Array[@core.TokenInfo[T]] {
+pub fn[T] TokenBuffer::get_tokens(
+  self : TokenBuffer[T],
+) -> Array[@core.TokenInfo[T]] {
   self.tokens
 }
 
@@ -123,8 +125,8 @@ fn[T] TokenBuffer::tokenize_range_impl(
   end : Int,
 ) -> Array[@core.TokenInfo[T]] raise TokenizationError {
   let slice = source[start:end] catch {
-    _ => raise TokenizationError("Invalid range")
-  }
+      _ => raise TokenizationError("Invalid range")
+    }
   let slice_tokens = (self.tokenize_fn)(slice.to_string())
   // tokenize_fn contract: EOF is always last — skip it.
   let result : Array[@core.TokenInfo[T]] = []
