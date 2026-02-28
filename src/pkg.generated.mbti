@@ -3,6 +3,7 @@ package "dowdiness/parser"
 
 import {
   "dowdiness/parser/ast",
+  "dowdiness/parser/core",
   "dowdiness/parser/incremental",
   "dowdiness/parser/token",
 }
@@ -18,7 +19,7 @@ pub fn parse_tree(String) -> @ast.AstNode raise
 
 pub fn parse_with_error_recovery(String) -> (@ast.AstNode, Array[String])
 
-pub fn tokenize(String) -> Array[@token.TokenInfo] raise
+pub fn tokenize(String) -> Array[@core.TokenInfo[@token.Token]] raise
 
 // Errors
 

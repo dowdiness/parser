@@ -226,7 +226,11 @@ test "phase1: incremental tokenize - edit at start (110 tokens)" (b : @bench.T) 
   let new_source = make_token_source_replace(1)
   let edit = @core.Edit::replace(0, 1, 2)
   b.bench(fn() {
-    let buf = @lexer.TokenBuffer::new(source) catch {
+    let buf = @lexer.TokenBuffer::new(
+      source,
+      tokenize_fn=@lexer.tokenize,
+      eof_token=@token.EOF,
+    ) catch {
       _ => abort("benchmark failed")
     }
     let result = buf.update(edit, new_source) catch {
@@ -244,7 +248,11 @@ test "phase1: incremental tokenize - edit in middle (110 tokens)" (b : @bench.T)
   let new_source = make_token_source_replace(28)
   let edit = @core.Edit::replace(126, 128, 128)
   b.bench(fn() {
-    let buf = @lexer.TokenBuffer::new(source) catch {
+    let buf = @lexer.TokenBuffer::new(
+      source,
+      tokenize_fn=@lexer.tokenize,
+      eof_token=@token.EOF,
+    ) catch {
       _ => abort("benchmark failed")
     }
     let result = buf.update(edit, new_source) catch {
@@ -262,7 +270,11 @@ test "phase1: incremental tokenize - edit at end (110 tokens)" (b : @bench.T) {
   let new_source = make_token_source_replace(55)
   let edit = @core.Edit::replace(261, 263, 263)
   b.bench(fn() {
-    let buf = @lexer.TokenBuffer::new(source) catch {
+    let buf = @lexer.TokenBuffer::new(
+      source,
+      tokenize_fn=@lexer.tokenize,
+      eof_token=@token.EOF,
+    ) catch {
       _ => abort("benchmark failed")
     }
     let result = buf.update(edit, new_source) catch {

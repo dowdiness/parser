@@ -61,11 +61,11 @@ fn read_number(input : String, pos : Int, acc : Int) -> (Int, Int) {
 fn tokenize_helper(
   input : String,
   pos : Int,
-  acc : Array[@token.TokenInfo],
-) -> Array[@token.TokenInfo] raise TokenizationError {
+  acc : Array[@core.TokenInfo[@token.Token]],
+) -> Array[@core.TokenInfo[@token.Token]] raise TokenizationError {
   if pos >= input.length() {
     let result = acc
-    result.push(@token.TokenInfo::new(@token.EOF, pos, pos))
+    result.push(@core.TokenInfo::new(@token.EOF, pos, pos))
     result
   } else {
     let c = input.code_unit_at(pos).to_char()
@@ -82,35 +82,35 @@ fn tokenize_helper(
             _ => break
           }
         }
-        acc.push(@token.TokenInfo::new(@token.Whitespace, ws_start, ws_end))
+        acc.push(@core.TokenInfo::new(@token.Whitespace, ws_start, ws_end))
         tokenize_helper(input, ws_end, acc)
       }
       Some('λ') | Some('\\') => {
-        acc.push(@token.TokenInfo::new(@token.Lambda, pos, pos + 1))
+        acc.push(@core.TokenInfo::new(@token.Lambda, pos, pos + 1))
         tokenize_helper(input, pos + 1, acc)
       }
       Some('.') => {
-        acc.push(@token.TokenInfo::new(@token.Dot, pos, pos + 1))
+        acc.push(@core.TokenInfo::new(@token.Dot, pos, pos + 1))
         tokenize_helper(input, pos + 1, acc)
       }
       Some('(') => {
-        acc.push(@token.TokenInfo::new(@token.LeftParen, pos, pos + 1))
+        acc.push(@core.TokenInfo::new(@token.LeftParen, pos, pos + 1))
         tokenize_helper(input, pos + 1, acc)
       }
       Some(')') => {
-        acc.push(@token.TokenInfo::new(@token.RightParen, pos, pos + 1))
+        acc.push(@core.TokenInfo::new(@token.RightParen, pos, pos + 1))
         tokenize_helper(input, pos + 1, acc)
       }
       Some('+') => {
-        acc.push(@token.TokenInfo::new(@token.Plus, pos, pos + 1))
+        acc.push(@core.TokenInfo::new(@token.Plus, pos, pos + 1))
         tokenize_helper(input, pos + 1, acc)
       }
       Some('-') => {
-        acc.push(@token.TokenInfo::new(@token.Minus, pos, pos + 1))
+        acc.push(@core.TokenInfo::new(@token.Minus, pos, pos + 1))
         tokenize_helper(input, pos + 1, acc)
       }
       Some('=') => {
-        acc.push(@token.TokenInfo::new(@token.Eq, pos, pos + 1))
+        acc.push(@core.TokenInfo::new(@token.Eq, pos, pos + 1))
         tokenize_helper(input, pos + 1, acc)
       }
       Some(c) =>
@@ -124,11 +124,11 @@ fn tokenize_helper(
             "in" => @token.Token::In
             _ => @token.Token::Identifier(identifier)
           }
-          acc.push(@token.TokenInfo::new(token, pos, new_pos))
+          acc.push(@core.TokenInfo::new(token, pos, new_pos))
           tokenize_helper(input, new_pos, acc)
         } else if is_numeric(c.to_int()) {
           let (new_pos, number) = read_number(input, pos, 0)
-          acc.push(@token.TokenInfo::new(@token.Integer(number), pos, new_pos))
+          acc.push(@core.TokenInfo::new(@token.Integer(number), pos, new_pos))
           tokenize_helper(input, new_pos, acc)
         } else {
           raise TokenizationError(c.to_string())
@@ -145,7 +145,7 @@ fn tokenize_helper(
 /// Tokenize the input string into an array of tokens with position information
 pub fn tokenize(
   input : String,
-) -> Array[@token.TokenInfo] raise TokenizationError {
+) -> Array[@core.TokenInfo[@token.Token]] raise TokenizationError {
   tokenize_helper(input, 0, [])
 }
 
@@ -155,18 +155,18 @@ pub fn tokenize_range(
   input : String,
   start : Int,
   end : Int,
-) -> Array[@token.TokenInfo] raise TokenizationError {
+) -> Array[@core.TokenInfo[@token.Token]] raise TokenizationError {
   let slice = input[start:end] catch {
       _ => raise TokenizationError("Invalid slice")
     }
   let tokens = tokenize(slice.to_string())
-  let result : Array[@token.TokenInfo] = []
+  let result : Array[@core.TokenInfo[@token.Token]] = []
   for token_info in tokens {
     match token_info.token {
       @token.EOF => ()
       _ =>
         result.push(
-          @token.TokenInfo::new(
+          @core.TokenInfo::new(
             token_info.token,
             token_info.start + start,
             token_info.end + start,

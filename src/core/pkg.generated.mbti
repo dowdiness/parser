@@ -151,6 +151,7 @@ pub struct TokenInfo[T] {
   end : Int
 }
 pub fn[T] TokenInfo::new(T, Int, Int) -> Self[T]
+pub impl[T : Eq] Eq for TokenInfo[T]
 pub impl[T : Show] Show for TokenInfo[T]
 
 // Type aliases

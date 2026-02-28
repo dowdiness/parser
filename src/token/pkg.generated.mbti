@@ -1,12 +1,16 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "dowdiness/parser/token"
 
+import {
+  "dowdiness/parser/core",
+}
+
 // Values
 pub fn print_token(Token) -> String
 
-pub fn print_token_info(TokenInfo) -> String
+pub fn print_token_info(@core.TokenInfo[Token]) -> String
 
-pub fn print_token_infos(Array[TokenInfo]) -> String
+pub fn print_token_infos(Array[@core.TokenInfo[Token]]) -> String
 
 pub fn print_tokens(Array[Token]) -> String
 
@@ -34,16 +38,8 @@ pub(all) enum Token {
 pub impl Eq for Token
 pub impl Show for Token
 
-pub(all) struct TokenInfo {
-  token : Token
-  start : Int
-  end : Int
-}
-pub fn TokenInfo::new(Token, Int, Int) -> Self
-pub impl Eq for TokenInfo
-pub impl Show for TokenInfo
-
 // Type aliases
+pub using @core {type TokenInfo}
 
 // Traits
 

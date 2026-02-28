@@ -45,6 +45,7 @@ Understanding how the layers fit together:
 
 ## Archive (Historical / Completed)
 
+- [archive/completed-phases/2026-02-28-generic-token-buffer.md](archive/completed-phases/2026-02-28-generic-token-buffer.md) — generify TokenBuffer[T] + re-export @token.TokenInfo via pub using
 - [archive/completed-phases/2026-02-28-text-delta-design.md](archive/completed-phases/2026-02-28-text-delta-design.md) — TextDelta → Edit adapter design
 - [archive/completed-phases/2026-02-28-grammar-expansion-let.md](archive/completed-phases/2026-02-28-grammar-expansion-let.md) — expression-level `let` binding implementation
 - [archive/completed-phases/2026-02-28-incremental-parser-cleanup-design.md](archive/completed-phases/2026-02-28-incremental-parser-cleanup-design.md) — IncrementalParser holdover cleanup design

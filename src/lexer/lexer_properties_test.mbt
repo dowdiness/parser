@@ -59,17 +59,21 @@ fn prop_token_buffer_insert(input : (Int, Int, Int, Int)) -> Bool {
     (Some(l), Some(r)) => {
       let new_source = l + insert + r
       let edit = @core.Edit::insert(pos, insert.length())
-      let buffer_res : Result[TokenBuffer, TokenizationError] = try? TokenBuffer::new(
+      let buffer_res = try? TokenBuffer::new(
         base,
+        tokenize_fn=tokenize,
+        eof_token=@token.EOF,
       )
       match buffer_res {
         Ok(buffer) => {
-          let updated_res : Result[Array[@token.TokenInfo], TokenizationError] = try? buffer.update(
-            edit, new_source,
-          )
-          let full_res : Result[Array[@token.TokenInfo], TokenizationError] = try? tokenize(
-            new_source,
-          )
+          let updated_res : Result[
+            Array[@token.TokenInfo[@token.Token]],
+            TokenizationError,
+          ] = try? buffer.update(edit, new_source)
+          let full_res : Result[
+            Array[@token.TokenInfo[@token.Token]],
+            TokenizationError,
+          ] = try? tokenize(new_source)
           match (updated_res, full_res) {
             (Ok(updated), Ok(full)) =>
               @token.print_token_infos(updated) ==
@@ -99,17 +103,21 @@ fn prop_token_buffer_delete(input : (Int, Int, Int)) -> Bool {
     (Some(l), Some(r)) => {
       let new_source = l + r
       let edit = @core.Edit::delete(from, to)
-      let buffer_res : Result[TokenBuffer, TokenizationError] = try? TokenBuffer::new(
+      let buffer_res = try? TokenBuffer::new(
         base,
+        tokenize_fn=tokenize,
+        eof_token=@token.EOF,
       )
       match buffer_res {
         Ok(buffer) => {
-          let updated_res : Result[Array[@token.TokenInfo], TokenizationError] = try? buffer.update(
-            edit, new_source,
-          )
-          let full_res : Result[Array[@token.TokenInfo], TokenizationError] = try? tokenize(
-            new_source,
-          )
+          let updated_res : Result[
+            Array[@token.TokenInfo[@token.Token]],
+            TokenizationError,
+          ] = try? buffer.update(edit, new_source)
+          let full_res : Result[
+            Array[@token.TokenInfo[@token.Token]],
+            TokenizationError,
+          ] = try? tokenize(new_source)
           match (updated_res, full_res) {
             (Ok(updated), Ok(full)) =>
               @token.print_token_infos(updated) ==
@@ -140,17 +148,21 @@ fn prop_token_buffer_replace(input : (Int, Int, Int, Int)) -> Bool {
     (Some(l), Some(r)) => {
       let new_source = l + insert + r
       let edit = @core.Edit::replace(from, to, from + insert.length())
-      let buffer_res : Result[TokenBuffer, TokenizationError] = try? TokenBuffer::new(
+      let buffer_res = try? TokenBuffer::new(
         base,
+        tokenize_fn=tokenize,
+        eof_token=@token.EOF,
       )
       match buffer_res {
         Ok(buffer) => {
-          let updated_res : Result[Array[@token.TokenInfo], TokenizationError] = try? buffer.update(
-            edit, new_source,
-          )
-          let full_res : Result[Array[@token.TokenInfo], TokenizationError] = try? tokenize(
-            new_source,
-          )
+          let updated_res : Result[
+            Array[@token.TokenInfo[@token.Token]],
+            TokenizationError,
+          ] = try? buffer.update(edit, new_source)
+          let full_res : Result[
+            Array[@token.TokenInfo[@token.Token]],
+            TokenizationError,
+          ] = try? tokenize(new_source)
           match (updated_res, full_res) {
             (Ok(updated), Ok(full)) =>
               @token.print_token_infos(updated) ==

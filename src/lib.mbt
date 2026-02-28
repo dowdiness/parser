@@ -40,7 +40,7 @@ pub fn parse_with_error_recovery(
 
 ///|
 /// Tokenize a source string into an array of token info.
-pub fn tokenize(source : String) -> Array[@token.TokenInfo] raise {
+pub fn tokenize(source : String) -> Array[@token.TokenInfo[@token.Token]] raise {
   @lexer.tokenize(source)
 }
 

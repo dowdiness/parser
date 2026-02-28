@@ -19,22 +19,11 @@ pub(all) enum Token {
 } derive(Show, Eq)
 
 ///|
-/// Token with source position information
-pub(all) struct TokenInfo {
-  token : Token
-  start : Int // Start byte offset in source
-  end : Int // End byte offset in source
-} derive(Show, Eq)
-
-///|
-/// Create a new TokenInfo
-pub fn TokenInfo::new(token : Token, start : Int, end : Int) -> TokenInfo {
-  { token, start, end }
-}
+pub using @core {type TokenInfo}
 
 ///|
 /// Print a TokenInfo
-pub fn print_token_info(token_info : TokenInfo) -> String {
+pub fn print_token_info(token_info : TokenInfo[Token]) -> String {
   let token_str = print_token(token_info.token)
   token_str +
   "@" +
@@ -45,7 +34,7 @@ pub fn print_token_info(token_info : TokenInfo) -> String {
 
 ///|
 /// Print an array of TokenInfo
-pub fn print_token_infos(tokens : Array[TokenInfo]) -> String {
+pub fn print_token_infos(tokens : Array[TokenInfo[Token]]) -> String {
   let token_strs = tokens.map(print_token_info)
   "[" + token_strs.join(", ") + "]"
 }
