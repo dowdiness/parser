@@ -64,10 +64,10 @@ fn prop_token_buffer_insert(input : (Int, Int, Int, Int)) -> Bool {
       )
       match buffer_res {
         Ok(buffer) => {
-          let updated_res : Result[Array[@token.TokenInfo], TokenizationError] = try? buffer.update(
+          let updated_res : Result[Array[@token.TokenInfo[@token.Token]], TokenizationError] = try? buffer.update(
             edit, new_source,
           )
-          let full_res : Result[Array[@token.TokenInfo], TokenizationError] = try? tokenize(
+          let full_res : Result[Array[@token.TokenInfo[@token.Token]], TokenizationError] = try? tokenize(
             new_source,
           )
           match (updated_res, full_res) {
@@ -104,10 +104,10 @@ fn prop_token_buffer_delete(input : (Int, Int, Int)) -> Bool {
       )
       match buffer_res {
         Ok(buffer) => {
-          let updated_res : Result[Array[@token.TokenInfo], TokenizationError] = try? buffer.update(
+          let updated_res : Result[Array[@token.TokenInfo[@token.Token]], TokenizationError] = try? buffer.update(
             edit, new_source,
           )
-          let full_res : Result[Array[@token.TokenInfo], TokenizationError] = try? tokenize(
+          let full_res : Result[Array[@token.TokenInfo[@token.Token]], TokenizationError] = try? tokenize(
             new_source,
           )
           match (updated_res, full_res) {
@@ -145,10 +145,10 @@ fn prop_token_buffer_replace(input : (Int, Int, Int, Int)) -> Bool {
       )
       match buffer_res {
         Ok(buffer) => {
-          let updated_res : Result[Array[@token.TokenInfo], TokenizationError] = try? buffer.update(
+          let updated_res : Result[Array[@token.TokenInfo[@token.Token]], TokenizationError] = try? buffer.update(
             edit, new_source,
           )
-          let full_res : Result[Array[@token.TokenInfo], TokenizationError] = try? tokenize(
+          let full_res : Result[Array[@token.TokenInfo[@token.Token]], TokenizationError] = try? tokenize(
             new_source,
           )
           match (updated_res, full_res) {

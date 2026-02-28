@@ -175,7 +175,7 @@ fn IncrementalParser::incremental_reparse(
   self : IncrementalParser,
   source : String,
   damaged_range : @core.Range,
-  tokens : Array[@token.TokenInfo],
+  tokens : Array[@token.TokenInfo[@token.Token]],
 ) -> @ast.AstNode {
   // Create cursor from old CST for subtree reuse
   let cursor = match self.syntax_tree {

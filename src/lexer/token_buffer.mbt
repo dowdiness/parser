@@ -2,7 +2,7 @@
 
 ///|
 pub struct TokenBuffer {
-  mut tokens : Array[@token.TokenInfo]
+  mut tokens : Array[@token.TokenInfo[@token.Token]]
   mut source : String
   mut version : Int
 }
@@ -14,7 +14,7 @@ pub fn TokenBuffer::new(source : String) -> TokenBuffer raise TokenizationError 
 }
 
 ///|
-pub fn TokenBuffer::get_tokens(self : TokenBuffer) -> Array[@token.TokenInfo] {
+pub fn TokenBuffer::get_tokens(self : TokenBuffer) -> Array[@token.TokenInfo[@token.Token]] {
   self.tokens
 }
 
@@ -33,7 +33,7 @@ pub fn TokenBuffer::update(
   self : TokenBuffer,
   edit : @core.Edit,
   new_source : String,
-) -> Array[@token.TokenInfo] raise TokenizationError {
+) -> Array[@token.TokenInfo[@token.Token]] raise TokenizationError {
   let old_tokens = self.tokens
   let old_len = old_tokens.length()
   if old_len == 0 {
@@ -77,7 +77,7 @@ pub fn TokenBuffer::update(
     right_offset = left_offset
   }
   let replacement_tokens = tokenize_range(new_source, left_offset, right_offset)
-  let new_tokens : Array[@token.TokenInfo] = []
+  let new_tokens : Array[@token.TokenInfo[@token.Token]] = []
   for i = 0; i < left_index; i = i + 1 {
     new_tokens.push(old_tokens[i])
   }
@@ -88,14 +88,14 @@ pub fn TokenBuffer::update(
   for i = right_index + 1; i < eof_index; i = i + 1 {
     let t = old_tokens[i]
     new_tokens.push(
-      @token.TokenInfo::new(
+      @core.TokenInfo::new(
         t.token,
         clamp_offset(t.start + delta, new_len),
         clamp_offset(t.end + delta, new_len),
       ),
     )
   }
-  new_tokens.push(@token.TokenInfo::new(@token.EOF, new_len, new_len))
+  new_tokens.push(@core.TokenInfo::new(@token.EOF, new_len, new_len))
   self.tokens = new_tokens
   self.source = new_source
   self.version = self.version + 1
@@ -103,7 +103,7 @@ pub fn TokenBuffer::update(
 }
 
 ///|
-fn find_left_index(tokens : Array[@token.TokenInfo], pos : Int) -> Int {
+fn find_left_index(tokens : Array[@token.TokenInfo[@token.Token]], pos : Int) -> Int {
   let len = tokens.length()
   if len == 0 {
     return 0
@@ -117,7 +117,7 @@ fn find_left_index(tokens : Array[@token.TokenInfo], pos : Int) -> Int {
 }
 
 ///|
-fn find_right_index(tokens : Array[@token.TokenInfo], pos : Int) -> Int {
+fn find_right_index(tokens : Array[@token.TokenInfo[@token.Token]], pos : Int) -> Int {
   let len = tokens.length()
   if len == 0 {
     return 0

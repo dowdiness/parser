@@ -14,7 +14,7 @@ pub fn make_reuse_cursor(
   old_tree : @seam.CstNode,
   damage_start : Int,
   damage_end : Int,
-  tokens : Array[@token.TokenInfo],
+  tokens : Array[@token.TokenInfo[@token.Token]],
 ) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind] {
   @core.ReuseCursor::new(
     old_tree,
@@ -31,7 +31,7 @@ pub fn make_reuse_cursor(
 /// Core parse-and-build with optional reuse cursor. Shared by the incremental
 /// entry points. Returns (tree, errors, reuse_count).
 fn run_parse_incremental(
-  tokens : Array[@token.TokenInfo],
+  tokens : Array[@token.TokenInfo[@token.Token]],
   source : String,
   interner : @seam.Interner?,
   node_interner : @seam.NodeInterner?,
@@ -112,7 +112,7 @@ pub fn parse_cst(source : String) -> @seam.CstNode raise {
 /// Accepts a raw @token.TokenInfo array and builds indexed accessors to avoid
 /// allocating a wrapper Array[@core.TokenInfo].
 fn run_parse(
-  tokens : Array[@token.TokenInfo],
+  tokens : Array[@token.TokenInfo[@token.Token]],
   source : String,
   interner : @seam.Interner?,
   node_interner : @seam.NodeInterner?,
@@ -158,7 +158,7 @@ pub fn parse_cst_recover(
 /// the interner? parameter.
 pub fn parse_cst_with_cursor(
   source : String,
-  tokens : Array[@token.TokenInfo],
+  tokens : Array[@token.TokenInfo[@token.Token]],
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind],
   prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]? = None,
 ) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int) {
@@ -183,7 +183,7 @@ pub fn parse_cst_with_cursor(
 /// effect; the diagnostics are not replayed.
 pub fn parse_cst_recover_with_tokens(
   source : String,
-  tokens : Array[@token.TokenInfo],
+  tokens : Array[@token.TokenInfo[@token.Token]],
   cursor : @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?,
   prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]? = None,
   interner? : @seam.Interner? = None,
