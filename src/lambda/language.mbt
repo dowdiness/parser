@@ -8,7 +8,7 @@ pub struct LambdaLanguage {}
 pub impl @pipeline.Parseable for LambdaLanguage with parse_source(_, s) {
   try @lexer.tokenize(s) catch {
     @core.LexError(msg) => {
-      let (cst, _, _) = @parse.parse_cst_recover_with_tokens("", [], None)
+      let (cst, _, _) = parse_cst_recover_with_tokens("", [], None)
       @pipeline.CstStage::{
         cst,
         diagnostics: ["tokenization: " + msg],
@@ -17,7 +17,7 @@ pub impl @pipeline.Parseable for LambdaLanguage with parse_source(_, s) {
     }
   } noraise {
     tokens => {
-      let (cst, diags, _) = @parse.parse_cst_recover_with_tokens(
+      let (cst, diags, _) = parse_cst_recover_with_tokens(
         s,
         tokens,
         None,
@@ -38,7 +38,7 @@ pub impl @pipeline.Parseable for LambdaLanguage with parse_source(_, s) {
 pub fn lambda_language() -> @pipeline.Language[@ast.AstNode] {
   @pipeline.Language::from(
     LambdaLanguage::{  },
-    to_ast=fn(n) { @parse.syntax_node_to_ast_node(n, Ref::new(0)) },
+    to_ast=fn(n) { syntax_node_to_ast_node(n, Ref::new(0)) },
     on_lex_error=fn(msg) { @ast.AstNode::error(msg, 0, 0) },
   )
 }

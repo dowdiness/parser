@@ -126,7 +126,7 @@ test "LambdaParserDb: parity with parse_cst_to_ast_node" {
   ]
   for source in sources {
     let db = @lambda.LambdaParserDb::new(source)
-    let direct = @parse.parse_cst_to_ast_node(source) catch {
+    let direct = parse_cst_to_ast_node(source) catch {
       _ => abort("unexpected parse error in valid source: " + source)
     }
     assert_eq(@lambda.LambdaParserDb::term(db).to_string(), direct.to_string())
