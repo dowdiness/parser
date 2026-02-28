@@ -467,7 +467,9 @@ test "phase4: let body edit - full reparse, no cursor (baseline)" (b : @bench.T)
   b.bench(fn() {
     let _ = @parse.make_reuse_cursor(old_tree, 13, 14, new_tokens)
     let (tree, _, _) = @parse.parse_cst_recover_with_tokens(
-      new_source, new_tokens, None,
+      new_source,
+      new_tokens,
+      None,
     )
     b.keep(tree)
   })

@@ -41,11 +41,11 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
-- [plans/2026-02-28-text-delta-design.md](plans/2026-02-28-text-delta-design.md) — design for TextDelta → Edit adapter
 - [plans/2026-02-28-text-delta.md](plans/2026-02-28-text-delta.md) — implementation plan for TextDelta → Edit adapter
 
 ## Archive (Historical / Completed)
 
+- [archive/completed-phases/2026-02-28-text-delta-design.md](archive/completed-phases/2026-02-28-text-delta-design.md) — TextDelta → Edit adapter design
 - [archive/completed-phases/2026-02-28-grammar-expansion-let.md](archive/completed-phases/2026-02-28-grammar-expansion-let.md) — expression-level `let` binding implementation
 - [archive/completed-phases/2026-02-28-incremental-parser-cleanup-design.md](archive/completed-phases/2026-02-28-incremental-parser-cleanup-design.md) — IncrementalParser holdover cleanup design
 - [archive/completed-phases/2026-02-28-incremental-parser-cleanup.md](archive/completed-phases/2026-02-28-incremental-parser-cleanup.md) — IncrementalParser holdover cleanup implementation plan
