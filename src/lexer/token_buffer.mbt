@@ -138,31 +138,53 @@ fn[T] TokenBuffer::tokenize_range_impl(
 }
 
 ///|
+/// Binary search (lower_bound): first index where tokens[i].end >= pos.
+/// Returns len-1 if all tokens end before pos.
 fn[T] find_left_index(tokens : Array[@core.TokenInfo[T]], pos : Int) -> Int {
   let len = tokens.length()
   if len == 0 {
     return 0
   }
-  for i = 0; i < len; i = i + 1 {
-    if tokens[i].end >= pos {
-      return i
+  let mut lo = 0
+  let mut hi = len
+  while lo < hi {
+    let mid = lo + (hi - lo) / 2
+    if tokens[mid].end >= pos {
+      hi = mid
+    } else {
+      lo = mid + 1
     }
   }
-  len - 1
+  if lo < len {
+    lo
+  } else {
+    len - 1
+  }
 }
 
 ///|
+/// Binary search (upper_bound - 1): last index where tokens[i].start <= pos.
+/// Returns 0 if all tokens start after pos.
 fn[T] find_right_index(tokens : Array[@core.TokenInfo[T]], pos : Int) -> Int {
   let len = tokens.length()
   if len == 0 {
     return 0
   }
-  for i = len - 1; i >= 0; i = i - 1 {
-    if tokens[i].start <= pos {
-      return i
+  let mut lo = 0
+  let mut hi = len
+  while lo < hi {
+    let mid = lo + (hi - lo) / 2
+    if tokens[mid].start <= pos {
+      lo = mid + 1
+    } else {
+      hi = mid
     }
   }
-  0
+  if lo > 0 {
+    lo - 1
+  } else {
+    0
+  }
 }
 
 ///|

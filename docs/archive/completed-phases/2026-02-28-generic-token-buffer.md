@@ -97,7 +97,7 @@ because `typealias` does not inherit constructors.
 
 Replace the empty file with:
 
-```
+```text
 import {
   "dowdiness/parser/core" @core,
 }
@@ -149,7 +149,7 @@ cat src/lexer/moon.pkg
 ```
 
 If `@core` is not listed, add it:
-```
+```text
 import {
   "dowdiness/parser/token",
   "dowdiness/parser/core" @core,
@@ -508,7 +508,7 @@ let buffer_res = try? TokenBuffer::new(
 
 After v3, benchmarks moon.pkg imports `@lexer` but not `@token`. Add the token package:
 
-```
+```text
 import {
   "dowdiness/parser/core" @core,
   "dowdiness/parser/lexer",

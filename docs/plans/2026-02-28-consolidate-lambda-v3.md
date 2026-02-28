@@ -22,7 +22,7 @@ vtable (mirroring `@pipeline.Language[@Ast]`).
 
 ## Package Dependency Map
 
-```
+```text
 Before:
   src/parser/     ← token, syntax, ast, lexer, core, seam   (lambda grammar + adapters)
   src/lambda/     ← pipeline, lexer, @parse, ast, viz       (thin glue)
@@ -250,7 +250,7 @@ and replaced by calls to `@core.parse_tokens_indexed`. The grammar rules stay in
 
 **Step 1: Update src/lambda/moon.pkg**
 
-```
+```toml
 import {
   "dowdiness/parser/pipeline" @pipeline,
   "dowdiness/parser/lexer",
