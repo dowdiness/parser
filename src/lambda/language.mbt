@@ -7,7 +7,7 @@ pub struct LambdaLanguage {}
 ///|
 pub impl @pipeline.Parseable for LambdaLanguage with parse_source(_, s) {
   try @lexer.tokenize(s) catch {
-    TokenizationError(msg) => {
+    @core.LexError(msg) => {
       let (cst, _, _) = @parse.parse_cst_recover_with_tokens("", [], None)
       @pipeline.CstStage::{
         cst,

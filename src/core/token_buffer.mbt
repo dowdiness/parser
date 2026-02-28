@@ -7,9 +7,9 @@
 
 ///|
 pub struct TokenBuffer[T] {
-  priv tokenize_fn : (String) -> Array[@core.TokenInfo[T]] raise TokenizationError
+  priv tokenize_fn : (String) -> Array[TokenInfo[T]] raise LexError
   priv eof_token : T
-  mut tokens : Array[@core.TokenInfo[T]]
+  mut tokens : Array[TokenInfo[T]]
   mut source : String
   mut version : Int
 }
@@ -17,17 +17,15 @@ pub struct TokenBuffer[T] {
 ///|
 pub fn[T] TokenBuffer::new(
   source : String,
-  tokenize_fn~ : (String) -> Array[@core.TokenInfo[T]] raise TokenizationError,
+  tokenize_fn~ : (String) -> Array[TokenInfo[T]] raise LexError,
   eof_token~ : T,
-) -> TokenBuffer[T] raise TokenizationError {
+) -> TokenBuffer[T] raise LexError {
   let tokens = tokenize_fn(source)
   { tokenize_fn, eof_token, tokens, source, version: 0 }
 }
 
 ///|
-pub fn[T] TokenBuffer::get_tokens(
-  self : TokenBuffer[T],
-) -> Array[@core.TokenInfo[T]] {
+pub fn[T] TokenBuffer::get_tokens(self : TokenBuffer[T]) -> Array[TokenInfo[T]] {
   self.tokens
 }
 
@@ -44,9 +42,9 @@ pub fn[T] TokenBuffer::get_version(self : TokenBuffer[T]) -> Int {
 ///|
 pub fn[T] TokenBuffer::update(
   self : TokenBuffer[T],
-  edit : @core.Edit,
+  edit : Edit,
   new_source : String,
-) -> Array[@core.TokenInfo[T]] raise TokenizationError {
+) -> Array[TokenInfo[T]] raise LexError {
   let old_tokens = self.tokens
   let old_len = old_tokens.length()
   if old_len == 0 {
@@ -90,7 +88,7 @@ pub fn[T] TokenBuffer::update(
   let replacement_tokens = self.tokenize_range_impl(
     new_source, left_offset, right_offset,
   )
-  let new_tokens : Array[@core.TokenInfo[T]] = []
+  let new_tokens : Array[TokenInfo[T]] = []
   for i = 0; i < left_index; i = i + 1 {
     new_tokens.push(old_tokens[i])
   }
@@ -101,14 +99,14 @@ pub fn[T] TokenBuffer::update(
   for i = right_index + 1; i < eof_index; i = i + 1 {
     let t = old_tokens[i]
     new_tokens.push(
-      @core.TokenInfo::new(
+      TokenInfo::new(
         t.token,
         clamp_offset(t.start + delta, new_len),
         clamp_offset(t.end + delta, new_len),
       ),
     )
   }
-  new_tokens.push(@core.TokenInfo::new(self.eof_token, new_len, new_len))
+  new_tokens.push(TokenInfo::new(self.eof_token, new_len, new_len))
   self.tokens = new_tokens
   self.source = new_source
   self.version = self.version + 1
@@ -123,16 +121,14 @@ fn[T] TokenBuffer::tokenize_range_impl(
   source : String,
   start : Int,
   end : Int,
-) -> Array[@core.TokenInfo[T]] raise TokenizationError {
-  let slice = source[start:end] catch {
-      _ => raise TokenizationError("Invalid range")
-    }
+) -> Array[TokenInfo[T]] raise LexError {
+  let slice = source[start:end] catch { _ => raise LexError("Invalid range") }
   let slice_tokens = (self.tokenize_fn)(slice.to_string())
   // tokenize_fn contract: EOF is always last — skip it.
-  let result : Array[@core.TokenInfo[T]] = []
+  let result : Array[TokenInfo[T]] = []
   for i = 0; i < slice_tokens.length() - 1; i = i + 1 {
     let t = slice_tokens[i]
-    result.push(@core.TokenInfo::new(t.token, t.start + start, t.end + start))
+    result.push(TokenInfo::new(t.token, t.start + start, t.end + start))
   }
   result
 }
@@ -140,7 +136,7 @@ fn[T] TokenBuffer::tokenize_range_impl(
 ///|
 /// Binary search (lower_bound): first index where tokens[i].end >= pos.
 /// Returns len-1 if all tokens end before pos.
-fn[T] find_left_index(tokens : Array[@core.TokenInfo[T]], pos : Int) -> Int {
+fn[T] find_left_index(tokens : Array[TokenInfo[T]], pos : Int) -> Int {
   let len = tokens.length()
   if len == 0 {
     return 0
@@ -165,7 +161,7 @@ fn[T] find_left_index(tokens : Array[@core.TokenInfo[T]], pos : Int) -> Int {
 ///|
 /// Binary search (upper_bound - 1): last index where tokens[i].start <= pos.
 /// Returns 0 if all tokens start after pos.
-fn[T] find_right_index(tokens : Array[@core.TokenInfo[T]], pos : Int) -> Int {
+fn[T] find_right_index(tokens : Array[TokenInfo[T]], pos : Int) -> Int {
   let len = tokens.length()
   if len == 0 {
     return 0
@@ -188,7 +184,7 @@ fn[T] find_right_index(tokens : Array[@core.TokenInfo[T]], pos : Int) -> Int {
 }
 
 ///|
-fn map_start_pos(pos : Int, edit : @core.Edit) -> Int {
+fn map_start_pos(pos : Int, edit : Edit) -> Int {
   if pos <= edit.start {
     pos
   } else if pos >= edit.old_end() {
@@ -199,7 +195,7 @@ fn map_start_pos(pos : Int, edit : @core.Edit) -> Int {
 }
 
 ///|
-fn map_end_pos(pos : Int, edit : @core.Edit) -> Int {
+fn map_end_pos(pos : Int, edit : Edit) -> Int {
   if pos < edit.start {
     pos
   } else if pos >= edit.old_end() {

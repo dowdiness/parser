@@ -1,11 +1,6 @@
 // Lexer for Lambda Calculus
 
 ///|
-pub suberror TokenizationError {
-  TokenizationError(String)
-}
-
-///|
 fn is_big_alphabet(code : Int) -> Bool {
   code >= 65 && code <= 90
 }
@@ -62,7 +57,7 @@ fn tokenize_helper(
   input : String,
   pos : Int,
   acc : Array[@core.TokenInfo[@token.Token]],
-) -> Array[@core.TokenInfo[@token.Token]] raise TokenizationError {
+) -> Array[@core.TokenInfo[@token.Token]] raise @core.LexError {
   if pos >= input.length() {
     let result = acc
     result.push(@core.TokenInfo::new(@token.EOF, pos, pos))
@@ -131,10 +126,10 @@ fn tokenize_helper(
           acc.push(@core.TokenInfo::new(@token.Integer(number), pos, new_pos))
           tokenize_helper(input, new_pos, acc)
         } else {
-          raise TokenizationError(c.to_string())
+          raise @core.LexError(c.to_string())
         }
       None =>
-        raise TokenizationError(
+        raise @core.LexError(
           "Error to read character at position ".to_string() + pos.to_string(),
         )
     }
@@ -145,7 +140,7 @@ fn tokenize_helper(
 /// Tokenize the input string into an array of tokens with position information
 pub fn tokenize(
   input : String,
-) -> Array[@core.TokenInfo[@token.Token]] raise TokenizationError {
+) -> Array[@core.TokenInfo[@token.Token]] raise @core.LexError {
   tokenize_helper(input, 0, [])
 }
 
@@ -155,9 +150,9 @@ pub fn tokenize_range(
   input : String,
   start : Int,
   end : Int,
-) -> Array[@core.TokenInfo[@token.Token]] raise TokenizationError {
+) -> Array[@core.TokenInfo[@token.Token]] raise @core.LexError {
   let slice = input[start:end] catch {
-      _ => raise TokenizationError("Invalid slice")
+      _ => raise @core.LexError("Invalid slice")
     }
   let tokens = tokenize(slice.to_string())
   let result : Array[@core.TokenInfo[@token.Token]] = []

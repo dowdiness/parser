@@ -41,10 +41,10 @@ Like `parse_cst` but returns error nodes instead of raising, paired with a diagn
 ## 2. Tokenization
 
 ```moonbit
-pub fn tokenize(String) -> Array[Token] raise TokenizationError
+pub fn tokenize(String) -> Array[Token] raise @core.LexError
 ```
 
-Converts an input string into an array of tokens. Raises `TokenizationError` if the input contains invalid characters.
+Converts an input string into an array of tokens. Raises `@core.LexError` if the input contains invalid characters.
 
 **Example:**
 
@@ -93,12 +93,12 @@ Converts an array of tokens to a bracketed, comma-separated string.
 
 ## 4. Error Types
 
-### `TokenizationError`
+### `@core.LexError`
 
 Raised when the lexer encounters an invalid character or encoding issue.
 
 ```moonbit
-pub suberror TokenizationError String
+pub(all) suberror LexError String  // defined in @core
 ```
 
 **Example:**
@@ -107,7 +107,7 @@ pub suberror TokenizationError String
 try {
   let result = tokenize("@invalid")
 } catch {
-  TokenizationError(msg) => println("Tokenization failed: " + msg)
+  @core.LexError(msg) => println("Lex error: " + msg)
 }
 ```
 

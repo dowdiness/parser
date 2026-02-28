@@ -139,12 +139,12 @@ fn run_parse(
 
 ///|
 /// Recovering: returns tree with ErrorNodes + diagnostic list.
-/// Only raises for TokenizationError (unrecoverable).
+/// Only raises for LexError (unrecoverable).
 pub fn parse_cst_recover(
   source : String,
   interner? : @seam.Interner? = None,
   node_interner? : @seam.NodeInterner? = None,
-) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @lexer.TokenizationError {
+) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @core.LexError {
   let tokens = @lexer.tokenize(source)
   run_parse(tokens, source, interner, node_interner)
 }

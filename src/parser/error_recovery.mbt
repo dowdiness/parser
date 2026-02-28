@@ -8,7 +8,7 @@ pub fn parse_with_error_recovery(
 ) -> (@ast.AstNode, Array[String]) {
   let errors : Array[String] = []
   let result = parse_cst_recover(input) catch {
-    @lexer.TokenizationError(msg) => {
+    @core.LexError(msg) => {
       let error_msg = "Tokenization error: " + msg
       errors.push(error_msg)
       return (@ast.AstNode::error(error_msg, 0, 0), errors)

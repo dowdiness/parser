@@ -4,7 +4,7 @@
 // ── Lex-error routing ────────────────────────────────────────────────────────
 
 ///|
-/// "@" triggers TokenizationError; is_lex_error must be set on the CstStage
+/// "@" triggers @core.LexError; is_lex_error must be set on the CstStage
 /// so ParserDb::term routes to on_lex_error rather than to_ast.
 test "LambdaParserDb: lex error sets is_lex_error on CstStage" {
   let db = @lambda.LambdaParserDb::new("@invalid")

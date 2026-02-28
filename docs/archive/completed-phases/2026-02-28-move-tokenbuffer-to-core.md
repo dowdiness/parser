@@ -1,5 +1,7 @@
 # Move TokenBuffer[T] + LexError to @core
 
+**Status:** Complete
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Split `src/lexer/` into generic infrastructure (`TokenBuffer[T]`, `LexError` → `@core`)
