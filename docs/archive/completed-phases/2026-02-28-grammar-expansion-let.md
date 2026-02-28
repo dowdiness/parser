@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+**Status:** Complete
+
 **Goal:** Add `let x = e in body` as a first-class expression form to the lambda calculus grammar, producing a `Let(VarName, Term, Term)` term and `AstKind::Let(String)` positioned node.
 
 **Architecture:** New `parse_let_expr` function inserted between `parse_expression` and
