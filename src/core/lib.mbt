@@ -63,6 +63,13 @@ pub struct Diagnostic[T] {
 } derive(Show)
 
 ///|
+/// Lex error raised by a tokenize_fn when the source contains unrecognizable input.
+/// Generic replacement for language-specific tokenization error types.
+pub suberror LexError {
+  LexError(String)
+}
+
+///|
 /// Describes one language to the generic parser infrastructure.
 /// Create one instance at module init — it is reused across all parses.
 ///
