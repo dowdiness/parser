@@ -94,6 +94,7 @@ let test_spec : LanguageSpec[TestTok, TestKind] = {
       _ => false
     }
   },
+  parse_root: fn(_) { () },
 }
 
 ///|
