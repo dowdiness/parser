@@ -15,6 +15,7 @@ Understanding how the layers fit together:
 - [architecture/language.md](architecture/language.md) — grammar, syntax, Token/Term data types
 - [architecture/seam-model.md](architecture/seam-model.md) — `CstNode`/`SyntaxNode` two-tree model
 - [architecture/generic-parser.md](architecture/generic-parser.md) — `LanguageSpec`, `ParserContext` API
+- [architecture/polymorphism-patterns.md](architecture/polymorphism-patterns.md) — choosing between generic, trait object, struct-of-closures, defunctionalization
 
 ## API Reference
 
