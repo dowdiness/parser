@@ -2,7 +2,5 @@ import {
   "dowdiness/parser/token",
   "dowdiness/parser/ast",
   "dowdiness/parser/lexer",
-  "dowdiness/parser/parser" @parse,
-  "dowdiness/parser/incremental",
   "dowdiness/parser/lambda" @lambda,
 }

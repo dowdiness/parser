@@ -46,4 +46,5 @@ let lambda_spec : @core.LanguageSpec[@token.Token, @syntax.SyntaxKind] = @core.L
         }
     }
   },
+  parse_root=parse_lambda_root,
 )

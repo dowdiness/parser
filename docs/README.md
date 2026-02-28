@@ -15,6 +15,7 @@ Understanding how the layers fit together:
 - [architecture/language.md](architecture/language.md) — grammar, syntax, Token/Term data types
 - [architecture/seam-model.md](architecture/seam-model.md) — `CstNode`/`SyntaxNode` two-tree model
 - [architecture/generic-parser.md](architecture/generic-parser.md) — `LanguageSpec`, `ParserContext` API
+- [architecture/polymorphism-patterns.md](architecture/polymorphism-patterns.md) — choosing between generic, trait object, struct-of-closures, defunctionalization
 
 ## API Reference
 
@@ -41,11 +42,11 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
-- [plans/2026-02-28-consolidate-lambda-v3.md](plans/2026-02-28-consolidate-lambda-v3.md) — consolidate lambda package + generic IncrementalParser
 - [plans/2026-02-28-text-delta.md](plans/2026-02-28-text-delta.md) — implementation plan for TextDelta → Edit adapter
 
 ## Archive (Historical / Completed)
 
+- [archive/completed-phases/2026-02-28-consolidate-lambda-v3.md](archive/completed-phases/2026-02-28-consolidate-lambda-v3.md) — consolidate lambda package + generic IncrementalParser
 - [archive/completed-phases/2026-02-28-move-tokenbuffer-to-core.md](archive/completed-phases/2026-02-28-move-tokenbuffer-to-core.md) — move TokenBuffer[T] + LexError to @core for multi-language foundation
 - [archive/completed-phases/2026-02-28-generic-token-buffer.md](archive/completed-phases/2026-02-28-generic-token-buffer.md) — generify TokenBuffer[T] + re-export @token.TokenInfo via pub using
 - [archive/completed-phases/2026-02-28-text-delta-design.md](archive/completed-phases/2026-02-28-text-delta-design.md) — TextDelta → Edit adapter design

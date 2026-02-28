@@ -4,21 +4,21 @@
 /// Verify parse result is structurally unchanged after adding the interner.
 /// The tree printed form must equal a full reparse with no interner.
 test "Interner: initial parse result unchanged with interner" {
-  let parser = IncrementalParser::new("λf.λx.f (f x)")
+  let parser = LambdaIncrementalParser::new("λf.λx.f (f x)")
   let tree = parser.parse()
-  let full_tree = @parse.parse_tree("λf.λx.f (f x)")
+  let full_tree = parse_tree("λf.λx.f (f x)")
   inspect(@ast.print_ast_node(tree), content=@ast.print_ast_node(full_tree))
 }
 
 ///|
 /// Verify incremental edit result is structurally unchanged with interner.
 test "Interner: edit result unchanged with interner" {
-  let parser = IncrementalParser::new("λx.x + 1")
+  let parser = LambdaIncrementalParser::new("λx.x + 1")
   let _ = parser.parse()
 
   let edit = @core.Edit::replace(7, 8, 8) // "1" -> "2"
   let incr_tree = parser.edit(edit, "λx.x + 2")
-  let full_tree = @parse.parse_tree("λx.x + 2")
+  let full_tree = parse_tree("λx.x + 2")
   inspect(
     @ast.print_ast_node(incr_tree),
     content=@ast.print_ast_node(full_tree),
@@ -32,7 +32,7 @@ test "Interner: edit result unchanged with interner" {
 test "Interner: size bounded by vocabulary" {
   // Source with many repeated tokens: 5 copies of "x" and 4 copies of "+"
   // Vocabulary is only 2 distinct token types: (Ident, "x") and (Plus, "+")
-  let parser = IncrementalParser::new("x + x + x + x + x")
+  let parser = LambdaIncrementalParser::new("x + x + x + x + x")
   let _ = parser.parse()
 
   // The interner must hold no more than the number of distinct (kind, text)
@@ -46,7 +46,7 @@ test "Interner: size bounded by vocabulary" {
 /// Verify interner size does not grow when re-parsing identical source.
 /// After a no-op edit the vocabulary is the same, so size must not increase.
 test "Interner: size does not grow on identical re-parse" {
-  let parser = IncrementalParser::new("λx.x")
+  let parser = LambdaIncrementalParser::new("λx.x")
   let _ = parser.parse()
   let size_after_initial = parser.interner_size()
 
@@ -62,7 +62,7 @@ test "Interner: size does not grow on identical re-parse" {
 ///|
 /// Verify interner size stays positive (tokens are interned) after a parse.
 test "Interner: size is positive after non-empty parse" {
-  let parser = IncrementalParser::new("x")
+  let parser = LambdaIncrementalParser::new("x")
   let _ = parser.parse()
   inspect(parser.interner_size() > 0, content="true")
 }

@@ -157,14 +157,14 @@ test "differential-fast: deterministic random edit sequences" {
   for case_i = 0; case_i < 30; case_i = case_i + 1 {
     let mut seed = 17 + case_i * 97
     let mut source = idf_make_source(seed, false)
-    let parser = IncrementalParser::new(source)
+    let parser = LambdaIncrementalParser::new(source)
     let _ = parser.parse()
     for edit_i = 0; edit_i < 8; edit_i = edit_i + 1 {
       let (new_source, edit, next_seed) = idf_apply_random_edit(
         source, seed, false,
       )
       let incremental = parser.edit(edit, new_source)
-      let (full, errors) = @parse.parse_with_error_recovery(new_source)
+      let (full, errors) = parse_with_error_recovery(new_source)
       // Phase 4 correctness today is strongest on well-formed inputs.
       if errors.length() == 0 {
         idf_assert_incremental_matches_full(
@@ -188,14 +188,14 @@ test "differential-fast: malformed input sequences terminate" {
   for case_i = 0; case_i < 20; case_i = case_i + 1 {
     let mut seed = 43 + case_i * 131
     let mut source = idf_make_source(seed, true)
-    let parser = IncrementalParser::new(source)
+    let parser = LambdaIncrementalParser::new(source)
     let _ = parser.parse()
     for edit_i = 0; edit_i < 8; edit_i = edit_i + 1 {
       let (new_source, edit, next_seed) = idf_apply_random_edit(
         source, seed, true,
       )
       let incremental = parser.edit(edit, new_source)
-      let (_full, _errors) = @parse.parse_with_error_recovery(new_source)
+      let (_full, _errors) = parse_with_error_recovery(new_source)
       // If we reached this point, both paths terminated without panic.
       assert_true(incremental.node_id >= 0)
       source = new_source
@@ -206,7 +206,7 @@ test "differential-fast: malformed input sequences terminate" {
     let repair = "x + 1"
     let repair_edit = @core.Edit::replace(0, source.length(), repair.length())
     let repaired = parser.edit(repair_edit, repair)
-    let full_repaired = @parse.parse_tree(repair)
+    let full_repaired = parse_tree(repair)
     idf_assert_incremental_matches_full(
       repaired,
       full_repaired,
@@ -222,14 +222,14 @@ test "differential-long: larger deterministic random edit sequences" {
   for case_i = 0; case_i < 80; case_i = case_i + 1 {
     let mut seed = 101 + case_i * 193
     let mut source = idf_make_source(seed, false)
-    let parser = IncrementalParser::new(source)
+    let parser = LambdaIncrementalParser::new(source)
     let _ = parser.parse()
     for edit_i = 0; edit_i < 16; edit_i = edit_i + 1 {
       let (new_source, edit, next_seed) = idf_apply_random_edit(
         source, seed, false,
       )
       let incremental = parser.edit(edit, new_source)
-      let (full, errors) = @parse.parse_with_error_recovery(new_source)
+      let (full, errors) = parse_with_error_recovery(new_source)
       if errors.length() == 0 {
         idf_assert_incremental_matches_full(
           incremental,

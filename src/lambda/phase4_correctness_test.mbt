@@ -28,7 +28,7 @@ test "phase4: correctness on 50+ token input - localized edit" {
   for letter in letters {
     source = source + " + " + letter
   }
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Edit only the last letter "z" -> "1"
@@ -36,7 +36,7 @@ test "phase4: correctness on 50+ token input - localized edit" {
   let edit = @core.Edit::replace(len - 1, len, len)
   let new_source = source[0:len - 1].to_string() + "1"
   let incr_tree = parser.edit(edit, new_source)
-  let full_tree = @parse.parse_tree(new_source)
+  let full_tree = parse_tree(new_source)
 
   // Core invariant: incremental must match full reparse
   inspect(
@@ -49,13 +49,13 @@ test "phase4: correctness on 50+ token input - localized edit" {
 test "phase4: reuse on application chain" {
   // Application chain: "f a b c d e" (6 identifiers forming App(App(...)))
   let source = "f a b c d e"
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Edit only the last identifier "e" -> "x"
   let edit = @core.Edit::replace(10, 11, 11)
   let incr_tree = parser.edit(edit, "f a b c d x")
-  let full_tree = @parse.parse_tree("f a b c d x")
+  let full_tree = parse_tree("f a b c d x")
 
   // Must match full reparse
   inspect(
@@ -68,14 +68,14 @@ test "phase4: reuse on application chain" {
 test "phase4: reuse on nested lambdas" {
   // Nested lambdas: "\a.\b.\c.\d.x"
   let source = "λa.λb.λc.λd.x"
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Edit only the body "x" -> "y"
   let len = source.length()
   let edit = @core.Edit::replace(len - 1, len, len)
   let incr_tree = parser.edit(edit, "λa.λb.λc.λd.y")
-  let full_tree = @parse.parse_tree("λa.λb.λc.λd.y")
+  let full_tree = parse_tree("λa.λb.λc.λd.y")
 
   // Must match full reparse
   inspect(
@@ -87,7 +87,7 @@ test "phase4: reuse on nested lambdas" {
 ///|
 test "phase4: reuse preserves correctness on complex expression" {
   let source = "λf.λx.if f x then x + 1 else x - 1"
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Edit only the "1" in "x + 1" -> "2"
@@ -96,7 +96,7 @@ test "phase4: reuse preserves correctness on complex expression" {
   let edit = @core.Edit::replace(22, 23, 23)
   let new_source = "λf.λx.if f x then x + 2 else x - 1"
   let incr_tree = parser.edit(edit, new_source)
-  let full_tree = @parse.parse_tree(new_source)
+  let full_tree = parse_tree(new_source)
 
   // Must match full reparse
   inspect(
@@ -112,13 +112,13 @@ test "phase4: reuse preserves correctness on complex expression" {
 ///|
 test "phase4: edit at binary operator boundary" {
   let source = "a + b - c"
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Change "-" to "+"
   let edit = @core.Edit::replace(6, 7, 7)
   let incr_tree = parser.edit(edit, "a + b + c")
-  let full_tree = @parse.parse_tree("a + b + c")
+  let full_tree = parse_tree("a + b + c")
   inspect(
     @ast.print_ast_node(incr_tree),
     content=@ast.print_ast_node(full_tree),
@@ -129,14 +129,14 @@ test "phase4: edit at binary operator boundary" {
 test "phase4: edit changes structure - app to binary" {
   // This tests the trailing context check from ROADMAP 4.2.1
   let source = "x + y z" // Bop(Plus, x, App(y, z))
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Change space to " - " making it "x + y - z"
   // This changes the structure entirely
   let edit = @core.Edit::replace(5, 6, 8)
   let incr_tree = parser.edit(edit, "x + y - z")
-  let full_tree = @parse.parse_tree("x + y - z")
+  let full_tree = parse_tree("x + y - z")
 
   // Must match full reparse - trailing context check should prevent false reuse
   inspect(
@@ -148,13 +148,13 @@ test "phase4: edit changes structure - app to binary" {
 ///|
 test "phase4: edit changes app to standalone var" {
   let source = "f x" // App(f, x)
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Delete " x" making it just "f"
   let edit = @core.Edit::delete(1, 3)
   let incr_tree = parser.edit(edit, "f")
-  let full_tree = @parse.parse_tree("f")
+  let full_tree = parse_tree("f")
   inspect(
     @ast.print_ast_node(incr_tree),
     content=@ast.print_ast_node(full_tree),
@@ -164,13 +164,13 @@ test "phase4: edit changes app to standalone var" {
 ///|
 test "phase4: edit extends expression" {
   let source = "x" // Var(x)
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Append " y" making it "x y"
   let edit = @core.Edit::insert(1, 2)
   let incr_tree = parser.edit(edit, "x y")
-  let full_tree = @parse.parse_tree("x y")
+  let full_tree = parse_tree("x y")
   inspect(
     @ast.print_ast_node(incr_tree),
     content=@ast.print_ast_node(full_tree),
@@ -183,25 +183,25 @@ test "phase4: edit extends expression" {
 
 ///|
 test "phase4: multiple sequential edits maintain correctness" {
-  let parser = IncrementalParser::new("a + b + c")
+  let parser = LambdaIncrementalParser::new("a + b + c")
   let _ = parser.parse()
 
   // Edit 1: change "a" to "1"
   let edit1 = @core.Edit::replace(0, 1, 1)
   let tree1 = parser.edit(edit1, "1 + b + c")
-  let full1 = @parse.parse_tree("1 + b + c")
+  let full1 = parse_tree("1 + b + c")
   inspect(@ast.print_ast_node(tree1), content=@ast.print_ast_node(full1))
 
   // Edit 2: change "b" to "2"
   let edit2 = @core.Edit::replace(4, 5, 5)
   let tree2 = parser.edit(edit2, "1 + 2 + c")
-  let full2 = @parse.parse_tree("1 + 2 + c")
+  let full2 = parse_tree("1 + 2 + c")
   inspect(@ast.print_ast_node(tree2), content=@ast.print_ast_node(full2))
 
   // Edit 3: change "c" to "3"
   let edit3 = @core.Edit::replace(8, 9, 9)
   let tree3 = parser.edit(edit3, "1 + 2 + 3")
-  let full3 = @parse.parse_tree("1 + 2 + 3")
+  let full3 = parse_tree("1 + 2 + 3")
   inspect(@ast.print_ast_node(tree3), content=@ast.print_ast_node(full3))
 }
 
@@ -209,7 +209,7 @@ test "phase4: multiple sequential edits maintain correctness" {
 test "phase4: typing simulation - building expression char by char" {
   // Simulate typing "1 + 2" starting from "1"
   // (Avoid incomplete lambda expressions which produce errors)
-  let parser = IncrementalParser::new("1")
+  let parser = LambdaIncrementalParser::new("1")
   let _ = parser.parse()
 
   // Type " +"
@@ -221,7 +221,7 @@ test "phase4: typing simulation - building expression char by char" {
   // Type " 2"
   let edit2 = @core.Edit::insert(3, 2)
   let tree2 = parser.edit(edit2, "1 + 2")
-  let full = @parse.parse_tree("1 + 2")
+  let full = parse_tree("1 + 2")
   inspect(@ast.print_ast_node(tree2), content=@ast.print_ast_node(full))
 }
 
@@ -232,13 +232,13 @@ test "phase4: typing simulation - building expression char by char" {
 ///|
 test "phase4: empty to non-empty" {
   // Note: empty string may cause issues, start with minimal valid input
-  let parser = IncrementalParser::new("x")
+  let parser = LambdaIncrementalParser::new("x")
   let _ = parser.parse()
 
   // Replace with completely different expression
   let edit = @core.Edit::replace(0, 1, 13)
   let incr_tree = parser.edit(edit, "λf.λx.f (f x)")
-  let full_tree = @parse.parse_tree("λf.λx.f (f x)")
+  let full_tree = parse_tree("λf.λx.f (f x)")
   inspect(
     @ast.print_ast_node(incr_tree),
     content=@ast.print_ast_node(full_tree),
@@ -248,13 +248,13 @@ test "phase4: empty to non-empty" {
 ///|
 test "phase4: whitespace-only changes" {
   let source = "x+y"
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Add spaces: "x + y"
   let edit = @core.Edit::replace(0, 3, 5)
   let incr_tree = parser.edit(edit, "x + y")
-  let full_tree = @parse.parse_tree("x + y")
+  let full_tree = parse_tree("x + y")
   inspect(
     @ast.print_ast_node(incr_tree),
     content=@ast.print_ast_node(full_tree),
@@ -264,13 +264,13 @@ test "phase4: whitespace-only changes" {
 ///|
 test "phase4: parentheses changes" {
   let source = "x + y"
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Wrap in parens: "(x + y)"
   let edit = @core.Edit::replace(0, 5, 7)
   let incr_tree = parser.edit(edit, "(x + y)")
-  let full_tree = @parse.parse_tree("(x + y)")
+  let full_tree = parse_tree("(x + y)")
   inspect(
     @ast.print_ast_node(incr_tree),
     content=@ast.print_ast_node(full_tree),
@@ -280,13 +280,13 @@ test "phase4: parentheses changes" {
 ///|
 test "phase4: if-then-else edit in condition" {
   let source = "if x then 1 else 2"
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Change condition "x" to "y"
   let edit = @core.Edit::replace(3, 4, 4)
   let incr_tree = parser.edit(edit, "if y then 1 else 2")
-  let full_tree = @parse.parse_tree("if y then 1 else 2")
+  let full_tree = parse_tree("if y then 1 else 2")
   inspect(
     @ast.print_ast_node(incr_tree),
     content=@ast.print_ast_node(full_tree),
@@ -296,13 +296,13 @@ test "phase4: if-then-else edit in condition" {
 ///|
 test "phase4: if-then-else edit in else branch" {
   let source = "if x then 1 else 2"
-  let parser = IncrementalParser::new(source)
+  let parser = LambdaIncrementalParser::new(source)
   let _ = parser.parse()
 
   // Change else branch "2" to "3"
   let edit = @core.Edit::replace(17, 18, 18)
   let incr_tree = parser.edit(edit, "if x then 1 else 3")
-  let full_tree = @parse.parse_tree("if x then 1 else 3")
+  let full_tree = parse_tree("if x then 1 else 3")
   inspect(
     @ast.print_ast_node(incr_tree),
     content=@ast.print_ast_node(full_tree),

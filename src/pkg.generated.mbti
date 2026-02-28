@@ -4,14 +4,14 @@ package "dowdiness/parser"
 import {
   "dowdiness/parser/ast",
   "dowdiness/parser/core",
-  "dowdiness/parser/incremental",
+  "dowdiness/parser/lambda",
   "dowdiness/parser/token",
 }
 
 // Values
 pub fn ast_node_to_dot(@ast.AstNode) -> String
 
-pub fn incremental(String) -> @incremental.IncrementalParser
+pub fn incremental(String) -> @lambda.LambdaIncrementalParser
 
 pub fn parse(String) -> @ast.Term raise
 

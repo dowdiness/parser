@@ -1,5 +1,7 @@
 # Consolidate Lambda Package + Generic IncrementalParser (v3)
 
+**Status:** Complete
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Move all lambda-specific code from `src/parser/` into `src/lambda/`. Make

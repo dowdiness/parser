@@ -1,8 +1,16 @@
 import {
-  "dowdiness/parser/core" @core,
   "dowdiness/parser/pipeline" @pipeline,
   "dowdiness/parser/lexer",
-  "dowdiness/parser/parser" @parse,
   "dowdiness/parser/ast",
   "dowdiness/parser/viz" @viz,
+  "dowdiness/parser/token",
+  "dowdiness/parser/syntax",
+  "dowdiness/parser/core" @core,
+  "dowdiness/seam" @seam,
+  "moonbitlang/core/strconv",
+  "dowdiness/parser/incremental" @incremental,
 }
+
+import {
+  "moonbitlang/core/quickcheck",
+} for "test"

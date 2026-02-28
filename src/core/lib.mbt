@@ -97,6 +97,12 @@ pub struct LanguageSpec[T, K] {
   raw_is_trivia : (@seam.RawKind) -> Bool
   raw_is_error : (@seam.RawKind) -> Bool
   cst_token_matches : (@seam.RawKind, String, T) -> Bool
+  // Grammar entry point. Called by parse_tokens_indexed to drive the full parse.
+  // Receives a fully-configured ParserContext; parse_tokens_indexed calls
+  // flush_trivia after parse_root returns, so parse_root need not call it.
+  // Set to a no-op by default for call sites (e.g. tests) that use
+  // parse_with() with an explicit grammar parameter instead.
+  parse_root : (ParserContext[T, K]) -> Unit
 }
 
 ///|
@@ -122,6 +128,7 @@ pub fn[T, K] LanguageSpec::new(
   cst_token_matches? : (@seam.RawKind, String, T) -> Bool = fn(_, _, _) {
     false
   },
+  parse_root? : (ParserContext[T, K]) -> Unit = _ => (),
 ) -> LanguageSpec[T, K] {
   {
     kind_to_raw,
@@ -136,6 +143,7 @@ pub fn[T, K] LanguageSpec::new(
     raw_is_trivia,
     raw_is_error,
     cst_token_matches,
+    parse_root,
   }
 }
 
@@ -802,6 +810,7 @@ fn make_test_fixtures() -> (LanguageSpec[String, Int], Array[TokenInfo[String]])
     raw_is_trivia: fn(_) { false },
     raw_is_error: fn(_) { false },
     cst_token_matches: fn(_, _, _) { false },
+    parse_root: _ => (),
   }
   let tokens = [
     { token: "a", start: 0, end: 1 },
@@ -846,6 +855,7 @@ test "peek skips trivia tokens" {
     raw_is_trivia: fn(_) { false },
     raw_is_error: fn(_) { false },
     cst_token_matches: fn(_, _, _) { false },
+    parse_root: _ => (),
   }
   let tokens = [
     { token: " ", start: 0, end: 1 },
@@ -894,4 +904,76 @@ pub fn[T, K] parse_with(
     trivia_kind=Some((spec.kind_to_raw)(spec.whitespace_kind)),
   )
   (tree, ctx.errors)
+}
+
+///|
+/// Build the CST from an event buffer using spec metadata for root and trivia kinds.
+/// Generic replacement for the lambda-specific select_build_tree in src/parser/.
+fn[T, K] build_tree_generic(
+  buf : @seam.EventBuffer,
+  spec : LanguageSpec[T, K],
+  interner : @seam.Interner?,
+  node_interner : @seam.NodeInterner?,
+) -> @seam.CstNode {
+  let ws = (spec.kind_to_raw)(spec.whitespace_kind)
+  let root = (spec.kind_to_raw)(spec.root_kind)
+  match (interner, node_interner) {
+    (Some(i), Some(ni)) =>
+      buf.build_tree_fully_interned(root, i, ni, trivia_kind=Some(ws))
+    (Some(i), None) => buf.build_tree_interned(root, i, trivia_kind=Some(ws))
+    (None, Some(_)) =>
+      abort("build_tree_generic: node_interner requires interner to be Some")
+    (None, None) => buf.build_tree(root, trivia_kind=Some(ws))
+  }
+}
+
+///|
+/// Generic incremental parse driver. Replaces the lambda-specific
+/// `run_parse` / `run_parse_incremental` pair in `src/parser/`.
+///
+/// Accepts indexed token accessors (avoids O(n) Array[TokenInfo[T]] allocation
+/// when the caller already has tokens in a language-specific layout).
+/// Uses `spec.parse_root` as the grammar entry point.
+///
+/// Returns `(CstNode, diagnostics, reuse_count)`.
+/// reuse_count is 0 for non-incremental calls (cursor=None).
+pub fn[T, K] parse_tokens_indexed(
+  source : String,
+  token_count : Int,
+  get_token : (Int) -> T,
+  get_start : (Int) -> Int,
+  get_end : (Int) -> Int,
+  spec : LanguageSpec[T, K],
+  cursor? : ReuseCursor[T, K]? = None,
+  prev_diagnostics? : Array[Diagnostic[T]]? = None,
+  interner? : @seam.Interner? = None,
+  node_interner? : @seam.NodeInterner? = None,
+) -> (@seam.CstNode, Array[Diagnostic[T]], Int) {
+  let ctx = ParserContext::new_indexed(
+    token_count, get_token, get_start, get_end, source, spec,
+  )
+  match cursor {
+    Some(c) => {
+      ctx.set_reuse_cursor(c)
+      match prev_diagnostics {
+        Some(prev) => ctx.set_reuse_diagnostics(prev)
+        None => ()
+      }
+    }
+    None => ()
+  }
+  (spec.parse_root)(ctx)
+  ctx.flush_trivia()
+  if ctx.open_nodes != 0 {
+    abort(
+      "parse_tokens_indexed: grammar left " +
+      ctx.open_nodes.to_string() +
+      " unclosed nodes",
+    )
+  }
+  (
+    build_tree_generic(ctx.events, spec, interner, node_interner),
+    ctx.errors,
+    ctx.reuse_count,
+  )
 }

@@ -117,7 +117,7 @@ fn apply_char_replace(
 test "heavy: large document - initial parse" (b : @bench.T) {
   let source = make_large_source()
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new(source)
+    let parser = @lambda.LambdaIncrementalParser::new(source)
     let result = parser.parse()
     b.keep(result)
   })
@@ -128,7 +128,7 @@ test "heavy: large document - initial parse" (b : @bench.T) {
 test "heavy: wide arithmetic 100 terms - initial parse" (b : @bench.T) {
   let source = make_wide_arithmetic(100)
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new(source)
+    let parser = @lambda.LambdaIncrementalParser::new(source)
     let result = parser.parse()
     b.keep(result)
   })
@@ -139,7 +139,7 @@ test "heavy: wide arithmetic 100 terms - initial parse" (b : @bench.T) {
 test "heavy: nested application depth 50 - initial parse" (b : @bench.T) {
   let source = make_nested_application(50)
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new(source)
+    let parser = @lambda.LambdaIncrementalParser::new(source)
     let result = parser.parse()
     b.keep(result)
   })
@@ -152,7 +152,7 @@ test "heavy: large document - cst parse only" (b : @bench.T) {
   let interner = @seam.Interner::new()
   let ni = @seam.NodeInterner::new()
   b.bench(fn() {
-    let result = @parse.parse_cst_recover(
+    let result = @lambda.parse_cst_recover(
       source,
       interner=Some(interner),
       node_interner=Some(ni),
@@ -175,7 +175,7 @@ test "heavy: typing session - 100 edits at end" (b : @bench.T) {
     " ", "+", " ", "2",
   ]
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new(base)
+    let parser = @lambda.LambdaIncrementalParser::new(base)
     let _ = parser.parse()
     let mut source = base
     for i = 0; i < 100; i = i + 1 {
@@ -200,7 +200,7 @@ test "heavy: typing session - 100 edits in middle" (b : @bench.T) {
     "z", " ", "+", " ",
   ]
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new(base)
+    let parser = @lambda.LambdaIncrementalParser::new(base)
     let _ = parser.parse()
     let mut source = base
     let mut insert_pos = mid
@@ -224,7 +224,7 @@ test "heavy: refactoring session - 100 scattered replacements" (b : @bench.T) {
   let base = make_large_source()
   let replacements = ["x", "y", "z", "a", "b", "c", "d", "e"]
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new(base)
+    let parser = @lambda.LambdaIncrementalParser::new(base)
     let _ = parser.parse()
     let mut source = base
     let mut seed = 42
@@ -260,14 +260,14 @@ test "heavy: FULL REPARSE - 100 edits at end" (b : @bench.T) {
   ]
   b.bench(fn() {
     let mut source = base
-    let (initial, _) = @parse.parse_with_error_recovery(source)
+    let (initial, _) = @lambda.parse_with_error_recovery(source)
     let mut tree = initial
     for i = 0; i < 100; i = i + 1 {
       let ch = chars[i % chars.length()]
       let pos = source.length()
       let (new_source, _edit) = apply_char_insert(source, pos, ch)
       // Full reparse — no incremental state, no interning
-      let (t, _) = @parse.parse_with_error_recovery(new_source)
+      let (t, _) = @lambda.parse_with_error_recovery(new_source)
       tree = t
       source = new_source
     }
@@ -286,13 +286,13 @@ test "heavy: FULL REPARSE - 100 edits in middle" (b : @bench.T) {
   ]
   b.bench(fn() {
     let mut source = base
-    let (initial, _) = @parse.parse_with_error_recovery(source)
+    let (initial, _) = @lambda.parse_with_error_recovery(source)
     let mut tree = initial
     let mut insert_pos = mid
     for i = 0; i < 100; i = i + 1 {
       let ch = chars[i % chars.length()]
       let (new_source, _edit) = apply_char_insert(source, insert_pos, ch)
-      let (t, _) = @parse.parse_with_error_recovery(new_source)
+      let (t, _) = @lambda.parse_with_error_recovery(new_source)
       tree = t
       source = new_source
       insert_pos = insert_pos + ch.length()
@@ -308,7 +308,7 @@ test "heavy: FULL REPARSE - 100 scattered replacements" (b : @bench.T) {
   let replacements = ["x", "y", "z", "a", "b", "c", "d", "e"]
   b.bench(fn() {
     let mut source = base
-    let (initial, _) = @parse.parse_with_error_recovery(source)
+    let (initial, _) = @lambda.parse_with_error_recovery(source)
     let mut tree = initial
     let mut seed = 42
     for i = 0; i < 100; i = i + 1 {
@@ -320,7 +320,7 @@ test "heavy: FULL REPARSE - 100 scattered replacements" (b : @bench.T) {
       let pos = seed.abs() % (len - 1)
       let ch = replacements[i % replacements.length()]
       let (new_source, _edit) = apply_char_replace(source, pos, ch)
-      let (t, _) = @parse.parse_with_error_recovery(new_source)
+      let (t, _) = @lambda.parse_with_error_recovery(new_source)
       tree = t
       source = new_source
     }
@@ -333,7 +333,7 @@ test "heavy: FULL REPARSE - 100 scattered replacements" (b : @bench.T) {
 test "heavy: FULL REPARSE - large document initial parse" (b : @bench.T) {
   let source = make_large_source()
   b.bench(fn() {
-    let (result, _) = @parse.parse_with_error_recovery(source)
+    let (result, _) = @lambda.parse_with_error_recovery(source)
     b.keep(result)
   })
 }
@@ -345,7 +345,7 @@ test "heavy: FULL REPARSE - large document initial parse" (b : @bench.T) {
 /// Reports sizes at key checkpoints to detect unbounded growth.
 test "heavy: interner growth over 200 edits" {
   let base = make_large_source()
-  let parser = @incremental.IncrementalParser::new(base)
+  let parser = @lambda.LambdaIncrementalParser::new(base)
   let _ = parser.parse()
   let initial_token_size = parser.interner_size()
   let initial_node_size = parser.node_interner_size()
@@ -387,7 +387,7 @@ test "heavy: interner growth over 200 edits" {
 /// Second parse should produce identical tree with no interner growth.
 test "heavy: structural sharing on identical reparse" {
   let source = make_large_source()
-  let parser = @incremental.IncrementalParser::new(source)
+  let parser = @lambda.LambdaIncrementalParser::new(source)
   let _ = parser.parse()
   let size_after_first = parser.node_interner_size()
   // Zero-length edit forces reparse with same source
@@ -403,7 +403,7 @@ test "heavy: structural sharing on identical reparse" {
 /// Local edits at end should reuse most of the tree.
 test "heavy: reuse ratio over 50 edits at end" {
   let base = make_large_source()
-  let parser = @incremental.IncrementalParser::new(base)
+  let parser = @lambda.LambdaIncrementalParser::new(base)
   let _ = parser.parse()
   let chars = [" ", "+", " ", "1"]
   let mut source = base
@@ -438,7 +438,7 @@ fn bench_incremental_single_edit(source : String, b : @bench.T) -> Unit {
   let replacement = if last == "0" { "1" } else { "0" }
   let (new_source, edit) = apply_char_replace(source, len - 1, replacement)
   b.bench(fn() {
-    let p = @incremental.IncrementalParser::new(source)
+    let p = @lambda.LambdaIncrementalParser::new(source)
     let _ = p.parse()
     let result = p.edit(edit, new_source)
     b.keep(result)
@@ -448,7 +448,7 @@ fn bench_incremental_single_edit(source : String, b : @bench.T) -> Unit {
 ///|
 fn bench_full_reparse(source : String, b : @bench.T) -> Unit {
   b.bench(fn() {
-    let (result, _) = @parse.parse_with_error_recovery(source)
+    let (result, _) = @lambda.parse_with_error_recovery(source)
     b.keep(result)
   })
 }
@@ -457,7 +457,7 @@ fn bench_full_reparse(source : String, b : @bench.T) -> Unit {
 fn bench_session_incremental(source : String, n : Int, b : @bench.T) -> Unit {
   let chars = [" ", "+", " ", "1"]
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new(source)
+    let parser = @lambda.LambdaIncrementalParser::new(source)
     let _ = parser.parse()
     let mut s = source
     for i = 0; i < n; i = i + 1 {
@@ -476,13 +476,13 @@ fn bench_session_full_reparse(source : String, n : Int, b : @bench.T) -> Unit {
   let chars = [" ", "+", " ", "1"]
   b.bench(fn() {
     let mut s = source
-    let (initial, _) = @parse.parse_with_error_recovery(s)
+    let (initial, _) = @lambda.parse_with_error_recovery(s)
     let mut tree = initial
     for i = 0; i < n; i = i + 1 {
       let ch = chars[i % chars.length()]
       let pos = s.length()
       let (new_s, _edit) = apply_char_insert(s, pos, ch)
-      let (t, _) = @parse.parse_with_error_recovery(new_s)
+      let (t, _) = @lambda.parse_with_error_recovery(new_s)
       tree = t
       s = new_s
     }
