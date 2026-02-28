@@ -5,7 +5,7 @@
 /// Benchmark: Full parse of simple expression
 test "full parse - simple" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_tree("42") catch {
+    let result = @lambda.parse_tree("42") catch {
       _ => abort("benchmark failed")
     }
     b.keep(result)
@@ -16,7 +16,7 @@ test "full parse - simple" (b : @bench.T) {
 /// Benchmark: Full parse of lambda expression
 test "full parse - lambda" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_tree("λx.x") catch {
+    let result = @lambda.parse_tree("λx.x") catch {
       _ => abort("benchmark failed")
     }
     b.keep(result)
@@ -27,7 +27,7 @@ test "full parse - lambda" (b : @bench.T) {
 /// Benchmark: Full parse of nested lambdas
 test "full parse - nested lambdas" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_tree("λf.λx.f (f x)") catch {
+    let result = @lambda.parse_tree("λf.λx.f (f x)") catch {
       _ => abort("benchmark failed")
     }
     b.keep(result)
@@ -38,7 +38,7 @@ test "full parse - nested lambdas" (b : @bench.T) {
 /// Benchmark: Full parse of arithmetic expression
 test "full parse - arithmetic" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_tree("1 + 2 - 3 + 4") catch {
+    let result = @lambda.parse_tree("1 + 2 - 3 + 4") catch {
       _ => abort("benchmark failed")
     }
     b.keep(result)
@@ -49,7 +49,7 @@ test "full parse - arithmetic" (b : @bench.T) {
 /// Benchmark: Full parse of complex expression
 test "full parse - complex" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_tree("λf.λx.if f x then x + 1 else x - 1") catch {
+    let result = @lambda.parse_tree("λf.λx.if f x then x + 1 else x - 1") catch {
       _ => abort("benchmark failed")
     }
     b.keep(result)
@@ -71,7 +71,7 @@ test "tokenization" (b : @bench.T) {
 /// Benchmark: Incremental parser - initial parse
 test "incremental - initial parse" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("x")
+    let parser = @lambda.LambdaIncrementalParser::new("x")
     let result = parser.parse()
     b.keep(result)
   })
@@ -81,7 +81,7 @@ test "incremental - initial parse" (b : @bench.T) {
 /// Benchmark: Incremental parser - small edit
 test "incremental - small edit" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("x")
+    let parser = @lambda.LambdaIncrementalParser::new("x")
     let _ = parser.parse()
     let edit = @core.Edit::insert(1, 4)
     let result = parser.edit(edit, "x + 1")
@@ -93,7 +93,7 @@ test "incremental - small edit" (b : @bench.T) {
 /// Benchmark: Incremental parser - multiple edits
 test "incremental - multiple edits" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("x")
+    let parser = @lambda.LambdaIncrementalParser::new("x")
     let _ = parser.parse()
     let edit1 = @core.Edit::insert(1, 4)
     let _ = parser.edit(edit1, "x + 1")
@@ -107,7 +107,7 @@ test "incremental - multiple edits" (b : @bench.T) {
 /// Benchmark: Incremental parser - replacement edit
 test "incremental - replacement" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("λx.x")
+    let parser = @lambda.LambdaIncrementalParser::new("λx.x")
     let _ = parser.parse()
     let edit = @core.Edit::replace(0, 1, 1)
     let result = parser.edit(edit, "\\x.x")
@@ -129,7 +129,7 @@ test "damage tracking" (b : @bench.T) {
 /// Benchmark: Error recovery - valid input
 test "error recovery - valid" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_with_error_recovery("λx.x")
+    let result = @lambda.parse_with_error_recovery("λx.x")
     b.keep(result)
   })
 }
@@ -138,7 +138,7 @@ test "error recovery - valid" (b : @bench.T) {
 /// Benchmark: Error recovery - error input
 test "error recovery - error" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_with_error_recovery("λ.x")
+    let result = @lambda.parse_with_error_recovery("λ.x")
     b.keep(result)
   })
 }
@@ -147,7 +147,7 @@ test "error recovery - error" (b : @bench.T) {
 /// Benchmark: Full parse of let expression.
 test "full parse - let" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_tree("let x = 1 in x") catch {
+    let result = @lambda.parse_tree("let x = 1 in x") catch {
       _ => abort("benchmark failed")
     }
     b.keep(result)
@@ -158,7 +158,7 @@ test "full parse - let" (b : @bench.T) {
 /// Benchmark: Full parse of nested let expression.
 test "full parse - nested let" (b : @bench.T) {
   b.bench(fn() {
-    let result = @parse.parse_tree("let x = 1 in let y = x + 1 in y") catch {
+    let result = @lambda.parse_tree("let x = 1 in let y = x + 1 in y") catch {
       _ => abort("benchmark failed")
     }
     b.keep(result)
@@ -171,7 +171,7 @@ test "full parse - nested let" (b : @bench.T) {
 /// The init IntLiteral(1) at [8,9) is outside damage [13,14) → eligible for reuse.
 test "incremental - let body edit" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("let x = 1 in y")
+    let parser = @lambda.LambdaIncrementalParser::new("let x = 1 in y")
     let _ = parser.parse()
     let edit = @core.Edit::replace(13, 14, 14)
     let result = parser.edit(edit, "let x = 1 in z")
@@ -185,7 +185,7 @@ test "incremental - let body edit" (b : @bench.T) {
 /// The outer LetExpr overlaps damage [8,9); body VarRef("y") is outside damage.
 test "incremental - let init edit" (b : @bench.T) {
   b.bench(fn() {
-    let parser = @incremental.IncrementalParser::new("let x = 1 in y")
+    let parser = @lambda.LambdaIncrementalParser::new("let x = 1 in y")
     let _ = parser.parse()
     let edit = @core.Edit::replace(8, 9, 9)
     let result = parser.edit(edit, "let x = 2 in y")
