@@ -42,7 +42,8 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
-- [plans/2026-03-01-examples-folder-design.md](plans/2026-03-01-examples-folder-design.md) — move lambda-specific packages to src/examples/lambda/
+- [plans/2026-03-01-examples-folder-design.md](plans/2026-03-01-examples-folder-design.md) — move lambda-specific packages to src/examples/lambda/ (design)
+- [plans/2026-03-01-examples-folder.md](plans/2026-03-01-examples-folder.md) — move lambda-specific packages to src/examples/lambda/ (implementation plan)
 - [plans/2026-02-28-text-delta.md](plans/2026-02-28-text-delta.md) — implementation plan for TextDelta → Edit adapter
 
 ## Archive (Historical / Completed)
