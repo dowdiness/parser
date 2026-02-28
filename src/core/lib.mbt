@@ -50,7 +50,7 @@ pub struct TokenInfo[T] {
   token : T
   start : Int // code-unit offset, inclusive
   end : Int // code-unit offset, exclusive
-} derive(Show)
+} derive(Show, Eq)
 
 ///|
 /// A parse diagnostic (error or warning) with source position.
