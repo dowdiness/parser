@@ -3,13 +3,17 @@
 ///
 /// Token buffer and diagnostics state are captured as Refs inside closures,
 /// keeping IncrementalParser[@ast.AstNode] language-agnostic.
+///
+/// Note: each IncrementalParser must receive its own IncrementalLanguage
+/// instance. Sharing one instance across multiple parsers will corrupt both
+/// parsers' token-buffer and diagnostics state.
 pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
   @ast.AstNode,
 ] {
   let token_buf : Ref[@core.TokenBuffer[@token.Token]?] = Ref::new(None)
   let last_diags : Ref[Array[@core.Diagnostic[@token.Token]]] = Ref::new([])
   @incremental.IncrementalLanguage::new(
-    full_parse=fn(source, interner, node_interner) {
+    full_parse=(source, interner, node_interner) => {
       try {
         let buffer = @core.TokenBuffer::new(
           source,
@@ -17,8 +21,11 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
           eof_token=@token.EOF,
         )
         token_buf.val = Some(buffer)
-        let (cst, diagnostics) = parse_cst_recover(
+        let tokens = buffer.get_tokens()
+        let (cst, diagnostics, _) = parse_cst_recover_with_tokens(
           source,
+          tokens,
+          None,
           interner=Some(interner),
           node_interner=Some(node_interner),
         )
@@ -33,7 +40,7 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
         }
       }
     },
-    incremental_parse=fn(source, old_syntax, edit, interner, node_interner) {
+    incremental_parse=(source, old_syntax, edit, interner, node_interner) => {
       // Step 1: Update token buffer incrementally
       let tokens = match token_buf.val {
         Some(buffer) =>
@@ -54,10 +61,7 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
               eof_token=@token.EOF,
             )
             token_buf.val = Some(buffer)
-            match token_buf.val {
-              Some(b) => b.get_tokens()
-              None => []
-            }
+            buffer.get_tokens()
           } catch {
             @core.LexError(msg) => {
               last_diags.val = []
@@ -90,8 +94,8 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
       let new_syntax = @seam.SyntaxNode::from_cst(new_cst)
       @incremental.ParseOutcome::Tree(new_syntax, reuse_count)
     },
-    to_ast=fn(syntax) { syntax_node_to_ast_node(syntax, Ref::new(0)) },
-    on_lex_error=fn(msg) { @ast.AstNode::error(msg, 0, 0) },
+    to_ast=syntax => syntax_node_to_ast_node(syntax, Ref::new(0)),
+    on_lex_error=msg => @ast.AstNode::error(msg, 0, 0),
   )
 }
 

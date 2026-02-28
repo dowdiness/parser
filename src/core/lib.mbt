@@ -98,8 +98,9 @@ pub struct LanguageSpec[T, K] {
   raw_is_error : (@seam.RawKind) -> Bool
   cst_token_matches : (@seam.RawKind, String, T) -> Bool
   // Grammar entry point. Called by parse_tokens_indexed to drive the full parse.
-  // Receives a fully-configured ParserContext and must call flush_trivia before
-  // returning. Set to a no-op by default for call sites (e.g. tests) that use
+  // Receives a fully-configured ParserContext; parse_tokens_indexed calls
+  // flush_trivia after parse_root returns, so parse_root need not call it.
+  // Set to a no-op by default for call sites (e.g. tests) that use
   // parse_with() with an explicit grammar parameter instead.
   parse_root : (ParserContext[T, K]) -> Unit
 }
