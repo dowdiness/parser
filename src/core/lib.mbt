@@ -65,16 +65,8 @@ pub struct Diagnostic[T] {
 ///|
 /// Lex error raised by a tokenize_fn when the source contains unrecognizable input.
 /// Generic replacement for language-specific tokenization error types.
-pub suberror LexError {
+pub(all) suberror LexError {
   LexError(String)
-}
-
-///|
-/// Construct a LexError value from any package.
-/// Needed because suberror constructors are read-only outside their defining package.
-/// Usage: `raise @core.make_lex_error(msg)`
-pub fn make_lex_error(msg : String) -> LexError {
-  LexError(msg)
 }
 
 ///|

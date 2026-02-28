@@ -126,10 +126,10 @@ fn tokenize_helper(
           acc.push(@core.TokenInfo::new(@token.Integer(number), pos, new_pos))
           tokenize_helper(input, new_pos, acc)
         } else {
-          raise @core.make_lex_error(c.to_string())
+          raise @core.LexError(c.to_string())
         }
       None =>
-        raise @core.make_lex_error(
+        raise @core.LexError(
           "Error to read character at position ".to_string() + pos.to_string(),
         )
     }
@@ -152,7 +152,7 @@ pub fn tokenize_range(
   end : Int,
 ) -> Array[@core.TokenInfo[@token.Token]] raise @core.LexError {
   let slice = input[start:end] catch {
-      _ => raise @core.make_lex_error("Invalid slice")
+      _ => raise @core.LexError("Invalid slice")
     }
   let tokens = tokenize(slice.to_string())
   let result : Array[@core.TokenInfo[@token.Token]] = []

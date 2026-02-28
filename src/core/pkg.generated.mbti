@@ -6,14 +6,12 @@ import {
 }
 
 // Values
-pub fn make_lex_error(String) -> LexError
-
 pub fn[T, K] parse_with(String, LanguageSpec[T, K], (String) -> Array[TokenInfo[T]], (ParserContext[T, K]) -> Unit) -> (@seam.CstNode, Array[Diagnostic[T]])
 
 pub fn to_edits(Array[TextDelta]) -> Array[Edit]
 
 // Errors
-pub suberror LexError {
+pub(all) suberror LexError {
   LexError(String)
 }
 
