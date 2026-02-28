@@ -223,7 +223,7 @@ moon check
 moon test
 ```
 
-Expected: same pass count (363), zero failures. No behavior changed — only new type/function added.
+Expected: same pass count (371), zero failures. No behavior changed — only new type/function added.
 
 **Step 8: Commit**
 
@@ -310,7 +310,7 @@ pub fn make_reuse_cursor(
   old_tree : @seam.CstNode,
   damage_start : Int,
   damage_end : Int,
-  tokens : Array[@token.TokenInfo],
+  tokens : Array[@token.TokenInfo[@token.Token]],
 ) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind] {
   @core.ReuseCursor::new(
     old_tree,
@@ -778,12 +778,16 @@ import {
 pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
   @ast.AstNode,
 ] {
-  let token_buf : Ref[@lexer.TokenBuffer?] = Ref::new(None)
+  let token_buf : Ref[@lexer.TokenBuffer[@token.Token]?] = Ref::new(None)
   let last_diags : Ref[Array[@core.Diagnostic[@token.Token]]] = Ref::new([])
   @incremental.IncrementalLanguage::new(
     full_parse=fn(source, interner, node_interner) {
       try {
-        let buffer = @lexer.TokenBuffer::new(source)
+        let buffer = @lexer.TokenBuffer::new(
+          source,
+          tokenize_fn=@lexer.tokenize,
+          eof_token=@token.EOF,
+        )
         token_buf.val = Some(buffer)
         let (cst, diagnostics) = parse_cst_recover(
           source,
@@ -818,7 +822,11 @@ pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[
           }
         None =>
           try {
-            let buffer = @lexer.TokenBuffer::new(source)
+            let buffer = @lexer.TokenBuffer::new(
+              source,
+              tokenize_fn=@lexer.tokenize,
+              eof_token=@token.EOF,
+            )
             token_buf.val = Some(buffer)
             match token_buf.val {
               Some(b) => b.get_tokens()
@@ -1041,7 +1049,7 @@ git commit -m "refactor(incremental): move lambda-specific tests to lambda packa
 
 **Step 1: Replace src/incremental/moon.pkg**
 
-```
+```text
 import {
   "dowdiness/parser/core" @core,
   "dowdiness/seam" @seam,
@@ -1214,23 +1222,34 @@ git commit -m "refactor(incremental): generify IncrementalParser[@Ast] with Incr
 
 Remove `"dowdiness/parser/parser" @parse`:
 
-```
+```text
 import {
   "dowdiness/parser/core" @core,
   "dowdiness/parser/lexer",
   "dowdiness/parser/lambda" @lambda,
   "dowdiness/parser/incremental",
+  "dowdiness/parser/token",
   "dowdiness/seam" @seam,
   "moonbitlang/core/bench",
 }
 ```
 
-**Step 2: Update src/benchmarks/benchmark.mbt**
+**Step 2: Update all benchmark files**
 
-Apply substitutions:
+Four files need updates: `benchmark.mbt`, `performance_benchmark.mbt`, `heavy_benchmark.mbt`,
+`cst_benchmark.mbt`. Apply these substitutions across all of them:
+
 - `@parse.parse_tree(` → `@lambda.parse_tree(`
 - `@parse.parse_with_error_recovery(` → `@lambda.parse_with_error_recovery(`
+- `@parse.parse_cst_recover(` → `@lambda.parse_cst_recover(`
+- `@parse.make_reuse_cursor(` → `@lambda.make_reuse_cursor(`
+- `@parse.parse_cst_recover_with_tokens(` → `@lambda.parse_cst_recover_with_tokens(`
+- `@parse.parse_cst_with_cursor(` → `@lambda.parse_cst_with_cursor(`
 - `@incremental.IncrementalParser::new(` → `@lambda.LambdaIncrementalParser::new(`
+
+Note: `@incremental.DamageTracker::new(` in `benchmark.mbt` stays — `DamageTracker` remains
+in `src/incremental/` (not lambda-specific). `@token.EOF` in `performance_benchmark.mbt`
+stays — `@token` is still imported.
 
 Verify no @parse references remain:
 ```bash
