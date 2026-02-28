@@ -45,9 +45,9 @@ test "parse_cst: raises with offending token, not EOF" {
 ///|
 test "parse_cst_recover_with_tokens: uses supplied tokens, not re-tokenization" {
   // Regression guard: the old stub called parse_cst_recover(source) and
-  // would abort() on TokenizationError for temporarily invalid source text.
+  // would abort() on @core.LexError for temporarily invalid source text.
   // The function must parse the supplied token stream, never re-tokenize.
-  // "@invalid" raises TokenizationError if passed to @lexer.tokenize, but
+  // "@invalid" raises @core.LexError if passed to @lexer.tokenize, but
   // the function must return normally when given valid tokens.
   let tokens = @lexer.tokenize("x + y")
   let (_, errors, reuse_count) = parse_cst_recover_with_tokens(
