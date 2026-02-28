@@ -2,7 +2,7 @@
 /// Outcome of a parse attempt by IncrementalLanguage.
 /// Tree carries the new syntax tree and the node reuse count (0 for full parses).
 /// LexError carries the error message for on_lex_error dispatch.
-pub enum ParseOutcome {
+pub(all) enum ParseOutcome {
   Tree(@seam.SyntaxNode, Int)
   LexError(String)
 }

@@ -1,8 +1,4 @@
 import {
-  "dowdiness/parser/token",
-  "dowdiness/parser/ast",
-  "dowdiness/parser/lexer",
   "dowdiness/parser/core" @core,
-  "dowdiness/parser/parser" @parse,
   "dowdiness/seam" @seam,
 }
