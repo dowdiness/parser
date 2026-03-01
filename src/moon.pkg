@@ -1,6 +1,6 @@
 import {
-  "dowdiness/parser/token",
-  "dowdiness/parser/ast",
-  "dowdiness/parser/lexer",
-  "dowdiness/parser/lambda" @lambda,
+  "dowdiness/parser/examples/lambda/token",
+  "dowdiness/parser/examples/lambda/ast",
+  "dowdiness/parser/examples/lambda/lexer",
+  "dowdiness/parser/examples/lambda" @lambda,
 }

@@ -2,10 +2,10 @@
 package "dowdiness/parser"
 
 import {
-  "dowdiness/parser/ast",
   "dowdiness/parser/core",
-  "dowdiness/parser/lambda",
-  "dowdiness/parser/token",
+  "dowdiness/parser/examples/lambda",
+  "dowdiness/parser/examples/lambda/ast",
+  "dowdiness/parser/examples/lambda/token",
 }
 
 // Values
