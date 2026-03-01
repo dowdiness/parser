@@ -1,4 +1,4 @@
-# `dowdiness/parser/viz`
+# `dowdiness/loom/viz`
 
 Language-agnostic Graphviz DOT renderer. Defines the `DotNode` trait; language
 packages supply the implementation.
@@ -70,4 +70,4 @@ pub fn to_dot(node : @ast.MyAstNode) -> String {
 }
 ```
 
-See `src/lambda/dot_node.mbt` for the reference implementation.
+See `src/examples/lambda/dot_node.mbt` for the reference implementation.

@@ -1,4 +1,4 @@
-# `dowdiness/parser/pipeline`
+# `dowdiness/loom/pipeline`
 
 Language-agnostic two-memo incremental pipeline. Define a language once;
 get reactive, backdating-aware parsing for free.
@@ -90,10 +90,10 @@ positions and node IDs) for maximum backdating benefit.
 
 ## Reference implementation
 
-`src/lambda/` — `LambdaLanguage` + `LambdaParserDb` show the full pattern,
+`src/examples/lambda/` — `LambdaLanguage` + `LambdaParserDb` show the full pattern,
 including lex-error routing and the `AstNode::Eq` structure-only definition.
 
 ## Full API contract
 
-`docs/pipeline-api-contract.md` — stability levels, invariants, and
+`docs/api/pipeline-api-contract.md` — stability levels, invariants, and
 backdating chain documentation for every public symbol.
