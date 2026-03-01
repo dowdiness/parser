@@ -1,14 +1,16 @@
-# Parser Module
+# Parser Workspace
 
-Lexer and incremental parser for Lambda Calculus with arithmetic and conditionals.
-Produces a lossless CST via `seam` (green-tree infrastructure), a typed AST,
-and re-parses incrementally on edits via `ParserDb`.
+Development workspace for `dowdiness/loom` — a generic incremental parser framework for MoonBit.
+
+The lambda calculus parser and all source packages now live in `loom/`.
+This repo holds the git submodules (`loom/`, `seam/`, `incr/`) and documentation.
 
 ## Quick Start
 
 ```bash
-moon test              # 293 parser tests
-cd loom && moon test   # 76 loom framework tests (369 total)
+git clone --recursive https://github.com/dowdiness/parser.git
+cd parser/loom
+moon test              # 369 tests
 moon check             # lint
 moon info && moon fmt  # before commit
 moon bench --release   # benchmarks (always --release)
@@ -18,23 +20,11 @@ moon bench --release   # benchmarks (always --release)
 
 - [docs/README.md](docs/README.md) — full navigation index
 - [ROADMAP.md](ROADMAP.md) — architecture, phase status, future work
-- [docs/architecture/overview.md](docs/architecture/overview.md) — layer diagram + principles
-- [docs/api/reference.md](docs/api/reference.md) — public API reference
-- [docs/architecture/language.md](docs/architecture/language.md) — grammar and syntax
+- [docs/development/managing-modules.md](docs/development/managing-modules.md) — submodule + publish workflow
 
 ## Module Map
 
-**`dowdiness/parser`** — lambda calculus example/application:
-
-| Package | Purpose |
-|---------|---------|
-| `src/examples/lambda/token/` | `Token` enum + `TokenInfo` |
-| `src/examples/lambda/syntax/` | `SyntaxKind` enum — kind names → `RawKind` integers |
-| `src/examples/lambda/lexer/` | Tokenizer + incremental `TokenBuffer` |
-| `src/examples/lambda/ast/` | `AstNode`, `Term`, pretty-printer |
-| `src/examples/lambda/` | `lambda_grammar`, `to_dot`, low-level CST parsing |
-
-**`dowdiness/loom`** (`loom/`) — reusable parser framework (zero lambda deps):
+**`dowdiness/loom`** (`loom/`) — parser framework + lambda calculus example:
 
 | Package | Purpose |
 |---------|---------|
@@ -43,15 +33,5 @@ moon bench --release   # benchmarks (always --release)
 | `loom/src/pipeline/` | `ParserDb` — reactive incremental pipeline |
 | `loom/src/incremental/` | `IncrementalParser`, damage tracking |
 | `loom/src/viz/` | DOT graph renderer (`DotNode` trait) |
-
-## Benchmarks
-
-`moon bench --package dowdiness/parser/benchmarks --release` — incremental vs full, worst-case, cosmetic change. See [BENCHMARKS.md](BENCHMARKS.md).
-
-## Testing
-
-```bash
-moon test && (cd loom && moon test)          # all 369 tests (293 + 76)
-moon test --filter '*differential-fast*'     # CI-friendly differential
-moon test --filter '*differential-long*'     # nightly fuzz pass
-```
+| `loom/src/examples/lambda/` | Lambda calculus demo: token, syntax, lexer, ast, grammar |
+| `loom/src/benchmarks/` | Performance benchmarks for all pipeline layers |

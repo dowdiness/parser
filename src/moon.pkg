@@ -1,8 +1,0 @@
-import {
-  "dowdiness/parser/examples/lambda/token",
-  "dowdiness/parser/examples/lambda/ast",
-  "dowdiness/parser/examples/lambda/lexer",
-  "dowdiness/parser/examples/lambda" @lambda,
-  "dowdiness/loom/bridge" @bridge,
-  "dowdiness/loom/incremental" @incremental,
-}
