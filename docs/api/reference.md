@@ -136,7 +136,7 @@ try {
 
 ## 5. CST Key Types
 
-All CST types come from the `seam` package (`src/seam/`).
+All CST types come from the `seam` package (`seam/`).
 
 - **`CstNode`** — Immutable CST node: kind, children, text length, structural hash, token count. Position-independent; structurally shareable. `text_len`, `hash`, and `token_count` are cached at construction time.
 - **`CstToken`** — Leaf token with kind, text, and cached structural hash.

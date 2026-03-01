@@ -53,7 +53,7 @@ Produces a lossless CST using the event buffer pattern (see [seam-model.md](seam
 - `build_tree()` replays the flat `EventBuffer` to construct the immutable `CstNode` tree
 - All whitespace is preserved as `WhitespaceToken` nodes, keeping the CST lossless
 
-### SyntaxNode (`src/seam/syntax_node.mbt`)
+### SyntaxNode (`seam/syntax_node.mbt`)
 
 Ephemeral positioned view over a `CstNode`:
 

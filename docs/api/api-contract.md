@@ -1,8 +1,8 @@
 # `seam` API Contract
 
-**Module:** `dowdiness/parser/seam` (will become `dowdiness/seam` after Phase 3)
+**Module:** `dowdiness/seam`
 **Version target:** `0.1.0`
-**Generated from:** `src/seam/pkg.generated.mbti`
+**Generated from:** `seam/pkg.generated.mbti`
 
 Every public symbol is listed below with its stability level and key invariants.
 Symbols not listed here are package-private and subject to change without notice.

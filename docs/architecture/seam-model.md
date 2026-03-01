@@ -1,6 +1,6 @@
 # Seam Module — CST Infrastructure
 
-The `seam` package (`src/seam/`) implements a language-agnostic Concrete Syntax Tree (CST) infrastructure modelled after [rowan](https://github.com/rust-analyzer/rowan), the Rust library used by rust-analyzer. Understanding this model is required to work with `CstNode`, `SyntaxNode`, and the event stream.
+The `seam` package (`seam/`) implements a language-agnostic Concrete Syntax Tree (CST) infrastructure modelled after [rowan](https://github.com/rust-analyzer/rowan), the Rust library used by rust-analyzer. Understanding this model is required to work with `CstNode`, `SyntaxNode`, and the event stream.
 
 ## Two-Tree Model
 

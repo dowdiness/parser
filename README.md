@@ -27,7 +27,7 @@ moon bench --release   # benchmarks (always --release)
 |---------|---------|
 | `src/lexer/` | Tokenizer + incremental `TokenBuffer` |
 | `src/parser/` | CST parser, CST→AST conversion, lambda `LanguageSpec` |
-| `src/seam/` | Language-agnostic CST (`CstNode`, `SyntaxNode`, `EventBuffer`) |
+| `seam/` | Language-agnostic CST (`CstNode`, `SyntaxNode`, `EventBuffer`) |
 | `src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable` — shared primitives |
 | `src/ast/` | `AstNode`, `Term`, pretty-printer |
 | `src/pipeline/` | `ParserDb` — reactive incremental pipeline |
