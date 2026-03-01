@@ -1,9 +1,7 @@
 {
   "name": "dowdiness/parser",
   "version": "0.1.0",
-  "source": "src",
   "deps": {
-    "moonbitlang/quickcheck": "0.9.10",
     "dowdiness/seam": { "path": "seam" },
     "dowdiness/incr": { "path": "incr" },
     "dowdiness/loom": { "path": "loom" }
@@ -11,6 +9,6 @@
   "readme": "README.md",
   "repository": "https://github.com/dowdiness/parser",
   "license": "Apache-2.0",
-  "keywords": ["parser", "lambda-calculus", "incremental"],
-  "description": "Incremental lambda calculus parser in MoonBit"
+  "keywords": ["incremental", "parser", "moonbit"],
+  "description": "Development workspace for dowdiness/loom and its dependencies (seam, incr)"
 }

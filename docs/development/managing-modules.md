@@ -1,8 +1,22 @@
-# Managing the Parser Project
+# Managing the Loom Project
 
-This project is a **multi-module MoonBit codebase** composed of one application module and
-three reusable library modules. Each library lives as a git submodule pointing to its own
-GitHub repository and is published independently to mooncakes.io.
+This repo (`dowdiness/parser`) is a **development workspace** containing three library
+submodules and their shared documentation. The actual source lives in `loom/`.
+
+---
+
+## Dependency Direction
+
+```
+dowdiness/incr  ←  dowdiness/seam  ←  dowdiness/loom
+(signals)           (CST infra)         (parser framework)
+                                              ↑
+                                     examples/lambda/
+                                     (lambda calculus demo)
+```
+
+`loom` is the product. The lambda example lives inside `loom/src/examples/lambda/` as a
+first-party demonstration of the public API.
 
 ---
 
@@ -10,12 +24,11 @@ GitHub repository and is published independently to mooncakes.io.
 
 | Module | Path | GitHub | Purpose |
 |--------|------|--------|---------|
-| `dowdiness/parser` | `.` (root) | [dowdiness/parser](https://github.com/dowdiness/parser) | Lambda calculus example |
-| `dowdiness/loom` | `loom/` | [dowdiness/loom](https://github.com/dowdiness/loom) | Generic parser framework |
+| `dowdiness/loom` | `loom/` | [dowdiness/loom](https://github.com/dowdiness/loom) | Generic parser framework + lambda example |
 | `dowdiness/seam` | `seam/` | [dowdiness/seam](https://github.com/dowdiness/seam) | Language-agnostic CST |
 | `dowdiness/incr` | `incr/` | [dowdiness/incr](https://github.com/dowdiness/incr) | Reactive signals |
 
-`loom` depends on `seam` and `incr`. `parser` depends on all three.
+`dowdiness/parser` (this repo) has no source packages — it is a workspace container only.
 
 ---
 
@@ -23,8 +36,6 @@ GitHub repository and is published independently to mooncakes.io.
 
 ```bash
 git clone --recursive https://github.com/dowdiness/parser.git
-cd parser
-moon check        # verify the whole module tree resolves
 ```
 
 If you already cloned without `--recursive`:
@@ -37,35 +48,20 @@ git submodule update --init --recursive
 
 ## Daily Development
 
-### Running tests
+All source and tests live in `loom/`. Run everything from there:
 
 ```bash
-moon test                    # 293 parser tests
-cd loom && moon test         # 76 loom tests
-cd seam && moon test         # seam tests
-cd incr && moon test         # incr tests
+cd loom
+moon check                                    # lint
+moon test                                     # 366 tests (framework + lambda example)
+moon info && moon fmt                         # before every commit
+moon bench --release                          # benchmarks
 ```
-
-Run all 369 tests in one pass:
-
-```bash
-moon test && cd loom && moon test && cd ../seam && moon test && cd ../incr && moon test && cd ..
-```
-
-### Check and format (run before every commit)
-
-```bash
-# In each module you changed:
-moon info && moon fmt
-moon check
-```
-
-`moon info` regenerates `.mbti` interface files. Always run it when public APIs change.
 
 ### Targeting a single package
 
 ```bash
-moon test -p dowdiness/parser/src/examples/lambda/lexer
+moon test -p dowdiness/loom/examples/lambda/lexer
 moon test -p dowdiness/loom/core
 moon test -p dowdiness/loom/core -f edit_test.mbt
 ```
@@ -74,8 +70,8 @@ moon test -p dowdiness/loom/core -f edit_test.mbt
 
 ## Working Across Module Boundaries
 
-Because `loom/`, `seam/`, and `incr/` are git submodules, changes to them require a
-two-step commit: first push inside the submodule, then update the pointer in the parent repo.
+`loom/`, `seam/`, and `incr/` are git submodules. Changes need a two-step commit:
+push inside the submodule first, then update the pointer in this workspace repo.
 
 ### Making a change to loom
 
@@ -87,14 +83,14 @@ git add -p
 git commit -m "feat: ..."
 git push
 cd ..
-git add loom                  # stage the updated pointer
+git add loom
 git commit -m "chore: update loom submodule"
 ```
 
 ### Pulling the latest version of all submodules
 
 ```bash
-git submodule update --remote   # fetch HEAD of each submodule's main branch
+git submodule update --remote
 git add loom seam incr
 git commit -m "chore: update submodule pointers"
 ```
@@ -103,26 +99,36 @@ git commit -m "chore: update submodule pointers"
 
 ```bash
 git pull
-git submodule update --init     # materialise any new pointer commits
+git submodule update --init
 ```
 
 ---
 
 ## Publishing to mooncakes.io
 
-Each module is published independently with `moon publish`, run from that module's root.
+Each module is published independently with `moon publish` from that module's root.
 
 ### Prerequisites
 
 ```bash
-moon register   # first time only — creates a mooncakes.io account
+moon register   # first time only
 moon login      # subsequent sessions
 ```
 
-### Dependency requirement
+### Publish order
 
-`moon publish` requires all deps to be **version deps**, not path deps. Before publishing
-`loom`, its `moon.mod.json` must look like:
+Publish leaf deps first, then loom:
+
+```bash
+cd seam && moon publish && cd ..
+cd incr && moon publish && cd ..
+cd loom && moon publish && cd ..
+```
+
+### Path deps → version deps before publishing
+
+`moon publish` requires all deps to be version deps. Before publishing `loom`, edit
+`loom/moon.mod.json` to switch path deps to the just-published versions:
 
 ```json
 "deps": {
@@ -131,35 +137,16 @@ moon login      # subsequent sessions
 }
 ```
 
-not the local path form used during development:
-
-```json
-"deps": {
-  "dowdiness/seam": { "path": "../seam" },
-  "dowdiness/incr": { "path": "../incr" }
-}
-```
-
-### Publish workflow
+After publishing, revert to path deps for local development:
 
 ```bash
-# 1. Publish leaf dependencies first (if versions changed)
-cd seam && moon publish && cd ..
-cd incr && moon publish && cd ..
-
-# 2. Switch loom deps from path → version in loom/moon.mod.json
-#    (edit manually — bump versions to match what was just published)
-
-# 3. Publish loom
-cd loom && moon publish && cd ..
-
-# 4. Revert loom/moon.mod.json back to path deps for local development
-#    (git checkout loom/moon.mod.json  — or keep version deps if stable)
+git checkout loom/moon.mod.json
 ```
 
-### Required moon.mod.json fields
+> **Note:** `seam` and `incr` are not yet on mooncakes.io. The version-dep switch
+> is blocked until they are published. Use path deps in the meantime.
 
-Every publishable module needs these fields or mooncakes.io will reject it:
+### Required moon.mod.json fields
 
 ```json
 {
@@ -173,62 +160,10 @@ Every publishable module needs these fields or mooncakes.io will reject it:
 }
 ```
 
-`loom` is currently missing `readme`, `repository`, `license`, and `keywords` — add these
-before its first publish.
-
 ### Version bumping
-
-Follow [Semantic Versioning](https://semver.org/):
 
 | Change | Bump |
 |--------|------|
 | Incompatible API change | MAJOR |
 | New backward-compatible feature | MINOR |
 | Bug fix | PATCH |
-
----
-
-## Adding a New Module as a Submodule
-
-Follow the pattern used for `loom` (2026-03-01):
-
-```bash
-# 1. Create the module directory and its moon.mod.json
-mkdir newmod && cd newmod
-# ... add source files ...
-
-# 2. Init, commit, push to GitHub
-git init -b main
-git add .
-git commit -m "initial: <description>"
-gh repo create dowdiness/newmod --public --source=. --remote=origin --push
-
-# 3. Remove from parent's tracked files and re-add as submodule
-cd ..
-git rm -r --cached newmod/
-git commit -m "chore: untrack newmod/ files (converting to git submodule)"
-rm -rf newmod/
-git submodule add https://github.com/dowdiness/newmod.git newmod
-git commit -m "chore: add dowdiness/newmod as git submodule"
-
-# 4. Register in parser's moon.mod.json
-#    Add: "dowdiness/newmod": { "path": "newmod" }
-```
-
----
-
-## Future: Switching to mooncakes.io Registry
-
-Once `seam`, `incr`, and `loom` are stable and published, you can replace path deps with
-version deps permanently:
-
-```json
-"deps": {
-  "dowdiness/seam": "0.1.0",
-  "dowdiness/incr": "0.3.2",
-  "dowdiness/loom": "0.1.0"
-}
-```
-
-Then the git submodules are optional — consumers can install via `moon add` without cloning
-the submodule repos. The submodules stay useful for development, but are no longer required.
