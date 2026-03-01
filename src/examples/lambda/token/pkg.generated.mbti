@@ -2,7 +2,7 @@
 package "dowdiness/parser/examples/lambda/token"
 
 import {
-  "dowdiness/parser/core",
+  "dowdiness/loom/core",
 }
 
 // Values

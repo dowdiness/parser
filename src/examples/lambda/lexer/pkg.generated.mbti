@@ -2,7 +2,7 @@
 package "dowdiness/parser/examples/lambda/lexer"
 
 import {
-  "dowdiness/parser/core",
+  "dowdiness/loom/core",
   "dowdiness/parser/examples/lambda/token",
 }
 

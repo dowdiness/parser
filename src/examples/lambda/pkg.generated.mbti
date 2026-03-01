@@ -2,8 +2,8 @@
 package "dowdiness/parser/examples/lambda"
 
 import {
-  "dowdiness/parser/bridge",
-  "dowdiness/parser/core",
+  "dowdiness/loom/bridge",
+  "dowdiness/loom/core",
   "dowdiness/parser/examples/lambda/ast",
   "dowdiness/parser/examples/lambda/syntax",
   "dowdiness/parser/examples/lambda/token",

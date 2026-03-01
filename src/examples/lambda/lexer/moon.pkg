@@ -1,6 +1,6 @@
 import {
   "dowdiness/parser/examples/lambda/token",
-  "dowdiness/parser/core" @core,
+  "dowdiness/loom/core" @core,
 }
 
 import {
