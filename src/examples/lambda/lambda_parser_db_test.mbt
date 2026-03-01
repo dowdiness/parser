@@ -26,7 +26,7 @@ test "ParserDb: lex error diagnostic starts with tokenization prefix" {
   let diags = db.diagnostics()
   assert_eq(diags.length() > 0, true)
   // Convention: first diagnostic is "tokenization: <lexer message>"
-  inspect(diags[0].length() > 14, content="true")
+  inspect(diags[0].contains("tokenization: "), content="true")
 }
 
 // ── Parse-error path (lex succeeds, parser reports errors) ───────────────────

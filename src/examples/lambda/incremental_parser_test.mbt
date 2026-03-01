@@ -183,20 +183,17 @@ test "multiple incremental edits preserve correctness" {
 ///|
 test "damage tracking accuracy" {
   let parser = @bridge.new_incremental_parser(
-    "(a + b) * (c + d)", lambda_grammar,
+    "(a + b) + (c + d)", lambda_grammar,
   )
   let _ = parser.parse()
 
   // Edit only affects right side: "c" -> "x"
   let edit = @core.Edit::replace(11, 12, 12)
-  let new_tree = parser.edit(edit, "(a + b) * (x + d)")
+  let new_tree = parser.edit(edit, "(a + b) + (x + d)")
 
-  // Source contains '*' which is a lex error; on_lex_error embeds the
-  // tokenization message directly into the error node.
-  inspect(
-    @ast.print_ast_node(new_tree),
-    content="<error: Tokenization error: *>",
-  )
+  // Incremental result must match a full reparse of the edited source
+  let full_tree = parse_tree("(a + b) + (x + d)")
+  inspect(@ast.print_ast_node(new_tree), content=@ast.print_ast_node(full_tree))
 }
 
 // Edge case tests for incremental parsing

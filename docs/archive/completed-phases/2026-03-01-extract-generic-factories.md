@@ -20,7 +20,7 @@ A grammar provides three things: `spec`, `tokenize`, `to_ast`. Everything else �
 
 ### The solution
 
-```
+```text
 Grammar[T, K, Ast]              ← grammar defines once (3 fields)
        │
        ├──→ new_incremental_parser(source, grammar) → IncrementalParser[Ast]
@@ -31,7 +31,7 @@ Grammar authors never see `IncrementalLanguage` or `Language`. The factories cre
 
 ### Dependency graph
 
-```
+```text
 @core ──→ @seam
 @incremental ──→ @core, @seam
 @pipeline ──→ @seam, @incr
