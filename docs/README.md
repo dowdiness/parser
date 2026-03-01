@@ -42,6 +42,8 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
+- [plans/2026-03-01-extract-generic-factories.md](plans/2026-03-01-extract-generic-factories.md) — Grammar[T,K,Ast] + bridge factories to eliminate lambda vtable boilerplate
+
 ## Archive (Historical / Completed)
 
 - [archive/completed-phases/2026-03-01-examples-folder-design.md](archive/completed-phases/2026-03-01-examples-folder-design.md) — move lambda-specific packages to src/examples/lambda/ (design)
