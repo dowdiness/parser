@@ -4,3 +4,6 @@
 [submodule "incr"]
 	path = incr
 	url = https://github.com/dowdiness/incr
+[submodule "loom"]
+	path = loom
+	url = https://github.com/dowdiness/loom.git
