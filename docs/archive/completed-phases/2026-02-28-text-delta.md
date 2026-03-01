@@ -1,5 +1,7 @@
 # TextDelta Adapter Implementation Plan
 
+**Status:** Complete
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Add `TextDelta (Retain | Insert | Delete)` and `to_edits(Array[TextDelta]) -> Array[Edit]` to `src/core/`, bridging the Quill/Loro delta format to the incremental parser.

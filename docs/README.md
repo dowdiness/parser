@@ -43,7 +43,6 @@ Understanding how the layers fit together:
 ## Active Plans (Future Work)
 
 - [plans/2026-03-01-examples-folder.md](plans/2026-03-01-examples-folder.md) — move lambda-specific packages to src/examples/lambda/ (implementation plan)
-- [plans/2026-02-28-text-delta.md](plans/2026-02-28-text-delta.md) — implementation plan for TextDelta → Edit adapter
 
 ## Archive (Historical / Completed)
 
@@ -52,6 +51,7 @@ Understanding how the layers fit together:
 - [archive/completed-phases/2026-02-28-move-tokenbuffer-to-core.md](archive/completed-phases/2026-02-28-move-tokenbuffer-to-core.md) — move TokenBuffer[T] + LexError to @core for multi-language foundation
 - [archive/completed-phases/2026-02-28-generic-token-buffer.md](archive/completed-phases/2026-02-28-generic-token-buffer.md) — generify TokenBuffer[T] + re-export @token.TokenInfo via pub using
 - [archive/completed-phases/2026-02-28-text-delta-design.md](archive/completed-phases/2026-02-28-text-delta-design.md) — TextDelta → Edit adapter design
+- [archive/completed-phases/2026-02-28-text-delta.md](archive/completed-phases/2026-02-28-text-delta.md) — TextDelta → Edit adapter implementation
 - [archive/completed-phases/2026-02-28-grammar-expansion-let.md](archive/completed-phases/2026-02-28-grammar-expansion-let.md) — expression-level `let` binding implementation
 - [archive/completed-phases/2026-02-28-incremental-parser-cleanup-design.md](archive/completed-phases/2026-02-28-incremental-parser-cleanup-design.md) — IncrementalParser holdover cleanup design
 - [archive/completed-phases/2026-02-28-incremental-parser-cleanup.md](archive/completed-phases/2026-02-28-incremental-parser-cleanup.md) — IncrementalParser holdover cleanup implementation plan
