@@ -3,7 +3,7 @@
 	url = https://github.com/dowdiness/seam.git
 [submodule "incr"]
 	path = incr
-	url = https://github.com/dowdiness/incr
+	url = https://github.com/dowdiness/incr.git
 [submodule "loom"]
 	path = loom
 	url = https://github.com/dowdiness/loom.git
