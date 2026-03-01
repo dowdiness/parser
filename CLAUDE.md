@@ -28,8 +28,6 @@ moon test -p dowdiness/loom/examples/lambda/lexer -f lexer_test.mbt
 
 **`dowdiness/loom`** (`loom/`) — parser framework + lambda calculus example:
 
-**`dowdiness/loom`** (`loom/`) — reusable parser framework (zero lambda deps):
-
 | Package | Purpose |
 |---------|---------|
 | `loom/src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable`, `ParserContext[T,K]` — shared primitives |
