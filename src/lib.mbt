@@ -9,8 +9,8 @@
 //   dowdiness/parser/examples/lambda/lexer   - tokenize, TokenBuffer
 //   dowdiness/parser/examples/lambda/syntax  - SyntaxKind enum (token + node kind names)
 //   dowdiness/parser/examples/lambda         - parse, parse_tree, parse_with_error_recovery,
-//                                             LambdaIncrementalParser, LambdaParserDb, LambdaLanguage,
-//                                             DotNode impl for AstNode
+//                                             lambda_grammar, to_dot
+//   dowdiness/parser/bridge                  - Grammar[T,K,Ast], new_incremental_parser, new_parser_db
 //   dowdiness/parser/incremental             - IncrementalParser, DamageTracker
 //   dowdiness/parser/viz                     - DotNode (trait), to_dot[T : DotNode]
 //   dowdiness/parser/pipeline                - ParserDb — reactive incremental pipeline

@@ -1,5 +1,7 @@
 # Grammar Abstraction — Zero Public Vtables
 
+**Status:** Complete
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Introduce `Grammar[T, K, Ast]` as the single grammar description type, with bridge factories that produce `IncrementalParser[Ast]` and `ParserDb[Ast]` directly — hiding vtable construction from grammar authors entirely.

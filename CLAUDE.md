@@ -32,7 +32,8 @@ moon test -p dowdiness/parser/src/lexer -f lexer_test.mbt
 | `src/pipeline/` | `ParserDb` — reactive incremental pipeline |
 | `src/incremental/` | `IncrementalParser`, damage tracking |
 | `src/viz/` | DOT graph renderer (`DotNode` trait) |
-| `src/lambda/` | Lambda-specific `LambdaLanguage`, `LambdaParserDb` |
+| `src/bridge/` | `Grammar[T,K,Ast]`, factory functions for `IncrementalParser` + `ParserDb` |
+| `src/examples/lambda/` | `lambda_grammar`, `to_dot`, low-level CST parsing API |
 | `src/benchmarks/` | Performance benchmarks for all pipeline layers |
 
 ## Architecture
