@@ -1,0 +1,68 @@
+///|
+pub(all) enum Token {
+  Lambda // λ or \
+  Dot // .
+  LeftParen // (
+  RightParen // )
+  Plus // +
+  Minus // -
+  If // if
+  Then // then
+  Else // else
+  Let // let
+  In // in
+  Eq // =
+  Identifier(String) // variable names
+  Integer(Int) // integer literals
+  Whitespace // whitespace (spaces, tabs, newlines)
+  EOF // end of input
+} derive(Show, Eq)
+
+///|
+pub using @core {type TokenInfo}
+
+///|
+/// Print a TokenInfo
+pub fn print_token_info(token_info : TokenInfo[Token]) -> String {
+  let token_str = print_token(token_info.token)
+  token_str +
+  "@" +
+  token_info.start.to_string() +
+  "-" +
+  token_info.end.to_string()
+}
+
+///|
+/// Print an array of TokenInfo
+pub fn print_token_infos(tokens : Array[TokenInfo[Token]]) -> String {
+  let token_strs = tokens.map(print_token_info)
+  "[" + token_strs.join(", ") + "]"
+}
+
+///|
+pub fn print_token(token : Token) -> String {
+  match token {
+    Lambda => "λ"
+    Dot => "."
+    LeftParen => "("
+    RightParen => ")"
+    Plus => "+"
+    Minus => "-"
+    If => "if"
+    Then => "then"
+    Else => "else"
+    Let => "let"
+    In => "in"
+    Eq => "="
+    Identifier(name) => name
+    Integer(n) => n.to_string()
+    Whitespace => "whitespace"
+    EOF => "EOF"
+  }
+}
+
+///|
+pub fn print_tokens(tokens : Array[Token]) -> String {
+  let token_strs = tokens.map(print_token)
+  "[" + token_strs.join(", ") + "]"
+}

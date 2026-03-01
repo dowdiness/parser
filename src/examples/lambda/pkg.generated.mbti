@@ -1,0 +1,56 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/loom/examples/lambda"
+
+import {
+  "dowdiness/loom/bridge",
+  "dowdiness/loom/core",
+  "dowdiness/loom/examples/lambda/ast",
+  "dowdiness/loom/examples/lambda/syntax",
+  "dowdiness/loom/examples/lambda/token",
+  "dowdiness/seam",
+}
+
+// Values
+pub fn collect_errors(@ast.AstNode) -> Array[String]
+
+pub fn cst_to_ast_node(@seam.CstNode, Int, Ref[Int]) -> @ast.AstNode
+
+pub fn cst_to_term(@seam.CstNode) -> @ast.Term
+
+pub fn has_errors(@ast.AstNode) -> Bool
+
+pub let lambda_grammar : @bridge.Grammar[@token.Token, @syntax.SyntaxKind, @ast.AstNode]
+
+pub fn make_reuse_cursor(@seam.CstNode, Int, Int, Array[@core.TokenInfo[@token.Token]]) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]
+
+pub fn parse(String) -> @ast.Term raise
+
+pub fn parse_cst(String) -> @seam.CstNode raise
+
+pub fn parse_cst_recover(String, interner? : @seam.Interner?, node_interner? : @seam.NodeInterner?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]]) raise @core.LexError
+
+pub fn parse_cst_recover_with_tokens(String, Array[@core.TokenInfo[@token.Token]], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]?, prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?, interner? : @seam.Interner?, node_interner? : @seam.NodeInterner?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int)
+
+pub fn parse_cst_to_ast_node(String) -> @ast.AstNode raise
+
+pub fn parse_cst_with_cursor(String, Array[@core.TokenInfo[@token.Token]], @core.ReuseCursor[@token.Token, @syntax.SyntaxKind], prev_diagnostics? : Array[@core.Diagnostic[@token.Token]]?) -> (@seam.CstNode, Array[@core.Diagnostic[@token.Token]], Int)
+
+pub fn parse_tree(String) -> @ast.AstNode raise
+
+pub fn parse_with_error_recovery(String) -> (@ast.AstNode, Array[String])
+
+pub fn syntax_node_to_ast_node(@seam.SyntaxNode, Ref[Int]) -> @ast.AstNode
+
+pub fn to_dot(@ast.AstNode) -> String
+
+// Errors
+pub suberror ParseError {
+  ParseError(String, @token.Token)
+}
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
