@@ -107,9 +107,9 @@ test "ParserDb: set_source same value preserves term (Eq)" {
 ///|
 test "ParserDb: set_source from lex error to valid clears is_lex_error" {
   let db = @bridge.new_parser_db("@invalid", @lambda.lambda_grammar)
-  assert_eq(db.cst().is_lex_error, true)
+  inspect(db.cst().is_lex_error, content="true")
   db.set_source("1 + 2")
-  assert_eq(db.cst().is_lex_error, false)
+  inspect(db.cst().is_lex_error, content="false")
 }
 
 // ── Parity with direct parse ──────────────────────────────────────────────────

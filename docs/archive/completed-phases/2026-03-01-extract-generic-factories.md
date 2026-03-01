@@ -567,7 +567,7 @@ git commit -m "refactor(lambda): delete dead vtable/wiring code"
 
 In section 3 (struct-of-closures), replace the `lambda_incremental_language()` example with:
 
-```markdown
+````markdown
 ### Recommended: Grammar + bridge factory
 
 ```moonbit
@@ -596,7 +596,7 @@ let lang = @incremental.IncrementalLanguage::new(
 )
 let parser = @incremental.IncrementalParser::new(source, lang)
 ```
-```
+````
 
 Update the "Where Each Pattern Appears" table at the bottom accordingly.
 
