@@ -2,7 +2,7 @@
 
 **Created:** 2026-02-01
 **Updated:** 2026-02-28
-**Status:** Active — Phases 0-7 + NodeInterner complete; next: Typed SyntaxNode views, Grammar Expansion, or ParserDb benchmarks
+**Status:** Active — Phases 0-7 + NodeInterner + let bindings complete; next: Typed SyntaxNode views, Grammar Expansion (type annotations, multi-expression files), or ParserDb benchmarks
 **Goal:** A genuinely incremental, architecturally sound parser for lambda calculus (and beyond) with confidence in every layer.
 
 ---
@@ -262,13 +262,15 @@ depend on what follows it. O(depth) per lookup via stateful frame stack.
 
 ---
 
-## Grammar Expansion (Future Work)
+## Grammar Expansion (Partial ✅)
 
 > Formerly "Phase 5 original plan" — superseded as Phase 5 by the Generic Parser Framework.
 
-**Goal:** Extend the lambda grammar with let bindings, type annotations, comments, and multi-expression files.
-Key outcome: independent top-level subtrees (one per let binding) make incremental reuse genuinely impactful — editing one binding won't re-parse any other.
-Exit criteria: let bindings + type annotations parse correctly; CST round-trips to identical source text; reuse fires across let-binding boundaries.
+**Completed (2026-02-28):** `let x = e in body` expression form — `LetExpr` CST node, `Let`/`In` tokens and SyntaxKinds, `parse_let_expr` in grammar. [Plan archived →](docs/archive/completed-phases/2026-02-28-grammar-expansion-let.md)
+
+**Remaining:** Type annotations, comments, multi-expression files (top-level sequences of let bindings).
+Key outcome of multi-expression files: independent top-level subtrees make incremental reuse genuinely impactful — editing one binding won't re-parse any other.
+Exit criteria: type annotations parse correctly; CST round-trips to identical source text; reuse fires across top-level boundaries.
 
 ---
 
@@ -325,13 +327,13 @@ Phase 0: Reckoning                  ✅ COMPLETE (2026-02-01)
                 |
                 +------ NodeInterner                    ✅ COMPLETE (2026-02-28)
                 |
-                +------ Grammar Expansion               ← PLANNED (original Phase 5)
+                +------ Grammar Expansion               ⬤ PARTIAL (let bindings ✅; type annotations, multi-expr ← PLANNED)
                 |
                 +------ CRDT Exploration               ← PLANNED (original Phase 6)
 ```
 
-Phases 0-7, SyntaxNode-First Layer (Phase 1+2), and NodeInterner are complete.
-Next candidates: Typed SyntaxNode views, ParserDb benchmarks, Grammar Expansion.
+Phases 0-7, SyntaxNode-First Layer (Phase 1+2), NodeInterner, and let bindings are complete.
+Next candidates: Typed SyntaxNode views, ParserDb benchmarks, Grammar Expansion (type annotations, multi-expression files).
 
 ---
 
@@ -356,7 +358,8 @@ Property-based fuzzing with sequences of 10-100 random edits catches state accum
 | Generic Parser Framework | Phase 5 | ✅ Complete (2026-02-23) |
 | Generic Incremental Reuse | Phase 6 | ✅ Complete (2026-02-24) |
 | Reactive Pipeline (ParserDb) | Phase 7 | ✅ Complete (2026-02-25) |
-| Grammar Expansion | Future | Confidence: High |
+| Grammar Expansion: let bindings | 2026-02-28 | ✅ Complete |
+| Grammar Expansion: type annotations, multi-expr | Future | Confidence: High |
 | CRDT Exploration | Future | Confidence: Low-Medium (research) |
 
 ---
