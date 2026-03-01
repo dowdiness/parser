@@ -1,15 +1,16 @@
 ///|
-/// Complete grammar description — the three things that vary per language.
+/// Complete grammar description — the four things that vary per language.
 ///
-/// Everything else (TokenBuffer lifecycle, ReuseCursor construction,
-/// diagnostic formatting, lex error handling) is derived by the factories.
+/// Pass to `new_incremental_parser` or `new_parser_db`; the factories
+/// handle all infrastructure wiring (TokenBuffer lifecycle, ReuseCursor
+/// construction, diagnostic formatting).
 ///
-/// Define one per grammar as a module-level `let` and pass it to
-/// `new_incremental_parser` or `new_parser_db`.
+/// Define one per grammar as a module-level `let`.
 pub struct Grammar[T, K, Ast] {
   spec : @core.LanguageSpec[T, K]
   tokenize : (String) -> Array[@core.TokenInfo[T]] raise @core.LexError
   to_ast : (@seam.SyntaxNode) -> Ast
+  on_lex_error : (String) -> Ast
 }
 
 ///|
@@ -17,6 +18,7 @@ pub fn[T, K, Ast] Grammar::new(
   spec~ : @core.LanguageSpec[T, K],
   tokenize~ : (String) -> Array[@core.TokenInfo[T]] raise @core.LexError,
   to_ast~ : (@seam.SyntaxNode) -> Ast,
+  on_lex_error~ : (String) -> Ast,
 ) -> Grammar[T, K, Ast] {
-  { spec, tokenize, to_ast }
+  { spec, tokenize, to_ast, on_lex_error }
 }

@@ -191,9 +191,10 @@ test "damage tracking accuracy" {
   let edit = @core.Edit::replace(11, 12, 12)
   let new_tree = parser.edit(edit, "(a + b) * (x + d)")
 
-  // Lex error (source contains '*') → derive_lex_error_ast → "<error: Syntax error>".
-  // "Syntax" contains both "x" and "a"; "b" is not present.
-  inspect(@ast.print_ast_node(new_tree).contains("x"), content="true")
+  // Source contains '*' which is a lex error; on_lex_error embeds the
+  // tokenization message: "<error: Tokenization error: *>".
+  // "Tokenization" contains 'a'; the message has no 'x' or 'b'.
+  inspect(@ast.print_ast_node(new_tree).contains("x"), content="false")
   inspect(@ast.print_ast_node(new_tree).contains("a"), content="true")
   inspect(@ast.print_ast_node(new_tree).contains("b"), content="false")
 }

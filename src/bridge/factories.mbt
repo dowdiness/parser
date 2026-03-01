@@ -2,30 +2,11 @@
 //
 // These encapsulate all infrastructure wiring: TokenBuffer lifecycle,
 // ReuseCursor construction, parse_tokens_indexed calls, diagnostic
-// formatting, lex error handling. The grammar author provides only what
-// varies (spec, tokenize, to_ast); the factories handle the rest.
-//
-// Lex error strategy: parse 0 tokens → error CST → to_ast produces the
-// error AST. The lex error message goes into diagnostics, not the AST.
+// formatting. The grammar author provides spec, tokenize, to_ast, and
+// on_lex_error; the factories handle the rest.
 //
 // IncrementalLanguage[Ast] and Language[Ast] are constructed internally
 // for type erasure — grammar authors never see them.
-
-///|
-/// Parse 0 tokens to produce an error CST, then run to_ast.
-/// Derives on_lex_error from the grammar's existing to_ast callback.
-fn[T, K, Ast] derive_lex_error_ast(grammar : Grammar[T, K, Ast]) -> Ast {
-  let spec = grammar.spec
-  let (cst, _, _) = @core.parse_tokens_indexed(
-    "",
-    0,
-    fn(_) { spec.eof_token },
-    fn(_) { 0 },
-    fn(_) { 0 },
-    spec,
-  )
-  (grammar.to_ast)(@seam.SyntaxNode::from_cst(cst))
-}
 
 ///|
 /// Create an IncrementalParser from a Grammar.
@@ -131,7 +112,7 @@ pub fn[T, K, Ast] new_incremental_parser(
       @incremental.ParseOutcome::Tree(new_syntax, reuse_count)
     },
     to_ast=fn(syntax) { to_ast(syntax) },
-    on_lex_error=fn(_msg) { derive_lex_error_ast(grammar) },
+    on_lex_error=fn(msg) { (grammar.on_lex_error)(msg) },
   )
   @incremental.IncrementalParser::new(source, lang)
 }
@@ -189,7 +170,7 @@ pub fn[T, K, Ast : Eq] new_parser_db(
       }
     },
     to_ast=fn(n) { to_ast(n) },
-    on_lex_error=fn(_msg) { derive_lex_error_ast(grammar) },
+    on_lex_error=fn(msg) { (grammar.on_lex_error)(msg) },
   )
   @pipeline.ParserDb::new(source, lang)
 }
