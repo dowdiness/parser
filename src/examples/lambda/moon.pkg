@@ -7,7 +7,6 @@ import {
   "dowdiness/parser/core" @core,
   "dowdiness/seam" @seam,
   "moonbitlang/core/strconv",
-  "dowdiness/parser/incremental" @incremental,
   "dowdiness/parser/bridge" @bridge,
 }
 

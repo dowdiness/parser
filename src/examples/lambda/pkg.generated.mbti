@@ -7,7 +7,6 @@ import {
   "dowdiness/parser/examples/lambda/ast",
   "dowdiness/parser/examples/lambda/syntax",
   "dowdiness/parser/examples/lambda/token",
-  "dowdiness/parser/incremental",
   "dowdiness/seam",
 }
 
@@ -21,8 +20,6 @@ pub fn cst_to_term(@seam.CstNode) -> @ast.Term
 pub fn has_errors(@ast.AstNode) -> Bool
 
 pub let lambda_grammar : @bridge.Grammar[@token.Token, @syntax.SyntaxKind, @ast.AstNode]
-
-pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[@ast.AstNode]
 
 pub fn make_reuse_cursor(@seam.CstNode, Int, Int, Array[@core.TokenInfo[@token.Token]]) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]
 
