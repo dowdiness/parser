@@ -17,6 +17,17 @@ pub struct Language[Ast] {
 }
 
 ///|
+/// Construct a Language directly from closures.
+/// Use this when you don't need the Parseable trait pattern.
+pub fn[Ast] Language::from_closures(
+  parse_source~ : (String) -> CstStage,
+  to_ast~ : (@seam.SyntaxNode) -> Ast,
+  on_lex_error~ : (String) -> Ast,
+) -> Language[Ast] {
+  { parse_source, to_ast, on_lex_error }
+}
+
+///|
 /// Bridge — erases the concrete token type at call site via static dispatch.
 /// `T` must implement `Parseable`; the token type disappears into the closure.
 pub fn[T : Parseable, Ast] Language::from(

@@ -1,0 +1,6 @@
+import {
+  "dowdiness/parser/core" @core,
+  "dowdiness/parser/incremental" @incremental,
+  "dowdiness/parser/pipeline" @pipeline,
+  "dowdiness/seam" @seam,
+}
