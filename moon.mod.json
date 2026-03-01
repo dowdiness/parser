@@ -1,0 +1,10 @@
+{
+  "name": "dowdiness/loom",
+  "version": "0.1.0",
+  "source": "src",
+  "deps": {
+    "dowdiness/seam": { "path": "../seam" },
+    "dowdiness/incr": { "path": "../incr" }
+  },
+  "description": "Generic parser framework: incremental parsing, CST building, grammar composition"
+}
