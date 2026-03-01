@@ -160,7 +160,58 @@ for child in syntax.children() {
 
 ---
 
-## 6. Usage Examples
+## 6. Bridge Factories
+
+The bridge package (`src/bridge/`) provides the primary way to construct incremental parsers and reactive pipelines from a `Grammar` description. These factories erase the token type `T` and kind type `K` so callers only see the `Ast` type.
+
+### `Grammar`
+
+```moonbit
+pub struct Grammar[T, K, Ast] {
+  spec         : @core.LanguageSpec[T, K]
+  tokenize     : (String) -> Array[@core.TokenInfo[T]] raise @core.LexError
+  to_ast       : (@seam.SyntaxNode) -> Ast
+  on_lex_error : (String) -> Ast
+}
+```
+
+Describes a complete language grammar. Construct with `Grammar::new(spec~, tokenize~, to_ast~)`. The lambda implementation is `@lambda.lambda_grammar`.
+
+### `new_incremental_parser`
+
+```moonbit
+pub fn[T, K, Ast] new_incremental_parser(
+  source  : String,
+  grammar : Grammar[T, K, Ast],
+) -> @incremental.IncrementalParser[Ast]
+```
+
+Creates an `IncrementalParser` for the given source and grammar. Supports `parse()`, `edit(Edit, String)`, and `reset(String)`.
+
+### `new_parser_db`
+
+```moonbit
+pub fn[T, K, Ast] new_parser_db(
+  source  : String,
+  grammar : Grammar[T, K, Ast],
+) -> @pipeline.ParserDb[Ast]
+```
+
+Creates a `ParserDb` reactive pipeline. Re-parses only when the source changes; skips the AST stage when the CST hash is unchanged.
+
+**Example:**
+
+```moonbit
+let db = @bridge.new_parser_db("λx.x + 1", @lambda.lambda_grammar)
+let node = db.term()            // @ast.AstNode
+db.set_source("λx.x + 2")
+let updated = db.term()         // re-runs CST + AST stages
+let diags   = db.diagnostics()  // Array[String], empty on success
+```
+
+---
+
+## 7. Usage Examples
 
 ### Identity Function
 

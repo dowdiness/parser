@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 ```bash
 moon check              # lint
-moon test               # 353 tests
+moon test               # 369 tests
 moon info && moon fmt   # update .mbti interfaces + format (always before commit)
 moon bench --release    # benchmarks (always --release)
 bash check-docs.sh      # validate docs hierarchy (line limits, orphaned files, completed plans)
@@ -25,7 +25,7 @@ moon test -p dowdiness/parser/src/lexer -f lexer_test.mbt
 | `src/token/` | `Token` enum + `TokenInfo` — the lambda token type (`T` in `ParserContext[T, K]`) |
 | `src/syntax/` | `SyntaxKind` enum — symbolic kind names → `RawKind` integers for the CST |
 | `src/lexer/` | Tokenizer + incremental `TokenBuffer` |
-| `src/parser/` | CST parser, CST→AST conversion, lambda `LanguageSpec` |
+| `src/parser/` | CST parser, CST→AST conversion |
 | `seam/` | Language-agnostic CST (`CstNode`, `SyntaxNode`, `EventBuffer`) |
 | `src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable` — shared primitives |
 | `src/ast/` | `AstNode`, `Term`, pretty-printer |
