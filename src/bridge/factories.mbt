@@ -111,8 +111,8 @@ pub fn[T, K, Ast] new_incremental_parser(
       let new_syntax = @seam.SyntaxNode::from_cst(new_cst)
       @incremental.ParseOutcome::Tree(new_syntax, reuse_count)
     },
-    to_ast=fn(syntax) { to_ast(syntax) },
-    on_lex_error=fn(msg) { (grammar.on_lex_error)(msg) },
+    to_ast~,
+    on_lex_error=grammar.on_lex_error,
   )
   @incremental.IncrementalParser::new(source, lang)
 }
@@ -130,14 +130,10 @@ pub fn[T, K, Ast : Eq] new_parser_db(
     parse_source=fn(s) {
       try tokenize(s) catch {
         @core.LexError(msg) => {
-          let (cst, _, _) = @core.parse_tokens_indexed(
-            "",
-            0,
-            fn(_) { spec.eof_token },
-            fn(_) { 0 },
-            fn(_) { 0 },
-            spec,
-          )
+          // cst is never read when is_lex_error=true (ParserDb routes to
+          // on_lex_error); use a cheap error-kind placeholder instead of
+          // running parse_tokens_indexed on empty input.
+          let cst = @seam.CstNode::new((spec.kind_to_raw)(spec.error_kind), [])
           @pipeline.CstStage::{
             cst,
             diagnostics: ["tokenization: " + msg],
@@ -169,8 +165,8 @@ pub fn[T, K, Ast : Eq] new_parser_db(
         }
       }
     },
-    to_ast=fn(n) { to_ast(n) },
-    on_lex_error=fn(msg) { (grammar.on_lex_error)(msg) },
+    to_ast~,
+    on_lex_error=grammar.on_lex_error,
   )
   @pipeline.ParserDb::new(source, lang)
 }
