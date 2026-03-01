@@ -42,11 +42,10 @@ Understanding how the layers fit together:
 
 ## Active Plans (Future Work)
 
-- [plans/2026-03-01-examples-folder.md](plans/2026-03-01-examples-folder.md) — move lambda-specific packages to src/examples/lambda/ (implementation plan)
-
 ## Archive (Historical / Completed)
 
 - [archive/completed-phases/2026-03-01-examples-folder-design.md](archive/completed-phases/2026-03-01-examples-folder-design.md) — move lambda-specific packages to src/examples/lambda/ (design)
+- [archive/completed-phases/2026-03-01-examples-folder.md](archive/completed-phases/2026-03-01-examples-folder.md) — move lambda-specific packages to src/examples/lambda/ (implementation)
 - [archive/completed-phases/2026-02-28-consolidate-lambda-v3.md](archive/completed-phases/2026-02-28-consolidate-lambda-v3.md) — consolidate lambda package + generic IncrementalParser
 - [archive/completed-phases/2026-02-28-move-tokenbuffer-to-core.md](archive/completed-phases/2026-02-28-move-tokenbuffer-to-core.md) — move TokenBuffer[T] + LexError to @core for multi-language foundation
 - [archive/completed-phases/2026-02-28-generic-token-buffer.md](archive/completed-phases/2026-02-28-generic-token-buffer.md) — generify TokenBuffer[T] + re-export @token.TokenInfo via pub using
