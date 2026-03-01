@@ -3,17 +3,17 @@
 // This module re-exports the primary API entry points. For the full API,
 // import subpackages directly:
 //
-//   dowdiness/parser/token        - Token, TokenInfo
-//   dowdiness/parser/core         - Edit, Range, ReuseSlot (shared primitives)
-//   dowdiness/parser/ast          - AstNode, AstKind, Term, Bop
-//   dowdiness/parser/lexer        - tokenize, TokenBuffer
-//   dowdiness/parser/syntax       - SyntaxKind enum (token + node kind names)
-//   dowdiness/parser/lambda       - parse, parse_tree, parse_with_error_recovery,
-//                                   LambdaIncrementalParser, LambdaParserDb, LambdaLanguage,
-//                                   DotNode impl for AstNode
-//   dowdiness/parser/incremental  - IncrementalParser, DamageTracker
-//   dowdiness/parser/viz          - DotNode (trait), to_dot[T : DotNode]
-//   dowdiness/parser/pipeline     - ParserDb — reactive incremental pipeline
+//   dowdiness/parser/examples/lambda/token   - Token, TokenInfo
+//   dowdiness/parser/core                    - Edit, Range, ReuseSlot (shared primitives)
+//   dowdiness/parser/examples/lambda/ast     - AstNode, AstKind, Term, Bop
+//   dowdiness/parser/examples/lambda/lexer   - tokenize, TokenBuffer
+//   dowdiness/parser/examples/lambda/syntax  - SyntaxKind enum (token + node kind names)
+//   dowdiness/parser/examples/lambda         - parse, parse_tree, parse_with_error_recovery,
+//                                             LambdaIncrementalParser, LambdaParserDb, LambdaLanguage,
+//                                             DotNode impl for AstNode
+//   dowdiness/parser/incremental             - IncrementalParser, DamageTracker
+//   dowdiness/parser/viz                     - DotNode (trait), to_dot[T : DotNode]
+//   dowdiness/parser/pipeline                - ParserDb — reactive incremental pipeline
 
 // ── Parsing ──────────────────────────────────────────────────
 

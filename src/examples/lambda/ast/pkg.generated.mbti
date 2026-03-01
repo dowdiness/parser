@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/parser/ast"
+package "dowdiness/parser/examples/lambda/ast"
 
 import {
   "moonbitlang/core/json",

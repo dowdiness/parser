@@ -1,9 +1,9 @@
 import {
   "dowdiness/parser/core" @core,
-  "dowdiness/parser/lexer",
-  "dowdiness/parser/lambda" @lambda,
+  "dowdiness/parser/examples/lambda/lexer",
+  "dowdiness/parser/examples/lambda" @lambda,
   "dowdiness/parser/incremental",
-  "dowdiness/parser/token",
+  "dowdiness/parser/examples/lambda/token",
   "dowdiness/seam" @seam,
   "moonbitlang/core/bench",
 }
