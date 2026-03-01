@@ -46,6 +46,10 @@ Understanding how the layers fit together:
 - [decisions/2026-02-27-remove-tokenStage-memo.md](decisions/2026-02-27-remove-tokenStage-memo.md)
 - [decisions/2026-02-28-edit-lengths-not-endpoints.md](decisions/2026-02-28-edit-lengths-not-endpoints.md)
 
+## Active Plans
+
+- [plans/2026-03-02-rabbita-style-monorepo.md](plans/2026-03-02-rabbita-style-monorepo.md) — migrate to rabbita-style multi-module monorepo
+
 ## Development
 
 - [development/managing-modules.md](development/managing-modules.md) — submodule workflow, publishing to mooncakes.io, adding new modules
