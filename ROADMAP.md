@@ -212,10 +212,10 @@ depend on what follows it. O(depth) per lookup via stateful frame stack.
 
 ## Phase 6: Generic Incremental Reuse ✅ COMPLETE (2026-02-24)
 
-**Goal:** Wire `ReuseCursor[T, K]` from `src/core/` into `ParserContext` via `node()`/`wrap_at()` combinators so incremental subtree reuse fires transparently for any grammar.
+**Goal:** Wire `ReuseCursor[T, K]` from `loom/src/core/` into `ParserContext` via `node()`/`wrap_at()` combinators so incremental subtree reuse fires transparently for any grammar.
 
 **What was built:**
-- `ReuseCursor[T, K]` generic struct in `src/core/` with `collect_old_tokens`, `try_reuse`, `seek_node_at`, `advance_past`
+- `ReuseCursor[T, K]` generic struct in `loom/src/core/` with `collect_old_tokens`, `try_reuse`, `seek_node_at`, `advance_past`
 - `ParserContext` gains `reuse_cursor`, `reuse_count`, `set_reuse_cursor`, `set_reuse_diagnostics`
 - `node(kind, body)` combinator: skips `body` closure on reuse hit (O(edit) skip)
 - `wrap_at(mark, kind, body)` combinator: retroactive wrapping; inner `node()` calls still reuse

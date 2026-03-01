@@ -22,8 +22,6 @@ moon test -p dowdiness/parser/src/examples/lambda/lexer -f lexer_test.mbt
 
 ## Package Map
 
-| Package | Purpose |
-|---------|---------|
 **`dowdiness/parser`** — lambda calculus example/application:
 
 | Package | Purpose |

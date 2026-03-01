@@ -88,6 +88,6 @@ The `seam` module is deliberately language-agnostic:
 
 - It does not know about lambda calculus, `SyntaxKind`, or any parser-specific concerns — those live in `src/examples/lambda/`.
 - It does not define what node kinds mean; kind interpretation is the parser's responsibility.
-- The only language-specific hook is `RawKind`, which each language maps to/from its own kind enum via the `LanguageSpec` in `src/core/`.
+- The only language-specific hook is `RawKind`, which each language maps to/from its own kind enum via the `LanguageSpec` in `loom/src/core/`.
 
 This separation keeps `seam` reusable across any language that wants a lossless, structurally-shareable CST.
