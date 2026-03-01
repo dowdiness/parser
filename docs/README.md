@@ -46,18 +46,11 @@ Understanding how the layers fit together:
 - [decisions/2026-02-27-remove-tokenStage-memo.md](decisions/2026-02-27-remove-tokenStage-memo.md)
 - [decisions/2026-02-28-edit-lengths-not-endpoints.md](decisions/2026-02-28-edit-lengths-not-endpoints.md)
 
+## Development
+
+- [development/managing-modules.md](development/managing-modules.md) — submodule workflow, publishing to mooncakes.io, adding new modules
+
 ## Archive (Historical / Completed)
 
-- [archive/completed-phases/2026-03-01-extract-generic-factories.md](archive/completed-phases/2026-03-01-extract-generic-factories.md) — Grammar[T,K,Ast] + bridge factories to eliminate lambda vtable boilerplate
-- [archive/completed-phases/2026-03-01-examples-folder-design.md](archive/completed-phases/2026-03-01-examples-folder-design.md) — move lambda-specific packages to src/examples/lambda/ (design)
-- [archive/completed-phases/2026-03-01-examples-folder.md](archive/completed-phases/2026-03-01-examples-folder.md) — move lambda-specific packages to src/examples/lambda/ (implementation)
-- [archive/completed-phases/2026-02-28-consolidate-lambda-v3.md](archive/completed-phases/2026-02-28-consolidate-lambda-v3.md) — consolidate lambda package + generic IncrementalParser
-- [archive/completed-phases/2026-02-28-move-tokenbuffer-to-core.md](archive/completed-phases/2026-02-28-move-tokenbuffer-to-core.md) — move TokenBuffer[T] + LexError to @core for multi-language foundation
-- [archive/completed-phases/2026-02-28-generic-token-buffer.md](archive/completed-phases/2026-02-28-generic-token-buffer.md) — generify TokenBuffer[T] + re-export @token.TokenInfo via pub using
-- [archive/completed-phases/2026-02-28-text-delta-design.md](archive/completed-phases/2026-02-28-text-delta-design.md) — TextDelta → Edit adapter design
-- [archive/completed-phases/2026-02-28-text-delta.md](archive/completed-phases/2026-02-28-text-delta.md) — TextDelta → Edit adapter implementation
-- [archive/completed-phases/2026-02-28-grammar-expansion-let.md](archive/completed-phases/2026-02-28-grammar-expansion-let.md) — expression-level `let` binding implementation
-- [archive/completed-phases/2026-02-28-incremental-parser-cleanup-design.md](archive/completed-phases/2026-02-28-incremental-parser-cleanup-design.md) — IncrementalParser holdover cleanup design
-- [archive/completed-phases/2026-02-28-incremental-parser-cleanup.md](archive/completed-phases/2026-02-28-incremental-parser-cleanup.md) — IncrementalParser holdover cleanup implementation plan
-- [archive/completed-phases/](archive/completed-phases/) — all completed phase plans (Phases 0–7, SyntaxNode-first layer, NodeInterner, docs reorganization, dead-code audit)
+- [archive/completed-phases/](archive/completed-phases/) — all completed phase plans (Phases 0–7, SyntaxNode-first layer, NodeInterner, docs reorganization, dead-code audit, loom extraction)
 - [archive/](archive/) — research notes (Lezer, fragment reuse) and historical status docs
