@@ -520,11 +520,11 @@ Verify these functions are only called by code already deleted in Tasks 3–4 an
 
 **Step 2: Delete the functions**
 
-In `incremental.mbt`: delete `lambda_incremental_language()`.
+Delete `lambda_incremental_language()` from `incremental.mbt`.
 
-In `cst_parser.mbt`: delete `make_reuse_cursor`, `parse_cst_recover_with_tokens`, `parse_cst_with_cursor`.
+Remove `make_reuse_cursor`, `parse_cst_recover_with_tokens`, and `parse_cst_with_cursor` from `cst_parser.mbt`.
 
-In `cst_parser_wbtest.mbt`: delete tests `"parse_cst_recover_with_tokens: uses supplied tokens, not re-tokenization"` and `"parse_cst_with_cursor: uses supplied tokens, not re-tokenization"`.
+Also remove the regression-guard tests `"parse_cst_recover_with_tokens: uses supplied tokens, not re-tokenization"` and `"parse_cst_with_cursor: uses supplied tokens, not re-tokenization"` from `cst_parser_wbtest.mbt`.
 
 **Step 3: Clean up unused imports in `src/examples/lambda/moon.pkg`**
 

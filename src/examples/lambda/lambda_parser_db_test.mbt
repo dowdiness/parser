@@ -1,5 +1,5 @@
 // ParserDb tests: correctness of the generic two-memo pipeline
-// and parity with the lambda-specific three-memo @incremental.ParserDb.
+// (Signal → CstStage → Ast) and parity with direct parse_cst_to_ast_node output.
 
 // ── Lex-error routing ────────────────────────────────────────────────────────
 
