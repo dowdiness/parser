@@ -2,6 +2,7 @@
 package "dowdiness/parser/examples/lambda"
 
 import {
+  "dowdiness/parser/bridge",
   "dowdiness/parser/core",
   "dowdiness/parser/examples/lambda/ast",
   "dowdiness/parser/examples/lambda/syntax",
@@ -19,6 +20,8 @@ pub fn cst_to_ast_node(@seam.CstNode, Int, Ref[Int]) -> @ast.AstNode
 pub fn cst_to_term(@seam.CstNode) -> @ast.Term
 
 pub fn has_errors(@ast.AstNode) -> Bool
+
+pub let lambda_grammar : @bridge.Grammar[@token.Token, @syntax.SyntaxKind, @ast.AstNode]
 
 pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[@ast.AstNode]
 
@@ -52,20 +55,6 @@ pub suberror ParseError {
 }
 
 // Types and methods
-pub struct LambdaIncrementalParser {
-  // private fields
-}
-pub fn LambdaIncrementalParser::edit(Self, @core.Edit, String) -> @ast.AstNode
-pub fn LambdaIncrementalParser::get_last_reuse_count(Self) -> Int
-pub fn LambdaIncrementalParser::get_source(Self) -> String
-pub fn LambdaIncrementalParser::get_tree(Self) -> @ast.AstNode?
-pub fn LambdaIncrementalParser::interner_clear(Self) -> Unit
-pub fn LambdaIncrementalParser::interner_size(Self) -> Int
-pub fn LambdaIncrementalParser::new(String) -> Self
-pub fn LambdaIncrementalParser::node_interner_size(Self) -> Int
-pub fn LambdaIncrementalParser::parse(Self) -> @ast.AstNode
-pub fn LambdaIncrementalParser::stats(Self) -> String
-
 pub struct LambdaLanguage {
 }
 pub impl @pipeline.Parseable for LambdaLanguage

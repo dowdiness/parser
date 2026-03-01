@@ -2,14 +2,14 @@
 
 ///|
 test "NodeInterner: size is positive after non-empty parse" {
-  let parser = LambdaIncrementalParser::new("λx.x")
+  let parser = @bridge.new_incremental_parser("λx.x", lambda_grammar)
   let _ = parser.parse()
   inspect(parser.node_interner_size() > 0, content="true")
 }
 
 ///|
 test "NodeInterner: interner_clear resets node_interner_size to zero" {
-  let parser = LambdaIncrementalParser::new("λx.x")
+  let parser = @bridge.new_incremental_parser("λx.x", lambda_grammar)
   let _ = parser.parse()
   parser.interner_clear()
   inspect(parser.node_interner_size(), content="0")
@@ -17,7 +17,7 @@ test "NodeInterner: interner_clear resets node_interner_size to zero" {
 
 ///|
 test "NodeInterner: interner_clear resets both token and node interners" {
-  let parser = LambdaIncrementalParser::new("λf.λx.f (f x)")
+  let parser = @bridge.new_incremental_parser("λf.λx.f (f x)", lambda_grammar)
   let _ = parser.parse()
   parser.interner_clear()
   inspect(parser.interner_size(), content="0")
@@ -26,7 +26,7 @@ test "NodeInterner: interner_clear resets both token and node interners" {
 
 ///|
 test "NodeInterner: size does not grow on identical re-parse" {
-  let parser = LambdaIncrementalParser::new("λx.x")
+  let parser = @bridge.new_incremental_parser("λx.x", lambda_grammar)
   let _ = parser.parse()
   let size_after_initial = parser.node_interner_size()
 
@@ -40,7 +40,7 @@ test "NodeInterner: size does not grow on identical re-parse" {
 
 ///|
 test "NodeInterner: parse result unchanged after adding node_interner" {
-  let parser = LambdaIncrementalParser::new("λf.λx.f (f x)")
+  let parser = @bridge.new_incremental_parser("λf.λx.f (f x)", lambda_grammar)
   let tree = parser.parse()
   let full_tree = parse_tree("λf.λx.f (f x)")
   inspect(@ast.print_ast_node(tree), content=@ast.print_ast_node(full_tree))

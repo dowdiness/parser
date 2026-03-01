@@ -6,4 +6,5 @@ import {
   "dowdiness/parser/examples/lambda/token",
   "dowdiness/seam" @seam,
   "moonbitlang/core/bench",
+  "dowdiness/parser/bridge" @bridge,
 }
