@@ -49,8 +49,10 @@ pub fn tokenize(source : String) -> Array[@token.TokenInfo[@token.Token]] raise 
 
 ///|
 /// Create a new incremental parser for the given source.
-pub fn incremental(source : String) -> @lambda.LambdaIncrementalParser {
-  @lambda.LambdaIncrementalParser::new(source)
+pub fn incremental(
+  source : String,
+) -> @incremental.IncrementalParser[@ast.AstNode] {
+  @bridge.new_incremental_parser(source, @lambda.lambda_grammar)
 }
 
 // ── Visualization ────────────────────────────────────────────
