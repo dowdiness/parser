@@ -192,11 +192,11 @@ test "damage tracking accuracy" {
   let new_tree = parser.edit(edit, "(a + b) * (x + d)")
 
   // Source contains '*' which is a lex error; on_lex_error embeds the
-  // tokenization message: "<error: Tokenization error: *>".
-  // "Tokenization" contains 'a'; the message has no 'x' or 'b'.
-  inspect(@ast.print_ast_node(new_tree).contains("x"), content="false")
-  inspect(@ast.print_ast_node(new_tree).contains("a"), content="true")
-  inspect(@ast.print_ast_node(new_tree).contains("b"), content="false")
+  // tokenization message directly into the error node.
+  inspect(
+    @ast.print_ast_node(new_tree),
+    content="<error: Tokenization error: *>",
+  )
 }
 
 // Edge case tests for incremental parsing
