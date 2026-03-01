@@ -81,11 +81,14 @@ dowdiness/incr  ←  dowdiness/seam  ←  dowdiness/loom
 
 | Module | Tests | Command |
 |--------|-------|---------|
-| loom (framework only, no lambda) | ~100 | `cd loom && moon test` |
-| lambda example | ~269 | `cd examples/lambda && moon test` |
+| loom (framework only, no lambda) | ~76 | `cd loom && moon test` |
+| lambda example | ~293 | `cd examples/lambda && moon test` |
 | seam | 64 | `cd seam && moon test` |
 | incr | 194 | `cd incr && moon test` |
 | **Total** | **~627** | |
+
+> **Note:** loom currently has 369 tests (76 framework + 293 lambda). After extracting
+> lambda, loom retains only the ~76 framework tests. The lambda module gets the ~293.
 
 ---
 
@@ -182,9 +185,13 @@ mv loom_tmp loom
 git add loom/
 ```
 
-**Step 3: Verify loom builds and tests pass**
+**Step 3: Clear stale .mooncakes cache, then verify loom builds and tests pass**
+
+When loom was a standalone repo it may have cached registry copies of seam/incr in
+`.mooncakes/`. These conflict with the now-inlined path deps.
 
 ```bash
+rm -rf loom/.mooncakes
 cd loom && moon test
 ```
 
@@ -354,7 +361,14 @@ import {
 
 **Step 7: Update `loom/moon.mod.json` — remove quickcheck dep if only used by lambda**
 
-Check if any loom package (excluding examples/benchmarks) uses quickcheck. If not, remove it:
+**First, verify** — loom's core tests use `@qc` for property testing. Run this before deciding:
+
+```bash
+grep -r "quickcheck\|@qc" loom/src/core/ loom/src/bridge/ loom/src/pipeline/ loom/src/incremental/ loom/src/viz/
+```
+
+If any hits exist outside `examples/` and `benchmarks/`, keep quickcheck in `loom/moon.mod.json`.
+If no hits, it is safe to remove (lambda-example adds its own quickcheck dep). Target state:
 ```json
 {
   "name": "dowdiness/loom",
@@ -374,7 +388,10 @@ Check if any loom package (excluding examples/benchmarks) uses quickcheck. If no
 
 **Step 8: Create `examples/lambda/README.md`**
 
-```markdown
+Write `examples/lambda/README.md` with this content (note: use real backtick fences,
+not the escaped representation shown here):
+
+```
 # Lambda Calculus Parser
 
 Example implementation of a lambda calculus parser using the
@@ -382,30 +399,30 @@ Example implementation of a lambda calculus parser using the
 
 ## Quick Start
 
-```bash
+(bash fence)
 moon test              # run all tests
 moon bench --release   # benchmarks
-```
+(end fence)
 
 ## Packages
 
 | Package | Purpose |
 |---------|---------|
-| `token/` | Token kinds (Ident, Lambda, Arrow, etc.) |
-| `syntax/` | Syntax node kinds (Expression, Abstraction, etc.) |
-| `lexer/` | Tokenizer |
-| `ast/` | Abstract syntax tree |
-| `src/` (root) | Parser, grammar, CST→AST conversion, tests |
-| `benchmarks/` | Performance benchmarks |
+| token/      | Token kinds (Ident, Lambda, Arrow, etc.) |
+| syntax/     | Syntax node kinds (Expression, Abstraction, etc.) |
+| lexer/      | Tokenizer |
+| ast/        | Abstract syntax tree |
+| src/ (root) | Parser, grammar, CST→AST conversion, tests |
+| benchmarks/ | Performance benchmarks |
 ```
 
 **Step 9: Verify**
 
 ```bash
-cd loom && moon test        # framework tests only (should be ~100)
-cd ../examples/lambda && moon test   # lambda tests (~269)
-cd ../../seam && moon test  # 64
-cd ../incr && moon test     # 194
+cd loom && moon test              # framework tests only (~76, not ~100 — see test table)
+cd ../examples/lambda && moon test # lambda tests (~293)
+cd ../../seam && moon test         # 64
+cd ../incr && moon test            # 194
 ```
 
 **Step 10: Commit**
@@ -571,12 +588,25 @@ Change any dep from:
 ```json
 "dowdiness/parser": { "path": "parser" }
 ```
-to:
+to the specific sub-module needed. Since the repo now has no root `moon.mod.json`,
+the path must point into a sub-directory:
 ```json
-"dowdiness/loom": { "path": "loom" }
+"dowdiness/loom":         { "path": "loom/loom" },
+"dowdiness/lambda-example": { "path": "loom/examples/lambda" }
 ```
 
-(Or `"path": "loom/loom"` if the crdt module needs the loom sub-module specifically.)
+### Task 5.4: Audit `crdt` source for stale `dowdiness/parser/...` import paths
+
+`moon.mod.json` path dep changes alone are not enough — MoonBit source files that
+import `dowdiness/parser/examples/lambda/...` or `dowdiness/parser/benchmarks/...`
+will also need updating. Search before committing:
+
+```bash
+grep -r "dowdiness/parser" crdt/
+```
+
+Update each hit to use `dowdiness/loom/...` or `dowdiness/lambda-example/...`
+depending on which package is being imported. Run `moon check` in crdt afterward.
 
 ---
 
@@ -604,7 +634,7 @@ test ! -f .gitmodules && echo "OK: no submodules"
 bash check-docs.sh
 ```
 
-Expected totals: ~100 (loom) + ~269 (lambda) + 64 (seam) + 194 (incr) = **~627 tests**.
+Expected totals: ~76 (loom) + ~293 (lambda) + 64 (seam) + 194 (incr) = **~627 tests**.
 
 ---
 
