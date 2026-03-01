@@ -1,5 +1,4 @@
 import {
-  "dowdiness/parser/pipeline" @pipeline,
   "dowdiness/parser/examples/lambda/lexer",
   "dowdiness/parser/examples/lambda/ast",
   "dowdiness/parser/viz" @viz,

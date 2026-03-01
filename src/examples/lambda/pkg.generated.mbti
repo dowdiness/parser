@@ -8,7 +8,6 @@ import {
   "dowdiness/parser/examples/lambda/syntax",
   "dowdiness/parser/examples/lambda/token",
   "dowdiness/parser/incremental",
-  "dowdiness/parser/pipeline",
   "dowdiness/seam",
 }
 
@@ -24,8 +23,6 @@ pub fn has_errors(@ast.AstNode) -> Bool
 pub let lambda_grammar : @bridge.Grammar[@token.Token, @syntax.SyntaxKind, @ast.AstNode]
 
 pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[@ast.AstNode]
-
-pub fn lambda_language() -> @pipeline.Language[@ast.AstNode]
 
 pub fn make_reuse_cursor(@seam.CstNode, Int, Int, Array[@core.TokenInfo[@token.Token]]) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]
 
@@ -55,18 +52,6 @@ pub suberror ParseError {
 }
 
 // Types and methods
-pub struct LambdaLanguage {
-}
-pub impl @pipeline.Parseable for LambdaLanguage
-
-pub struct LambdaParserDb {
-  // private fields
-}
-pub fn LambdaParserDb::cst(Self) -> @pipeline.CstStage
-pub fn LambdaParserDb::diagnostics(Self) -> Array[String]
-pub fn LambdaParserDb::new(String) -> Self
-pub fn LambdaParserDb::set_source(Self, String) -> Unit
-pub fn LambdaParserDb::term(Self) -> @ast.AstNode
 
 // Type aliases
 

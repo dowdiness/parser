@@ -3,15 +3,15 @@ package "dowdiness/parser"
 
 import {
   "dowdiness/parser/core",
-  "dowdiness/parser/examples/lambda",
   "dowdiness/parser/examples/lambda/ast",
   "dowdiness/parser/examples/lambda/token",
+  "dowdiness/parser/incremental",
 }
 
 // Values
 pub fn ast_node_to_dot(@ast.AstNode) -> String
 
-pub fn incremental(String) -> @lambda.LambdaIncrementalParser
+pub fn incremental(String) -> @incremental.IncrementalParser[@ast.AstNode]
 
 pub fn parse(String) -> @ast.Term raise
 

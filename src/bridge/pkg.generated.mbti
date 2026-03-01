@@ -1,0 +1,29 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/parser/bridge"
+
+import {
+  "dowdiness/parser/core",
+  "dowdiness/parser/incremental",
+  "dowdiness/parser/pipeline",
+  "dowdiness/seam",
+}
+
+// Values
+pub fn[T, K, Ast] new_incremental_parser(String, Grammar[T, K, Ast]) -> @incremental.IncrementalParser[Ast]
+
+pub fn[T, K, Ast : Eq] new_parser_db(String, Grammar[T, K, Ast]) -> @pipeline.ParserDb[Ast]
+
+// Errors
+
+// Types and methods
+pub struct Grammar[T, K, Ast] {
+  spec : @core.LanguageSpec[T, K]
+  tokenize : (String) -> Array[@core.TokenInfo[T]] raise @core.LexError
+  to_ast : (@seam.SyntaxNode) -> Ast
+}
+pub fn[T, K, Ast] Grammar::new(spec~ : @core.LanguageSpec[T, K], tokenize~ : (String) -> Array[@core.TokenInfo[T]] raise @core.LexError, to_ast~ : (@seam.SyntaxNode) -> Ast) -> Self[T, K, Ast]
+
+// Type aliases
+
+// Traits
+

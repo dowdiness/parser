@@ -7,14 +7,14 @@
 /// "@" triggers @core.LexError; is_lex_error must be set on the CstStage
 /// so ParserDb::term routes to on_lex_error rather than to_ast.
 test "LambdaParserDb: lex error sets is_lex_error on CstStage" {
-  let db = @lambda.LambdaParserDb::new("@invalid")
-  inspect(@lambda.LambdaParserDb::cst(db).is_lex_error, content="true")
+  let db = @bridge.new_parser_db("@invalid", @lambda.lambda_grammar)
+  inspect(db.cst().is_lex_error, content="true")
 }
 
 ///|
 test "LambdaParserDb: lex error routes term() to AstKind::Error" {
-  let db = @lambda.LambdaParserDb::new("@invalid")
-  match @lambda.LambdaParserDb::term(db).kind {
+  let db = @bridge.new_parser_db("@invalid", @lambda.lambda_grammar)
+  match db.term().kind {
     @ast.AstKind::Error(_) => ()
     other => abort("expected AstKind::Error, got: " + other.to_string())
   }
@@ -22,8 +22,8 @@ test "LambdaParserDb: lex error routes term() to AstKind::Error" {
 
 ///|
 test "LambdaParserDb: lex error diagnostic starts with tokenization prefix" {
-  let db = @lambda.LambdaParserDb::new("@invalid")
-  let diags = @lambda.LambdaParserDb::diagnostics(db)
+  let db = @bridge.new_parser_db("@invalid", @lambda.lambda_grammar)
+  let diags = db.diagnostics()
   assert_eq(diags.length() > 0, true)
   // Convention: first diagnostic is "tokenization: <lexer message>"
   inspect(diags[0].length() > 14, content="true")
@@ -33,23 +33,23 @@ test "LambdaParserDb: lex error diagnostic starts with tokenization prefix" {
 
 ///|
 test "LambdaParserDb: parse error does not set is_lex_error" {
-  let db = @lambda.LambdaParserDb::new("λx.")
-  inspect(@lambda.LambdaParserDb::cst(db).is_lex_error, content="false")
+  let db = @bridge.new_parser_db("λx.", @lambda.lambda_grammar)
+  inspect(db.cst().is_lex_error, content="false")
 }
 
 ///|
 test "LambdaParserDb: parse error produces non-empty diagnostics" {
-  let db = @lambda.LambdaParserDb::new("λx.")
-  assert_eq(@lambda.LambdaParserDb::diagnostics(db).length() > 0, true)
+  let db = @bridge.new_parser_db("λx.", @lambda.lambda_grammar)
+  assert_eq(db.diagnostics().length() > 0, true)
 }
 
 // ── Happy path ───────────────────────────────────────────────────────────────
 
 ///|
 test "LambdaParserDb: valid input - integer addition" {
-  let db = @lambda.LambdaParserDb::new("1 + 2")
+  let db = @bridge.new_parser_db("1 + 2", @lambda.lambda_grammar)
   inspect(
-    @lambda.LambdaParserDb::term(db),
+    db.term(),
     content=(
       #|{kind: Bop(Plus), start: 0, end: 5, node_id: 2, children: [{kind: Int(1), start: 0, end: 1, node_id: 0, children: []}, {kind: Int(2), start: 4, end: 5, node_id: 1, children: []}]}
     ),
@@ -58,8 +58,8 @@ test "LambdaParserDb: valid input - integer addition" {
 
 ///|
 test "LambdaParserDb: valid input - lambda expression" {
-  let db = @lambda.LambdaParserDb::new("λx.x")
-  match @lambda.LambdaParserDb::term(db).kind {
+  let db = @bridge.new_parser_db("λx.x", @lambda.lambda_grammar)
+  match db.term().kind {
     @ast.AstKind::Lam("x") => ()
     other => abort("expected Lam(x), got: " + other.to_string())
   }
@@ -67,18 +67,18 @@ test "LambdaParserDb: valid input - lambda expression" {
 
 ///|
 test "LambdaParserDb: valid input - is_lex_error false" {
-  let db = @lambda.LambdaParserDb::new("λf.λx.f x")
-  inspect(@lambda.LambdaParserDb::cst(db).is_lex_error, content="false")
+  let db = @bridge.new_parser_db("λf.λx.f x", @lambda.lambda_grammar)
+  inspect(db.cst().is_lex_error, content="false")
 }
 
 // ── Mutation ─────────────────────────────────────────────────────────────────
 
 ///|
 test "LambdaParserDb: set_source updates term" {
-  let db = @lambda.LambdaParserDb::new("1")
-  let t1 = @lambda.LambdaParserDb::term(db)
-  @lambda.LambdaParserDb::set_source(db, "2")
-  let t2 = @lambda.LambdaParserDb::term(db)
+  let db = @bridge.new_parser_db("1", @lambda.lambda_grammar)
+  let t1 = db.term()
+  db.set_source("2")
+  let t2 = db.term()
   inspect(
     t1,
     content=(
@@ -96,20 +96,20 @@ test "LambdaParserDb: set_source updates term" {
 ///|
 test "LambdaParserDb: set_source same value preserves term (Eq)" {
   let source = "λf.λx.f x"
-  let db = @lambda.LambdaParserDb::new(source)
-  let t1 = @lambda.LambdaParserDb::term(db)
-  @lambda.LambdaParserDb::set_source(db, source)
-  let t2 = @lambda.LambdaParserDb::term(db)
+  let db = @bridge.new_parser_db(source, @lambda.lambda_grammar)
+  let t1 = db.term()
+  db.set_source(source)
+  let t2 = db.term()
   // AstNode::Eq is structure-only; same source must produce equal trees
   assert_eq(t1, t2)
 }
 
 ///|
 test "LambdaParserDb: set_source from lex error to valid clears is_lex_error" {
-  let db = @lambda.LambdaParserDb::new("@invalid")
-  assert_eq(@lambda.LambdaParserDb::cst(db).is_lex_error, true)
-  @lambda.LambdaParserDb::set_source(db, "1 + 2")
-  assert_eq(@lambda.LambdaParserDb::cst(db).is_lex_error, false)
+  let db = @bridge.new_parser_db("@invalid", @lambda.lambda_grammar)
+  assert_eq(db.cst().is_lex_error, true)
+  db.set_source("1 + 2")
+  assert_eq(db.cst().is_lex_error, false)
 }
 
 // ── Parity with direct parse ──────────────────────────────────────────────────
@@ -125,10 +125,10 @@ test "LambdaParserDb: parity with parse_cst_to_ast_node" {
     "λa.λb.λc. if c then a b else 124321 - 31 + a c", "10 - 3 + 1",
   ]
   for source in sources {
-    let db = @lambda.LambdaParserDb::new(source)
+    let db = @bridge.new_parser_db(source, @lambda.lambda_grammar)
     let direct = parse_cst_to_ast_node(source) catch {
       _ => abort("unexpected parse error in valid source: " + source)
     }
-    assert_eq(@lambda.LambdaParserDb::term(db).to_string(), direct.to_string())
+    assert_eq(db.term().to_string(), direct.to_string())
   }
 }
