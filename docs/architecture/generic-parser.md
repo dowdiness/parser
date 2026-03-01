@@ -36,8 +36,8 @@ pub struct LanguageSpec[T, K] {
 }
 ```
 
-- `T` — language-specific token type (e.g. `Token` from `src/lexer/`)
-- `K` — language-specific syntax kind type (e.g. `SyntaxKind` from `src/parser/`)
+- `T` — language-specific token type (e.g. `Token` from `src/examples/lambda/token/`)
+- `K` — language-specific syntax kind type (e.g. `SyntaxKind` from `src/examples/lambda/syntax/`)
 - `kind_to_raw` — maps the language kind to the `RawKind` integer used by `seam`
 - `token_is_trivia` — identifies whitespace and comments, which the parser skips by default
 - `whitespace_kind`, `error_kind`, `root_kind` — fixed kinds used for trivia nodes, error recovery, and the implicit root wrapper
@@ -95,7 +95,7 @@ Error recovery is left to the grammar function. The framework provides `bump_err
 
 ## Reference Implementation
 
-The Lambda Calculus parser in `src/parser/` is the reference implementation:
+The Lambda Calculus parser in `src/examples/lambda/` is the reference implementation:
 
 - `lambda_spec.mbt` — defines the `LanguageSpec` for lambda calculus
 - `cst_parser.mbt` — implements the grammar functions that call into `ParserContext`

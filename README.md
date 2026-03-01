@@ -7,7 +7,7 @@ and re-parses incrementally on edits via `ParserDb`.
 ## Quick Start
 
 ```bash
-moon test              # 363 tests
+moon test              # 369 tests
 moon check             # lint
 moon info && moon fmt  # before commit
 moon bench --release   # benchmarks (always --release)
@@ -25,15 +25,17 @@ moon bench --release   # benchmarks (always --release)
 
 | Package | Purpose |
 |---------|---------|
-| `src/lexer/` | Tokenizer + incremental `TokenBuffer` |
-| `src/parser/` | CST parser, CST→AST conversion, lambda `LanguageSpec` |
+| `src/examples/lambda/token/` | `Token` enum + `TokenInfo` |
+| `src/examples/lambda/syntax/` | `SyntaxKind` enum — kind names → `RawKind` integers |
+| `src/examples/lambda/lexer/` | Tokenizer + incremental `TokenBuffer` |
+| `src/examples/lambda/ast/` | `AstNode`, `Term`, pretty-printer |
+| `src/examples/lambda/` | `lambda_grammar`, `to_dot`, low-level CST parsing |
 | `seam/` | Language-agnostic CST (`CstNode`, `SyntaxNode`, `EventBuffer`) |
-| `src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable` — shared primitives |
-| `src/ast/` | `AstNode`, `Term`, pretty-printer |
+| `src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable`, `ParserContext[T,K]` |
+| `src/bridge/` | `Grammar[T,K,Ast]`, factory functions for `IncrementalParser` + `ParserDb` |
 | `src/pipeline/` | `ParserDb` — reactive incremental pipeline |
 | `src/incremental/` | `IncrementalParser`, damage tracking |
 | `src/viz/` | DOT graph renderer (`DotNode` trait) |
-| `src/lambda/` | Lambda-specific `LambdaLanguage`, `LambdaParserDb` |
 
 ## Benchmarks
 
@@ -47,7 +49,7 @@ invalidation`, `best-case cosmetic change`. See [BENCHMARKS.md](BENCHMARKS.md).
 ## Testing
 
 ```bash
-moon test                                    # all 363 tests
+moon test                                    # all 369 tests
 moon test --filter '*differential-fast*'     # CI-friendly differential
 moon test --filter '*differential-long*'     # nightly fuzz pass
 ```

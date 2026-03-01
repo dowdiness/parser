@@ -107,7 +107,7 @@ Any bug found becomes a permanent regression test. The test captures:
 - Edit specification
 - Expected tree after edit
 - Event-stream invariant tests:
-  `src/green-tree/event_wbtest.mbt` and `src/parser/green_parser_wbtest.mbt`
+  `seam/event_wbtest.mbt` and `src/examples/lambda/cst_parser_wbtest.mbt`
 
 ## Current Edge-Case Findings
 
