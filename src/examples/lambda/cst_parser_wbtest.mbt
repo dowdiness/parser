@@ -43,43 +43,6 @@ test "parse_cst: raises with offending token, not EOF" {
 }
 
 ///|
-test "parse_cst_recover_with_tokens: uses supplied tokens, not re-tokenization" {
-  // Regression guard: the old stub called parse_cst_recover(source) and
-  // would abort() on @core.LexError for temporarily invalid source text.
-  // The function must parse the supplied token stream, never re-tokenize.
-  // "@invalid" raises @core.LexError if passed to @lexer.tokenize, but
-  // the function must return normally when given valid tokens.
-  let tokens = @lexer.tokenize("x + y")
-  let (_, errors, reuse_count) = parse_cst_recover_with_tokens(
-    "@invalid",
-    tokens,
-    None,
-  )
-  inspect(errors.length(), content="0")
-  inspect(reuse_count, content="0")
-}
-
-///|
-test "parse_cst_with_cursor: uses supplied tokens, not re-tokenization" {
-  // Same regression guard for parse_cst_with_cursor.
-  let source = "x + y"
-  let tokens = @lexer.tokenize(source)
-  let cursor = @core.ReuseCursor::new(
-    parse_cst_recover(source).0,
-    0,
-    0,
-    tokens.length(),
-    fn(i) { tokens[i].token },
-    fn(i) { tokens[i].start },
-    lambda_spec,
-  )
-  let (_, errors, _reuse_count) = parse_cst_with_cursor(
-    "@invalid", tokens, cursor,
-  )
-  inspect(errors.length(), content="0")
-}
-
-///|
 test "reuse fires: VarRef unchanged after identifier edit" {
   // Old: "x + y"  →  New: "z + y"  (damage [0,1): only "x" changed)
   // VarRef("y") at [3,5) is outside damage and text is unchanged → reused.

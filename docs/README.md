@@ -40,10 +40,9 @@ Understanding how the layers fit together:
 - [decisions/2026-02-27-remove-tokenStage-memo.md](decisions/2026-02-27-remove-tokenStage-memo.md)
 - [decisions/2026-02-28-edit-lengths-not-endpoints.md](decisions/2026-02-28-edit-lengths-not-endpoints.md)
 
-## Active Plans (Future Work)
-
 ## Archive (Historical / Completed)
 
+- [archive/completed-phases/2026-03-01-extract-generic-factories.md](archive/completed-phases/2026-03-01-extract-generic-factories.md) — Grammar[T,K,Ast] + bridge factories to eliminate lambda vtable boilerplate
 - [archive/completed-phases/2026-03-01-examples-folder-design.md](archive/completed-phases/2026-03-01-examples-folder-design.md) — move lambda-specific packages to src/examples/lambda/ (design)
 - [archive/completed-phases/2026-03-01-examples-folder.md](archive/completed-phases/2026-03-01-examples-folder.md) — move lambda-specific packages to src/examples/lambda/ (implementation)
 - [archive/completed-phases/2026-02-28-consolidate-lambda-v3.md](archive/completed-phases/2026-02-28-consolidate-lambda-v3.md) — consolidate lambda package + generic IncrementalParser

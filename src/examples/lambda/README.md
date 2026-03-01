@@ -1,48 +1,41 @@
-# `dowdiness/parser/lambda`
+# `dowdiness/parser/examples/lambda`
 
 Concrete lambda calculus implementation of the generic parser infrastructure.
-Two responsibilities: **incremental pipeline** and **graphviz visualization**.
+Two responsibilities: **grammar description** and **graphviz visualization**.
 
 ## Public API
 
 ```moonbit
-// ── Pipeline ──────────────────────────────────────────────────────────────────
+// ── Grammar ───────────────────────────────────────────────────────────────────
 
-pub struct LambdaLanguage {}
-pub impl @pipeline.Parseable for LambdaLanguage
+pub let lambda_grammar : @bridge.Grammar[@token.Token, @syntax.SyntaxKind, @ast.AstNode]
 
-pub fn lambda_language() -> @pipeline.Language[@ast.AstNode]
+// ── Low-level CST parsing (used by benchmarks and whitebox tests) ─────────────
 
-pub struct LambdaParserDb { /* private */ }
-pub fn LambdaParserDb::new(String)            -> Self
-pub fn LambdaParserDb::set_source(Self, String) -> Unit
-pub fn LambdaParserDb::cst(Self)              -> @pipeline.CstStage
-pub fn LambdaParserDb::diagnostics(Self)      -> Array[String]
-pub fn LambdaParserDb::term(Self)             -> @ast.AstNode
+pub fn make_reuse_cursor(...) -> @core.ReuseCursor[...]
+pub fn parse_cst_with_cursor(...) -> (CstNode, Array[Diagnostic], Int)
+pub fn parse_cst_recover_with_tokens(...) -> (CstNode, Array[Diagnostic], Int)
 
 // ── Visualization ─────────────────────────────────────────────────────────────
 
 pub fn to_dot(@ast.AstNode) -> String
 ```
 
-## Pipeline
+## Grammar
 
-`LambdaLanguage` implements `@pipeline.Parseable` — the single method
-`parse_source(String) -> CstStage` combines tokenize + parse into one call,
-erasing `@token.Token` from callers.
-
-`lambda_language()` wraps a `LambdaLanguage` into a `Language[AstNode]`
-vtable (token-erased dictionary), passing `to_ast` and `on_lex_error` closures.
-
-`LambdaParserDb` is a convenience wrapper over `@pipeline.ParserDb[AstNode]`,
-exposing the same `new / set_source / cst / diagnostics / term` API with a
-concrete `AstNode` type so callers don't need to write the type parameter.
+`lambda_grammar` is the single integration surface. Pass it to bridge factories
+to get an `IncrementalParser` or `ParserDb`:
 
 ```moonbit
-let db = LambdaParserDb::new("λx.x + 1")
+let parser = @bridge.new_incremental_parser("λx.x + 1", @lambda.lambda_grammar)
+let db     = @bridge.new_parser_db("λx.x + 1", @lambda.lambda_grammar)
 db.set_source("λx.x + 2")
-let node = LambdaParserDb::term(db)  // @ast.AstNode
+let node = db.term()  // @ast.AstNode
 ```
+
+`Grammar[T,K,Ast]` holds three fields — `spec`, `tokenize`, `to_ast` — and the
+bridge factories erase `T`/`K` internally. Grammar authors never write vtable
+wiring (`IncrementalLanguage`, `Language`) by hand.
 
 ## Visualization
 

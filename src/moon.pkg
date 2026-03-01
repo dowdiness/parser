@@ -3,4 +3,6 @@ import {
   "dowdiness/parser/examples/lambda/ast",
   "dowdiness/parser/examples/lambda/lexer",
   "dowdiness/parser/examples/lambda" @lambda,
+  "dowdiness/parser/bridge" @bridge,
+  "dowdiness/parser/incremental" @incremental,
 }

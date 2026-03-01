@@ -61,35 +61,47 @@ Use when:
 - The "methods" need **captured mutable state** (closures close over `Ref` values)
 - You want to **store the vtable in a struct field** without leaking token types
 
+**Primary API — `Grammar[T,K,Ast]` (src/bridge/grammar.mbt):**
+
+```moonbit
+pub struct Grammar[T, K, Ast] {
+  spec      : @core.LanguageSpec[T, K]
+  tokenize  : (String) -> Array[@core.TokenInfo[T]] raise @core.LexError
+  to_ast    : (@seam.SyntaxNode) -> Ast
+}
+```
+
+Grammar authors supply only those three things. Bridge factories erase `T`/`K`
+internally and produce fully-generic consumers:
+
+```moonbit
+// src/examples/lambda/grammar.mbt
+pub let lambda_grammar : @bridge.Grammar[...] = @bridge.Grammar::new(
+  spec=lambda_spec,
+  tokenize=@lexer.tokenize,
+  to_ast=fn(s) { syntax_node_to_ast_node(s, Ref::new(0)) },
+)
+
+// Call sites — token type never mentioned again
+let parser = @bridge.new_incremental_parser(source, lambda_grammar)
+let db     = @bridge.new_parser_db(source, lambda_grammar)
+```
+
+**Escape hatch — `IncrementalLanguage[Ast]` / `Language[Ast]`:**
+
 ```moonbit
 // src/incremental/incremental_language.mbt
 pub struct IncrementalLanguage[Ast] {
-  priv full_parse : (String, @seam.Interner, @seam.NodeInterner) -> ParseOutcome
-  priv incremental_parse : (String, @seam.SyntaxNode, @core.Edit,
-                             @seam.Interner, @seam.NodeInterner) -> ParseOutcome
-  priv to_ast : (@seam.SyntaxNode) -> Ast
-  priv on_lex_error : (String) -> Ast
+  priv full_parse        : (String, ...) -> ParseOutcome
+  priv incremental_parse : (String, ...) -> ParseOutcome
+  priv to_ast            : (@seam.SyntaxNode) -> Ast
+  priv on_lex_error      : (String) -> Ast
 }
 ```
 
-`Token` and `SyntaxKind` are gone from the struct signature. They are captured
-inside closures at construction time:
-
-```moonbit
-// src/lambda/incremental.mbt
-pub fn lambda_incremental_language() -> @incremental.IncrementalLanguage[@ast.AstNode] {
-  let token_buf : Ref[@core.TokenBuffer[@token.Token]?] = Ref::new(None)
-  let last_diags : Ref[Array[@core.Diagnostic[@token.Token]]] = Ref::new([])
-  @incremental.IncrementalLanguage::new(
-    full_parse=(source, interner, node_interner) => {
-      // @token.Token is captured here — invisible to IncrementalParser
-      let buffer = @core.TokenBuffer::new(source, tokenize_fn=@lexer.tokenize, ...)
-      ...
-    },
-    ...
-  )
-}
-```
+Construct these directly (via `Language::from_closures` / `IncrementalLanguage::new`)
+only when you need to customise TokenBuffer lifecycle, lex-error handling, or diagnostic
+formatting beyond what the bridge factories provide.
 
 `IncrementalParser[Ast]` is fully generic — it stores `IncrementalLanguage[Ast]`
 without ever knowing what `T` or `K` are.
@@ -214,6 +226,7 @@ without the concrete type leaking into the struct's signature?
 |---|---|---|
 | Generic `[T, K]` | `@core.parse_tokens_indexed` | token type + kind type |
 | Generic `[Ast]` | `@incremental.IncrementalParser` | AST output type |
-| Struct-of-closures | `@incremental.IncrementalLanguage[Ast]` | token type (erased into closures) |
+| Struct-of-closures | `@bridge.Grammar[T,K,Ast]` + bridge factories | token/kind types erased by factory; `Grammar` is the grammar-author API |
+| Struct-of-closures | `@incremental.IncrementalLanguage[Ast]` | token type (erased into closures) — used internally by bridge, escape hatch for custom wiring |
 | Struct-of-closures | `@core.LanguageSpec[T, K]` | grammar entry point + token predicates |
 | Defunctionalization | (not used — would break `@core` ↔ `@lambda` layering) | — |

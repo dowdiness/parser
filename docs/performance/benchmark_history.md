@@ -2,6 +2,94 @@
 
 Historical snapshots from project benchmark runs (full suite and focused runs).
 
+## 2026-03-01 (Grammar abstraction + bridge factories)
+
+- Command: `moon bench --release`
+- Git ref: `feat/grammar-abstraction` (post `155cd75`)
+- Environment: local developer machine (WSL2 / Linux 6.6 / wasm-gc)
+- Result: `96/96` benchmarks passed
+- Changes since previous entry:
+  - `src/bridge/` package added: `Grammar[T, K, Ast]` struct + `new_incremental_parser` / `new_parser_db` factory functions; erases `T` and `K` into closures so grammar authors never see `IncrementalLanguage` or `Language`
+  - Deleted `LambdaIncrementalParser`, `LambdaParserDb`, `LambdaLanguage`, `lambda_incremental_language()` (~240 lines of lambda-specific vtable boilerplate)
+  - `lambda_grammar` module-level constant replaces per-call constructor functions; all test and benchmark callers updated to `@bridge.new_incremental_parser(src, lambda_grammar)` / `@bridge.new_parser_db(src, lambda_grammar)`
+  - `Language::from_closures` constructor added to `src/pipeline/language.mbt`
+  - Test count: 363 → 369 (net +6: new bridge/grammar coverage, −2 deleted dead-code regression guards)
+  - This run is a **refactoring-only validation**: no algorithm changes; all numbers expected within noise of 2026-02-28
+
+### Core Parse Scaling
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| parse scaling — small (5 tokens) | 1.18 µs | `"1 + 2"` |
+| parse scaling — medium (15 tokens) | 5.04 µs | lambda-if expression |
+| parse scaling — large (30+ tokens) | 8.42 µs | nested lambda-if |
+
+### ParserDb Pipeline (bridge factory)
+
+Benchmarks now call `@bridge.new_parser_db(src, lambda_grammar)` instead of `@lambda.LambdaParserDb::new(src)`.
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| parserdb: cold — new + term() | 5.96 µs | first call, full lex + parse + AST |
+| parserdb: warm — term() no change | 0.02 µs | memo hit |
+| parserdb: signal no-op — set_source(same) + term() | 0.04 µs | Signal::Eq short-circuit |
+| parserdb: full recompute — set_source(new) + term() | 12.41 µs | full lex + parse + AST conversion |
+| parserdb: undo/redo cycle | 12.45 µs | two full recomputes |
+| parserdb: diagnostics — malformed input | 0.06 µs | warm memo read |
+
+### Phase 4: Let Expression Cursor Reuse
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| phase4: let body edit — full reparse, no cursor (baseline) | 1.44 µs | |
+| phase4: let body edit — init IntLiteral reused via cursor | 1.70 µs | |
+| phase4: let init edit — cursor | 1.64 µs | |
+| phase4: nested let body edit — multiple inits reused | 3.03 µs | |
+
+### Phase 3: Cursor Reuse vs Full Reparse (110-token corpus)
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| phase3: full CST reparse, no cursor — 110 tokens | 22.83 µs | |
+| phase3: cursor reuse, edit at end — 110 tokens | 44.64 µs | |
+| phase3: cursor reuse, edit at start — 110 tokens | 37.90 µs | |
+
+### Scale Benchmarks
+
+| Benchmark | Mean | Notes |
+|---|---:|---|
+| scale: 100 terms — full reparse | 56.21 µs | |
+| scale: 100 terms — incremental single edit | 213.16 µs | |
+| scale: 100 terms — 50-edit session incremental | 7.92 ms | |
+| scale: 100 terms — 50-edit session full reparse | 3.17 ms | |
+| scale: 500 terms — full reparse | 318.17 µs | |
+| scale: 500 terms — incremental single edit | 2.13 ms | |
+| scale: 500 terms — 50-edit session incremental | 90.54 ms | |
+| scale: 500 terms — 50-edit session full reparse | 17.18 ms | |
+| scale: 1000 terms — full reparse | 699.81 µs | |
+| scale: 1000 terms — incremental single edit | 7.24 ms | |
+| scale: 1000 terms — 50-edit session incremental | 321.32 ms | |
+| scale: 1000 terms — 50-edit session full reparse | 35.72 ms | |
+
+### Notable Changes vs 2026-02-28
+
+All changes are within run-to-run noise (±10%). The Grammar abstraction has zero runtime overhead — factory-wrapped closures produce the same `IncrementalLanguage` / `Language` call graph as the deleted hand-written vtable code.
+
+| Metric | 2026-02-28 | 2026-03-01 | Change |
+|---|---:|---:|---|
+| parse scaling — small | 1.22 µs | 1.18 µs | −3% (noise) |
+| parse scaling — medium | 5.07 µs | 5.04 µs | −1% (noise) |
+| parse scaling — large | 8.63 µs | 8.42 µs | −2% (noise) |
+| parserdb: cold — new + term() | ~6.34 µs | 5.96 µs | −6% (noise) |
+| phase4: let body baseline | 1.52 µs | 1.44 µs | −5% (noise) |
+| phase4: let body + cursor | 1.75 µs | 1.70 µs | −3% (noise) |
+| phase4: nested let body | 3.16 µs | 3.03 µs | −4% (noise) |
+| phase3: full CST reparse | 24.73 µs | 22.83 µs | −8% (noise) |
+| phase3: cursor at end | 46.09 µs | 44.64 µs | −3% (noise) |
+| phase3: cursor at start | 40.33 µs | 37.90 µs | −6% (noise) |
+
+---
+
 ## 2026-02-28 (let binding grammar + P1 reuse fix)
 
 - Command: `moon bench --release`
