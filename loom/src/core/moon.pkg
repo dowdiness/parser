@@ -1,4 +1,0 @@
-import {
-  "dowdiness/seam" @seam,
-  "moonbitlang/core/cmp",
-}
