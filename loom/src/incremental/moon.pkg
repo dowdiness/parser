@@ -1,4 +1,4 @@
 import {
-  "dowdiness/parser/core" @core,
+  "dowdiness/loom/core" @core,
   "dowdiness/seam" @seam,
 }

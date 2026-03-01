@@ -2,7 +2,7 @@
 
 **Created:** 2026-02-01
 **Updated:** 2026-03-01
-**Status:** Active — Phases 0-7 + NodeInterner + let bindings + Grammar abstraction (bridge factories) complete; next: Typed SyntaxNode views, Grammar Expansion (type annotations, multi-expression files)
+**Status:** Active — Phases 0-7 + NodeInterner + let bindings + Grammar abstraction (bridge factories) + loom extraction complete; next: Typed SyntaxNode views, Grammar Expansion (type annotations, multi-expression files)
 **Goal:** A genuinely incremental, architecturally sound parser for lambda calculus (and beyond) with confidence in every layer.
 
 ---
@@ -64,13 +64,14 @@ Before planning forward, we need an unflinching look at where we are. The existi
 | Error recovery | **Complete** (Phase 3) — sync-point recovery, `ErrorNode`, diagnostics |
 | Subtree reuse | **Complete** (Phase 4) — `ReuseCursor` with 4-condition protocol |
 | Generic parser framework | **Complete** (Phase 5) — `ParserContext[T,K]`, `LanguageSpec`, `parse_with` |
-| Generic incremental reuse | **Complete** (Phase 6) — `ReuseCursor[T,K]` in `src/core/`, `node()`/`wrap_at()` |
+| Generic incremental reuse | **Complete** (Phase 6) — `ReuseCursor[T,K]` in `loom/src/core/`, `node()`/`wrap_at()` |
 | Reactive pipeline | **Complete** (Phase 7; TokenStage removed — see ADR 2026-02-27) — `ParserDb`: `Signal[String]`→`Memo[CstStage]`→`Memo[AstNode]` |
 | SyntaxNode API | **Complete** — `SyntaxToken`, `SyntaxElement`, `all_children`, `find_at`, `tight_span` |
 | `cst` field privacy | **Complete** — `.cst` is private; all callers use `SyntaxNode` methods |
 | CRDT integration | **Conversion functions** — `ast_to_crdt`, `crdt_to_source`; no conflict logic |
 | NodeInterner | **Complete** (2026-02-28) — `Interner` + `NodeInterner` wired into `IncrementalParser` and `parse_cst_recover` |
-| Grammar abstraction | **Complete** (2026-03-01) — `Grammar[T,K,Ast]` + `new_incremental_parser`/`new_parser_db` in `src/bridge/`; deleted ~240 lines of lambda vtable boilerplate |
+| Grammar abstraction | **Complete** (2026-03-01) — `Grammar[T,K,Ast]` + `new_incremental_parser`/`new_parser_db` in `loom/src/bridge/`; deleted ~240 lines of lambda vtable boilerplate |
+| Infrastructure extraction (dowdiness/loom) | **Complete** (2026-03-01) — moved `core`, `bridge`, `pipeline`, `incremental`, `viz` to `loom/` sibling module; zero .mbt edits |
 | Typed SyntaxNode views | **Planned** — Phase 3 of SyntaxNode-first layer design |
 
 ---
@@ -331,12 +332,15 @@ Phase 0: Reckoning                  ✅ COMPLETE (2026-02-01)
                 +------ Grammar Abstraction             ✅ COMPLETE (2026-03-01)
                 |           (Grammar[T,K,Ast], bridge factories, ~240 lines deleted)
                 |
+                +------ Loom Extraction                 ✅ COMPLETE (2026-03-01)
+                |           (core/bridge/pipeline/incremental/viz → dowdiness/loom)
+                |
                 +------ Grammar Expansion               ⬤ PARTIAL (let bindings ✅; type annotations, multi-expr ← PLANNED)
                 |
                 +------ CRDT Exploration               ← PLANNED (original Phase 6)
 ```
 
-Phases 0-7, SyntaxNode-First Layer (Phase 1+2), NodeInterner, let bindings, and Grammar abstraction (bridge factories) are complete.
+Phases 0-7, SyntaxNode-First Layer (Phase 1+2), NodeInterner, let bindings, Grammar abstraction (bridge factories), and loom extraction are complete.
 Next candidates: Typed SyntaxNode views, Grammar Expansion (type annotations, multi-expression files).
 
 ---
@@ -364,6 +368,7 @@ Property-based fuzzing with sequences of 10-100 random edits catches state accum
 | Reactive Pipeline (ParserDb) | Phase 7 | ✅ Complete (2026-02-25) |
 | Grammar Expansion: let bindings | 2026-02-28 | ✅ Complete |
 | Grammar abstraction (bridge factories) | 2026-03-01 | ✅ Complete |
+| Infrastructure extraction (dowdiness/loom) | 2026-03-01 | ✅ Complete |
 | Grammar Expansion: type annotations, multi-expr | Future | Confidence: High |
 | CRDT Exploration | Future | Confidence: Low-Medium (research) |
 

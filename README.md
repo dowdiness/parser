@@ -7,7 +7,8 @@ and re-parses incrementally on edits via `ParserDb`.
 ## Quick Start
 
 ```bash
-moon test              # 369 tests
+moon test              # 293 parser tests
+cd loom && moon test   # 76 loom framework tests (369 total)
 moon check             # lint
 moon info && moon fmt  # before commit
 moon bench --release   # benchmarks (always --release)
@@ -23,6 +24,8 @@ moon bench --release   # benchmarks (always --release)
 
 ## Module Map
 
+**`dowdiness/parser`** — lambda calculus example/application:
+
 | Package | Purpose |
 |---------|---------|
 | `src/examples/lambda/token/` | `Token` enum + `TokenInfo` |
@@ -30,26 +33,25 @@ moon bench --release   # benchmarks (always --release)
 | `src/examples/lambda/lexer/` | Tokenizer + incremental `TokenBuffer` |
 | `src/examples/lambda/ast/` | `AstNode`, `Term`, pretty-printer |
 | `src/examples/lambda/` | `lambda_grammar`, `to_dot`, low-level CST parsing |
-| `seam/` | Language-agnostic CST (`CstNode`, `SyntaxNode`, `EventBuffer`) |
-| `src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable`, `ParserContext[T,K]` |
-| `src/bridge/` | `Grammar[T,K,Ast]`, factory functions for `IncrementalParser` + `ParserDb` |
-| `src/pipeline/` | `ParserDb` — reactive incremental pipeline |
-| `src/incremental/` | `IncrementalParser`, damage tracking |
-| `src/viz/` | DOT graph renderer (`DotNode` trait) |
+
+**`dowdiness/loom`** (`loom/`) — reusable parser framework (zero lambda deps):
+
+| Package | Purpose |
+|---------|---------|
+| `loom/src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable`, `ParserContext[T,K]` |
+| `loom/src/bridge/` | `Grammar[T,K,Ast]`, factory functions for `IncrementalParser` + `ParserDb` |
+| `loom/src/pipeline/` | `ParserDb` — reactive incremental pipeline |
+| `loom/src/incremental/` | `IncrementalParser`, damage tracking |
+| `loom/src/viz/` | DOT graph renderer (`DotNode` trait) |
 
 ## Benchmarks
 
-```bash
-moon bench --package dowdiness/parser/benchmarks --release
-```
-
-Key benchmarks: `incremental vs full` (start/middle/end), `worst-case full
-invalidation`, `best-case cosmetic change`. See [BENCHMARKS.md](BENCHMARKS.md).
+`moon bench --package dowdiness/parser/benchmarks --release` — incremental vs full, worst-case, cosmetic change. See [BENCHMARKS.md](BENCHMARKS.md).
 
 ## Testing
 
 ```bash
-moon test                                    # all 369 tests
+moon test && (cd loom && moon test)          # all 369 tests (293 + 76)
 moon test --filter '*differential-fast*'     # CI-friendly differential
 moon test --filter '*differential-long*'     # nightly fuzz pass
 ```

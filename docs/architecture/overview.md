@@ -56,6 +56,17 @@ See also: [pipeline](pipeline.md) | [seam model](seam-model.md) | [generic parse
                                           +-----------------------+
 ```
 
+## Module Layout
+
+The implementation is split across three MoonBit modules:
+
+- **`dowdiness/seam`** (`seam/`) — language-agnostic CST: `CstNode`, `SyntaxNode`, `EventBuffer`
+- **`dowdiness/incr`** (`incr/`) — reactive signals: `Signal`, `Memo`
+- **`dowdiness/loom`** (`loom/`) — generic parser framework: `core`, `bridge`, `pipeline`, `incremental`, `viz`
+- **`dowdiness/parser`** (`src/`) — lambda calculus example: tokenizer, grammar, AST, benchmarks
+
+`loom` depends on `seam` and `incr`. `parser` depends on all three plus `loom`.
+
 ## Architectural Principles
 
 1. **No dead infrastructure.** Every cache, buffer, and data structure must be read by something during the parse pipeline. If it's not read, it doesn't exist.

@@ -6,7 +6,8 @@ Guidance for Claude Code when working in this repository.
 
 ```bash
 moon check              # lint
-moon test               # 369 tests
+moon test               # 293 parser tests
+cd loom && moon test    # 76 loom framework tests (369 total)
 moon info && moon fmt   # update .mbti interfaces + format (always before commit)
 moon bench --release    # benchmarks (always --release)
 bash check-docs.sh      # validate docs hierarchy (line limits, orphaned files, completed plans)
@@ -14,11 +15,16 @@ bash check-docs.sh      # validate docs hierarchy (line limits, orphaned files, 
 
 Run a single package or file:
 ```bash
-moon test -p dowdiness/parser/src/core
-moon test -p dowdiness/parser/src/lexer -f lexer_test.mbt
+moon test -p dowdiness/parser/src/examples/lambda/lexer
+moon test -p dowdiness/loom/core
+moon test -p dowdiness/parser/src/examples/lambda/lexer -f lexer_test.mbt
 ```
 
 ## Package Map
+
+| Package | Purpose |
+|---------|---------|
+**`dowdiness/parser`** — lambda calculus example/application:
 
 | Package | Purpose |
 |---------|---------|
@@ -28,12 +34,17 @@ moon test -p dowdiness/parser/src/lexer -f lexer_test.mbt
 | `src/examples/lambda/ast/` | `AstNode`, `Term`, pretty-printer |
 | `src/examples/lambda/` | `lambda_grammar`, `to_dot`, low-level CST parsing API |
 | `seam/` | Language-agnostic CST (`CstNode`, `SyntaxNode`, `EventBuffer`) |
-| `src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable`, `ParserContext[T,K]` — shared primitives |
-| `src/bridge/` | `Grammar[T,K,Ast]`, factory functions for `IncrementalParser` + `ParserDb` |
-| `src/pipeline/` | `ParserDb` — reactive incremental pipeline |
-| `src/incremental/` | `IncrementalParser`, damage tracking |
-| `src/viz/` | DOT graph renderer (`DotNode` trait) |
 | `src/benchmarks/` | Performance benchmarks for all pipeline layers |
+
+**`dowdiness/loom`** (`loom/`) — reusable parser framework (zero lambda deps):
+
+| Package | Purpose |
+|---------|---------|
+| `loom/src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable`, `ParserContext[T,K]` — shared primitives |
+| `loom/src/bridge/` | `Grammar[T,K,Ast]`, factory functions for `IncrementalParser` + `ParserDb` |
+| `loom/src/pipeline/` | `ParserDb` — reactive incremental pipeline |
+| `loom/src/incremental/` | `IncrementalParser`, damage tracking |
+| `loom/src/viz/` | DOT graph renderer (`DotNode` trait) |
 
 ## Architecture
 

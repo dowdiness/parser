@@ -162,7 +162,7 @@ for child in syntax.children() {
 
 ## 6. Bridge Factories
 
-The bridge package (`src/bridge/`) provides the primary way to construct incremental parsers and reactive pipelines from a `Grammar` description. These factories erase the token type `T` and kind type `K` so callers only see the `Ast` type.
+The bridge package (`loom/src/bridge/`) provides the primary way to construct incremental parsers and reactive pipelines from a `Grammar` description. These factories erase the token type `T` and kind type `K` so callers only see the `Ast` type.
 
 ### `Grammar`
 

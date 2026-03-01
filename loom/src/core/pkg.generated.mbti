@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/parser/core"
+package "dowdiness/loom/core"
 
 import {
   "dowdiness/seam",

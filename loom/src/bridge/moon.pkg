@@ -1,6 +1,6 @@
 import {
-  "dowdiness/parser/core" @core,
-  "dowdiness/parser/incremental" @incremental,
-  "dowdiness/parser/pipeline" @pipeline,
+  "dowdiness/loom/core" @core,
+  "dowdiness/loom/incremental" @incremental,
+  "dowdiness/loom/pipeline" @pipeline,
   "dowdiness/seam" @seam,
 }

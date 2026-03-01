@@ -6,6 +6,12 @@ Navigation map for the incremental parser. Start here, go one level deeper for d
 > (2) When a plan is complete: add `**Status:** Complete` to the file, then `git mv` to `archive/completed-phases/`.
 > (3) Keep `README.md` ≤60 lines and `ROADMAP.md` ≤450 lines — extract details into sub-docs.
 
+## Sibling Modules
+
+- [`../loom/README.md`](../loom/README.md) — `dowdiness/loom` generic parser framework (core, bridge, pipeline, incremental, viz)
+- `seam/` — language-agnostic CST (`CstNode`, `SyntaxNode`)
+- `incr/` — reactive signals (`Signal`, `Memo`)
+
 ## Architecture
 
 Understanding how the layers fit together:
