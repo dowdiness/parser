@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/loom/examples/lambda/lexer"
+
+import {
+  "dowdiness/loom/core",
+  "dowdiness/loom/examples/lambda/token",
+}
+
+// Values
+pub fn tokenize(String) -> Array[@core.TokenInfo[@token.Token]] raise @core.LexError
+
+pub fn tokenize_range(String, Int, Int) -> Array[@core.TokenInfo[@token.Token]] raise @core.LexError
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
