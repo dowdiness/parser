@@ -1,0 +1,8 @@
+import {
+  "dowdiness/lambda/token",
+  "dowdiness/loom/core" @core,
+}
+
+import {
+  "moonbitlang/quickcheck" @qc,
+} for "test"

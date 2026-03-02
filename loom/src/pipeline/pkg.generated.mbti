@@ -1,0 +1,42 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/loom/pipeline"
+
+import {
+  "dowdiness/seam",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct CstStage {
+  cst : @seam.CstNode
+  diagnostics : Array[String]
+  is_lex_error : Bool
+}
+pub impl Eq for CstStage
+pub impl Show for CstStage
+
+pub struct Language[Ast] {
+  // private fields
+}
+pub fn[T : Parseable, Ast] Language::from(T, to_ast~ : (@seam.SyntaxNode) -> Ast, on_lex_error~ : (String) -> Ast) -> Self[Ast]
+pub fn[Ast] Language::from_closures(parse_source~ : (String) -> CstStage, to_ast~ : (@seam.SyntaxNode) -> Ast, on_lex_error~ : (String) -> Ast) -> Self[Ast]
+
+pub struct ParserDb[Ast] {
+  // private fields
+}
+pub fn[Ast] ParserDb::cst(Self[Ast]) -> CstStage
+pub fn[Ast] ParserDb::diagnostics(Self[Ast]) -> Array[String]
+pub fn[Ast : Eq] ParserDb::new(String, Language[Ast]) -> Self[Ast]
+pub fn[Ast] ParserDb::set_source(Self[Ast], String) -> Unit
+pub fn[Ast : Eq] ParserDb::term(Self[Ast]) -> Ast
+
+// Type aliases
+
+// Traits
+pub(open) trait Parseable {
+  parse_source(Self, String) -> CstStage
+}
+

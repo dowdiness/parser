@@ -1,105 +1,80 @@
-# Managing the Loom Project
+# Managing the Loom Monorepo
 
-This repo (`dowdiness/parser`) is a **development workspace** containing three library
-submodules and their shared documentation. The actual source lives in `loom/`.
+This repo (`dowdiness/loom`) is a **rabbita-style multi-module monorepo**: the root
+has no `moon.mod.json`. Each subdirectory is an independent, publishable MoonBit module.
+
+---
+
+## Module Map
+
+| Module | Path | Purpose |
+|--------|------|---------|
+| `dowdiness/loom` | `loom/` | Generic parser framework (core, bridge, pipeline, incremental, viz) |
+| `dowdiness/seam` | `seam/` | Language-agnostic CST (`CstNode`, `SyntaxNode`) |
+| `dowdiness/incr` | `incr/` | Salsa-inspired reactive signals (`Signal`, `Memo`) |
+| `dowdiness/lambda` | `examples/lambda/` | Lambda calculus parser — example for loom |
 
 ---
 
 ## Dependency Direction
 
 ```
-dowdiness/incr  ←  dowdiness/seam  ←  dowdiness/loom
-(signals)           (CST infra)         (parser framework)
-                                              ↑
-                                     examples/lambda/
-                                     (lambda calculus demo)
+dowdiness/incr  ←──┐
+(signals)          ├── dowdiness/loom
+dowdiness/seam  ←──┘   (parser framework)
+(CST infra)        ↑          ↑
+                   │   dowdiness/lambda
+                   └── (examples/lambda/, path dep)
 ```
 
-`loom` is the product. The lambda example lives inside `loom/src/examples/lambda/` as a
-first-party demonstration of the public API.
-
----
-
-## Module Map
-
-| Module | Path | GitHub | Purpose |
-|--------|------|--------|---------|
-| `dowdiness/loom` | `loom/` | [dowdiness/loom](https://github.com/dowdiness/loom) | Generic parser framework + lambda example |
-| `dowdiness/seam` | `seam/` | [dowdiness/seam](https://github.com/dowdiness/seam) | Language-agnostic CST |
-| `dowdiness/incr` | `incr/` | [dowdiness/incr](https://github.com/dowdiness/incr) | Reactive signals |
-
-`dowdiness/parser` (this repo) has no source packages — it is a workspace container only.
-
----
-
-## Initial Setup
-
-```bash
-git clone --recursive https://github.com/dowdiness/parser.git
-```
-
-If you already cloned without `--recursive`:
-
-```bash
-git submodule update --init --recursive
-```
+`seam` and `incr` are independent — neither depends on the other.
+`lambda` depends on both `loom` (path) and `seam` (path, direct import in syntax/).
 
 ---
 
 ## Daily Development
 
-All source and tests live in `loom/`. Run everything from there:
+Each module is self-contained. Run `moon` commands from the module's directory:
 
 ```bash
-cd loom
-moon check                                    # lint
-moon test                                     # 366 tests (framework + lambda example)
-moon info && moon fmt                         # before every commit
-moon bench --release                          # benchmarks
+cd loom && moon check && moon test    # 76 tests (framework only)
+cd seam && moon check && moon test    # 64 tests
+cd incr && moon check && moon test    # 194 tests
+cd examples/lambda && moon check && moon test   # 293 tests
+```
+
+### Before every commit (in the module you edited)
+
+```bash
+moon info && moon fmt   # regenerate .mbti interfaces + format
 ```
 
 ### Targeting a single package
 
 ```bash
-moon test -p dowdiness/loom/examples/lambda/lexer
+# From loom/
 moon test -p dowdiness/loom/core
 moon test -p dowdiness/loom/core -f edit_test.mbt
+
+# From examples/lambda/
+moon test -p dowdiness/lambda/lexer
+moon test -p dowdiness/lambda/lexer -f lexer_test.mbt
 ```
 
 ---
 
-## Working Across Module Boundaries
+## Cross-Module Changes
 
-`loom/`, `seam/`, and `incr/` are git submodules. Changes need a two-step commit:
-push inside the submodule first, then update the pointer in this workspace repo.
-
-### Making a change to loom
-
-```bash
-cd loom
-# edit files
-moon check && moon test
-git add -p
-git commit -m "feat: ..."
-git push
-cd ..
-git add loom
-git commit -m "chore: update loom submodule"
-```
-
-### Pulling the latest version of all submodules
+Changes to `seam` or `incr` that affect `loom` or `lambda` are tested by running
+the dependent module. Because all modules live in the same repo and use path deps,
+there is no two-step submodule commit: just edit, test, and commit everything together.
 
 ```bash
-git submodule update --remote
-git add loom seam incr
-git commit -m "chore: update submodule pointers"
-```
-
-### Syncing after someone else updated a pointer
-
-```bash
-git pull
-git submodule update --init
+# Example: change seam, verify loom still builds
+cd seam && moon check && moon test
+cd ../loom && moon check && moon test
+git add seam/ loom/
+git commit -m "feat: extend seam API and update loom callers"
 ```
 
 ---
@@ -117,19 +92,21 @@ moon login      # subsequent sessions
 
 ### Publish order
 
-Publish leaf deps first, then loom:
+Publish leaf deps first:
 
 ```bash
 cd seam && moon publish && cd ..
 cd incr && moon publish && cd ..
 cd loom && moon publish && cd ..
+cd examples/lambda && moon publish && cd ../..
 ```
 
 ### Path deps → version deps before publishing
 
-`moon publish` requires all deps to be version deps. Before publishing `loom`, edit
-`loom/moon.mod.json` to switch path deps to the just-published versions:
+`moon publish` requires all deps to be version deps. Switch each module's path deps to
+the just-published versions before publishing it, then revert afterward.
 
+**`loom/moon.mod.json`** (before `cd loom && moon publish`):
 ```json
 "deps": {
   "dowdiness/seam": "0.1.0",
@@ -137,14 +114,23 @@ cd loom && moon publish && cd ..
 }
 ```
 
-After publishing, revert to path deps for local development:
-
-```bash
-git checkout loom/moon.mod.json
+**`examples/lambda/moon.mod.json`** (before `cd examples/lambda && moon publish`):
+```json
+"deps": {
+  "dowdiness/loom": "0.1.0",
+  "dowdiness/seam": "0.1.0",
+  "moonbitlang/quickcheck": "0.9.10"
+}
 ```
 
-> **Note:** `seam` and `incr` are not yet on mooncakes.io. The version-dep switch
-> is blocked until they are published. Use path deps in the meantime.
+After publishing each module, revert to path deps for local development:
+
+```bash
+git checkout loom/moon.mod.json examples/lambda/moon.mod.json
+```
+
+> **Note:** `seam` and `incr` are not yet published to mooncakes.io. The publish
+> sequence above is blocked until they are. Use path deps in the meantime.
 
 ### Required moon.mod.json fields
 
@@ -153,7 +139,7 @@ git checkout loom/moon.mod.json
   "name": "dowdiness/<module>",
   "version": "X.Y.Z",
   "readme": "README.md",
-  "repository": "https://github.com/dowdiness/<module>",
+  "repository": "https://github.com/dowdiness/loom",
   "license": "Apache-2.0",
   "keywords": ["..."],
   "description": "..."

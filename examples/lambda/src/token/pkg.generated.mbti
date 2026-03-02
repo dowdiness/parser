@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/lambda/token"
+
+import {
+  "dowdiness/loom/core",
+}
+
+// Values
+pub fn print_token(Token) -> String
+
+pub fn print_token_info(@core.TokenInfo[Token]) -> String
+
+pub fn print_token_infos(Array[@core.TokenInfo[Token]]) -> String
+
+pub fn print_tokens(Array[Token]) -> String
+
+// Errors
+
+// Types and methods
+pub(all) enum Token {
+  Lambda
+  Dot
+  LeftParen
+  RightParen
+  Plus
+  Minus
+  If
+  Then
+  Else
+  Let
+  In
+  Eq
+  Identifier(String)
+  Integer(Int)
+  Whitespace
+  EOF
+}
+pub impl Eq for Token
+pub impl Show for Token
+
+// Type aliases
+pub using @core {type TokenInfo}
+
+// Traits
+

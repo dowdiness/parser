@@ -34,7 +34,7 @@ A `TokenStage` memo between Signal and CstNode was considered and removed. Becau
 
 ## Stage Details
 
-### Lexer (`src/examples/lambda/lexer/`)
+### Lexer (`examples/lambda/src/lexer/`)
 
 Character-by-character scanning producing `Array[TokenInfo[Token]]`:
 
@@ -44,7 +44,7 @@ Character-by-character scanning producing `Array[TokenInfo[Token]]`:
 - **Identifier reading** — supports alphanumeric variable names starting with a letter
 - **Unicode support** — accepts both `λ` (U+03BB) and `\` for lambda
 
-### CST Parser (`src/examples/lambda/cst_parser.mbt`)
+### CST Parser (`examples/lambda/src/cst_parser.mbt`)
 
 Produces a lossless CST using the event buffer pattern (see [seam-model.md](seam-model.md) for the event stream model):
 
@@ -62,7 +62,7 @@ Ephemeral positioned view over a `CstNode`:
 - Created on demand; not stored persistently
 - `children()` returns a lazy iterator; positions are never cached in the `CstNode`
 
-### CST-to-AST Conversion (`src/examples/lambda/cst_convert.mbt`)
+### CST-to-AST Conversion (`examples/lambda/src/cst_convert.mbt`)
 
 Converts the CST to typed `AstNode`s using `SyntaxNode` for position computation:
 
@@ -70,7 +70,7 @@ Converts the CST to typed `AstNode`s using `SyntaxNode` for position computation
 - `tight_span()` computes precise start/end positions by skipping leading/trailing whitespace tokens
 - `ParenExpr` nodes are unwrapped to their inner expression's kind in the AST, so parentheses affect grouping but do not appear as AST nodes
 
-### Pretty Printer (`src/examples/lambda/ast/`)
+### Pretty Printer (`examples/lambda/src/ast/`)
 
 `print_term` traverses the `Term` AST and reconstructs source text:
 

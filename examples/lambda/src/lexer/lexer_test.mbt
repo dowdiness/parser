@@ -1,0 +1,275 @@
+// ===== Tokenizer Tests =====
+
+///|
+test "tokenize simple integer" {
+  let tokens = tokenize("42")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("42"), content="true")
+  inspect(token_str.contains("EOF"), content="true")
+}
+
+///|
+test "tokenize simple variable" {
+  let tokens = tokenize("x")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("x"), content="true")
+  inspect(token_str.contains("EOF"), content="true")
+}
+
+///|
+test "tokenize lambda expression" {
+  let tokens = tokenize("λx.x")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("λ"), content="true")
+  inspect(token_str.contains("x"), content="true")
+  inspect(token_str.contains("."), content="true")
+}
+
+///|
+test "tokenize with backslash lambda" {
+  let tokens = tokenize("\\x.x")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("λ"), content="true")
+}
+
+///|
+test "tokenize plus binary operator" {
+  let tokens = tokenize("1 + 2")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("1"), content="true")
+  inspect(token_str.contains("+"), content="true")
+  inspect(token_str.contains("2"), content="true")
+}
+
+///|
+test "tokenize minus binary operator" {
+  let tokens = tokenize("5 - 2")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("5"), content="true")
+  inspect(token_str.contains("-"), content="true")
+}
+
+///|
+test "tokenize if-then-else" {
+  let tokens = tokenize("if x then y else z")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("if"), content="true")
+  inspect(token_str.contains("then"), content="true")
+  inspect(token_str.contains("else"), content="true")
+}
+
+///|
+test "tokenize parentheses" {
+  let tokens = tokenize("(x)")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("("), content="true")
+  inspect(token_str.contains("x"), content="true")
+}
+
+///|
+test "tokenize multi-digit integer" {
+  let tokens = tokenize("12345")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("12345"), content="true")
+}
+
+///|
+test "tokenize identifier with numbers" {
+  let tokens = tokenize("x1y2")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("x1y2"), content="true")
+}
+
+///|
+test "tokenize whitespace handling" {
+  let tokens = tokenize("  x   y  ")
+  let token_str = @token.print_token_infos(tokens)
+  inspect(token_str.contains("x"), content="true")
+  inspect(token_str.contains("y"), content="true")
+}
+
+///|
+test "tokenize complex expression" {
+  let tokens = tokenize("λf.λx.(f (f x))")
+  inspect(tokens.length() > 0, content="true")
+}
+
+///|
+test "tokenize error - invalid character" {
+  let should_error = try {
+    let _tokens = tokenize("@")
+    false
+  } catch {
+    @core.LexError(_) => true
+  }
+  inspect(should_error, content="true")
+}
+
+///|
+test "token_buffer update insertion matches full tokenize" {
+  let source = "x"
+  let new_source = "x + 1"
+  let edit = @core.Edit::insert(1, 4)
+  let buffer = @core.TokenBuffer::new(
+    source,
+    tokenize_fn=tokenize,
+    eof_token=@token.EOF,
+  )
+  let updated = buffer.update(edit, new_source)
+  let full = tokenize(new_source)
+  inspect(
+    @token.print_token_infos(updated),
+    content=@token.print_token_infos(full),
+  )
+}
+
+///|
+test "token_buffer update deletion merges identifiers" {
+  let source = "x y"
+  let new_source = "xy"
+  let edit = @core.Edit::delete(1, 2)
+  let buffer = @core.TokenBuffer::new(
+    source,
+    tokenize_fn=tokenize,
+    eof_token=@token.EOF,
+  )
+  let updated = buffer.update(edit, new_source)
+  let full = tokenize(new_source)
+  inspect(
+    @token.print_token_infos(updated),
+    content=@token.print_token_infos(full),
+  )
+}
+
+///|
+test "token_buffer update replacement matches full tokenize" {
+  let source = "x + 1"
+  let new_source = "x + 42"
+  let edit = @core.Edit::replace(4, 5, 6)
+  let buffer = @core.TokenBuffer::new(
+    source,
+    tokenize_fn=tokenize,
+    eof_token=@token.EOF,
+  )
+  let updated = buffer.update(edit, new_source)
+  let full = tokenize(new_source)
+  inspect(
+    @token.print_token_infos(updated),
+    content=@token.print_token_infos(full),
+  )
+}
+
+///|
+test "token_buffer update insertion creates keyword" {
+  let source = "i"
+  let new_source = "if"
+  let edit = @core.Edit::insert(1, 1)
+  let buffer = @core.TokenBuffer::new(
+    source,
+    tokenize_fn=tokenize,
+    eof_token=@token.EOF,
+  )
+  let updated = buffer.update(edit, new_source)
+  let full = tokenize(new_source)
+  inspect(
+    @token.print_token_infos(updated),
+    content=@token.print_token_infos(full),
+  )
+}
+
+///|
+test "tokenize includes whitespace tokens" {
+  // "x + 1" has whitespace runs between syntactic tokens
+  let tokens = tokenize("x + 1")
+  let has_whitespace = tokens.iter().any(fn(t) { t.token == @token.Whitespace })
+  inspect(has_whitespace, content="true")
+}
+
+///|
+test "tokenize leading whitespace produces whitespace token" {
+  // "  x" has leading whitespace that must become a Whitespace token
+  let tokens = tokenize("  x")
+  let first = tokens[0]
+  inspect(first.token == @token.Whitespace, content="true")
+  inspect(first.start, content="0")
+  inspect(first.end, content="2")
+}
+
+///|
+test "tokenize whitespace positions are correct" {
+  // "x + 1": x@0-1, ws@1-2, +@2-3, ws@3-4, 1@4-5, EOF@5-5
+  let tokens = tokenize("x + 1")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length(), content="2")
+  let ws0 = ws_tokens[0]
+  inspect(ws0.start, content="1")
+  inspect(ws0.end, content="2")
+  let ws1 = ws_tokens[1]
+  inspect(ws1.start, content="3")
+  inspect(ws1.end, content="4")
+}
+
+///|
+test "tokenize whitespace-only input" {
+  // "   " should produce a single Whitespace token covering the whole input, then EOF
+  let tokens = tokenize("   ")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length(), content="1")
+  let ws0 = ws_tokens[0]
+  inspect(ws0.start, content="0")
+  inspect(ws0.end, content="3")
+  let has_eof = tokens.iter().any(fn(t) { t.token == @token.EOF })
+  inspect(has_eof, content="true")
+}
+
+///|
+test "tokenize mixed whitespace characters fold into one token" {
+  // " \t\n" should produce a single Whitespace token, not three separate ones
+  let tokens = tokenize(" \t\n")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length(), content="1")
+}
+
+///|
+test "tokenize trailing whitespace produces whitespace token before EOF" {
+  // "x  " should include a Whitespace token after the identifier and before EOF
+  let tokens = tokenize("x  ")
+  let ws_tokens = tokens.filter(fn(t) { t.token == @token.Whitespace })
+  inspect(ws_tokens.length() > 0, content="true")
+  let last_ws = ws_tokens[ws_tokens.length() - 1]
+  inspect(last_ws.start, content="1")
+  inspect(last_ws.end, content="3")
+}
+
+///|
+test "tokenize let keyword" {
+  let tokens = tokenize("let") catch { _ => abort("tokenize failed") }
+  let s = @token.print_token_infos(tokens)
+  inspect(s.contains("let"), content="true")
+  inspect(s.contains("EOF"), content="true")
+}
+
+///|
+test "tokenize in keyword" {
+  let tokens = tokenize("in") catch { _ => abort("tokenize failed") }
+  let s = @token.print_token_infos(tokens)
+  inspect(s.contains("in"), content="true")
+}
+
+///|
+test "tokenize eq" {
+  let tokens = tokenize("=") catch { _ => abort("tokenize failed") }
+  let s = @token.print_token_infos(tokens)
+  inspect(s.contains("="), content="true")
+}
+
+///|
+test "tokenize let expression" {
+  let tokens = tokenize("let x = 1 in x") catch {
+    _ => abort("tokenize failed")
+  }
+  let s = @token.print_token_infos(tokens)
+  inspect(s.contains("let"), content="true")
+  inspect(s.contains("in"), content="true")
+  inspect(s.contains("="), content="true")
+}

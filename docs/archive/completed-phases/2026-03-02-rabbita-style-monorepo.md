@@ -1,6 +1,6 @@
 # Rabbita-Style Monorepo Migration Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+**Status:** Complete (Phases 1–4 merged on `refactor/rabbita-monorepo`; Phase 5 = manual GitHub repo rename, pending user action)
 
 **Goal:** Restructure the project from a workspace-container-with-submodules into a rabbita-style multi-module monorepo named `loom`.
 
