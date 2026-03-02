@@ -41,8 +41,7 @@ loom/                            ← github.com/dowdiness/loom (renamed repo)
 │       ├── bridge/
 │       ├── pipeline/
 │       ├── incremental/
-│       ├── viz/
-│       └── benchmarks/
+│       └── viz/
 ├── seam/                        ← 📦 "dowdiness/seam" (inlined, no submodule)
 │   ├── moon.mod.json
 │   └── *.mbt
@@ -51,12 +50,13 @@ loom/                            ← github.com/dowdiness/loom (renamed repo)
 │   └── *.mbt, cells/, pipeline/, tests/, types/
 ├── examples/
 │   └── lambda/                  ← 📦 "dowdiness/lambda-example" (own module)
-│       ├── moon.mod.json        ← deps: { "dowdiness/loom": { "path": "../../loom" } }
+│       ├── moon.mod.json        ← deps: loom (path), seam (path), quickcheck
 │       └── src/
 │           ├── lexer/
 │           ├── token/
 │           ├── syntax/
 │           ├── ast/
+│           ├── benchmarks/
 │           └── (root pkg: parser, grammar, tests)
 ├── docs/
 ├── CLAUDE.md
@@ -70,12 +70,16 @@ loom/                            ← github.com/dowdiness/loom (renamed repo)
 ## Dependency Direction (unchanged)
 
 ```
-dowdiness/incr  ←  dowdiness/seam  ←  dowdiness/loom
-(signals)          (CST infra)        (parser framework)
-                                           ↑
-                              dowdiness/lambda-example
-                              (examples/lambda/, path dep)
+dowdiness/incr ←──┐
+(signals)         ├── dowdiness/loom
+dowdiness/seam ←──┘   (parser framework)
+(CST infra)       ↑          ↑
+                  │   dowdiness/lambda-example
+                  └── (examples/lambda/, path dep)
 ```
+
+> Lambda-example depends on both loom (path) and seam (path, direct import in syntax/).
+> seam and incr are independent — neither depends on the other.
 
 ## Test Counts (must preserve)
 
@@ -96,25 +100,37 @@ dowdiness/incr  ←  dowdiness/seam  ←  dowdiness/loom
 
 This phase eliminates git submodules by inlining their content while preserving history.
 
+**Approach chosen:** use `git subtree add` (without `--squash`) at the exact submodule
+gitlink commits currently pinned in this repo.
+
+**Preflight: ensure submodule gitdirs exist and capture pinned SHAs**
+
+```bash
+git submodule update --init seam incr loom
+git ls-tree HEAD seam incr loom | awk '{print $4"="$3}' > .submodule-refs
+cat .submodule-refs          # verify: seam=<sha>, incr=<sha>, loom=<sha>
+source .submodule-refs       # sets $seam, $incr, $loom
+```
+
+> Re-run `source .submodule-refs` if you start a new shell session mid-migration.
+
 ### Task 1.1: Absorb `seam` submodule
 
 **Context:** `seam/` is currently a git submodule pointing at `github.com/dowdiness/seam`. We need to remove the submodule and inline the files as regular tracked files.
 
-**Step 1: Deinit the seam submodule**
+**Step 1: Remove the seam submodule and commit**
 
 ```bash
 git submodule deinit -f seam
 git rm -f seam
-rm -rf .git/modules/seam
+git commit -m "chore: remove seam submodule entry"
 ```
 
-**Step 2: Clone seam content back as regular files**
+**Step 2: Import seam history with subtree at pinned commit**
 
 ```bash
-git clone https://github.com/dowdiness/seam.git seam_tmp
-rm -rf seam_tmp/.git seam_tmp/.mooncakes seam_tmp/_build seam_tmp/.worktrees
-mv seam_tmp seam
-git add seam/
+git subtree add --prefix=seam .git/modules/seam "$seam" -m "refactor: absorb seam submodule into monorepo (preserve history)"
+rm -rf .git/modules/seam
 ```
 
 **Step 3: Verify seam builds and tests pass**
@@ -125,30 +141,24 @@ cd seam && moon test
 
 Expected: 64 tests pass.
 
-**Step 4: Commit**
-
-```bash
-git add .gitmodules seam/
-git commit -m "refactor: absorb seam submodule into monorepo"
-```
+**Step 4: Confirm commit**
+`git subtree add` already created the absorb commit.
 
 ### Task 1.2: Absorb `incr` submodule
 
-**Step 1: Deinit the incr submodule**
+**Step 1: Remove the incr submodule and commit**
 
 ```bash
 git submodule deinit -f incr
 git rm -f incr
-rm -rf .git/modules/incr
+git commit -m "chore: remove incr submodule entry"
 ```
 
-**Step 2: Clone incr content back as regular files**
+**Step 2: Import incr history with subtree at pinned commit**
 
 ```bash
-git clone https://github.com/dowdiness/incr.git incr_tmp
-rm -rf incr_tmp/.git incr_tmp/.mooncakes incr_tmp/_build incr_tmp/.worktrees
-mv incr_tmp incr
-git add incr/
+git subtree add --prefix=incr .git/modules/incr "$incr" -m "refactor: absorb incr submodule into monorepo (preserve history)"
+rm -rf .git/modules/incr
 ```
 
 **Step 3: Verify incr builds and tests pass**
@@ -159,53 +169,46 @@ cd incr && moon test
 
 Expected: 194 tests pass.
 
-**Step 4: Commit**
-
-```bash
-git add .gitmodules incr/
-git commit -m "refactor: absorb incr submodule into monorepo"
-```
+**Step 4: Confirm commit**
+`git subtree add` already created the absorb commit.
 
 ### Task 1.3: Absorb `loom` submodule
 
-**Step 1: Deinit the loom submodule**
+**Step 1: Remove the loom submodule and commit**
 
 ```bash
 git submodule deinit -f loom
 git rm -f loom
+git commit -m "chore: remove loom submodule entry"
+```
+
+**Step 2: Import loom history with subtree at pinned commit**
+
+```bash
+git subtree add --prefix=loom .git/modules/loom "$loom" -m "refactor: absorb loom submodule into monorepo (preserve history)"
 rm -rf .git/modules/loom
 ```
 
-**Step 2: Clone loom content back as regular files**
+**Step 3: Verify loom builds and tests pass**
+
+`.mooncakes/` is gitignored in the loom repo, so `git subtree add` does not import it —
+no stale cache cleanup needed.
 
 ```bash
-git clone https://github.com/dowdiness/loom.git loom_tmp
-rm -rf loom_tmp/.git loom_tmp/.mooncakes loom_tmp/_build
-mv loom_tmp loom
-git add loom/
-```
-
-**Step 3: Clear stale .mooncakes cache, then verify loom builds and tests pass**
-
-When loom was a standalone repo it may have cached registry copies of seam/incr in
-`.mooncakes/`. These conflict with the now-inlined path deps.
-
-```bash
-rm -rf loom/.mooncakes
 cd loom && moon test
 ```
 
 Expected: 369 tests pass.
 
-**Step 4: Delete `.gitmodules` (now empty) and commit**
+**Step 4: Clean up refs file; delete `.gitmodules` only if still present**
 
 ```bash
-rm .gitmodules
-git add .gitmodules loom/
-git commit -m "refactor: absorb loom submodule into monorepo
-
-All three submodules (seam, incr, loom) are now regular directories.
-.gitmodules deleted."
+rm -f .submodule-refs
+if test -f .gitmodules; then
+  rm .gitmodules
+  git add .gitmodules
+  git commit -m "chore: delete empty .gitmodules"
+fi
 ```
 
 ---
@@ -232,12 +235,16 @@ mv loom/src/examples/lambda/ast examples/lambda/src/ast
 # Root-level lambda files (parser, grammar, tests, etc.)
 mv loom/src/examples/lambda/*.mbt examples/lambda/src/
 mv loom/src/examples/lambda/moon.pkg examples/lambda/src/moon.pkg
+# Preserve package API snapshots and docs
+test -f loom/src/examples/lambda/pkg.generated.mbti && mv loom/src/examples/lambda/pkg.generated.mbti examples/lambda/src/pkg.generated.mbti
+test -f loom/src/examples/lambda/README.md && mv loom/src/examples/lambda/README.md examples/lambda/README.md
 ```
 
-**Step 3: Remove the now-empty examples directory from loom**
+**Step 3: Remove only the migrated lambda directory**
 
 ```bash
-rm -rf loom/src/examples/
+rmdir loom/src/examples/lambda
+rmdir loom/src/examples 2>/dev/null || true
 ```
 
 **Step 4: Create `examples/lambda/moon.mod.json`**
@@ -317,29 +324,10 @@ import {
 }
 ```
 
-**Step 6: Update benchmarks `moon.pkg`**
+**Step 6: Move benchmarks to `examples/lambda/` and update imports**
 
-`loom/src/benchmarks/moon.pkg` imports lambda packages. Update it:
-```
-import {
-  "dowdiness/loom/core" @core,
-  "dowdiness/lambda-example/lexer",
-  "dowdiness/lambda-example" @lambda,
-  "dowdiness/loom/incremental",
-  "dowdiness/lambda-example/token",
-  "dowdiness/seam" @seam,
-  "moonbitlang/core/bench",
-  "dowdiness/loom/bridge" @bridge,
-}
-```
-
-**BUT WAIT** — benchmarks in `loom/` can't depend on `dowdiness/lambda-example` because `loom/moon.mod.json` doesn't list it as a dep. Two options:
-
-**(A) Move benchmarks to `examples/lambda/`** — they test the lambda parser, so they belong with the example. Create `examples/lambda/src/benchmarks/` and move the files there.
-
-**(B) Create a separate benchmarks module** — `benchmarks/moon.mod.json` with deps on both loom and lambda-example.
-
-**Recommended: Option A** — simpler, keeps benchmarks with the code they test.
+Benchmarks currently live at `loom/src/benchmarks/` but depend on lambda packages.
+To keep module deps clean, move them into the lambda module.
 
 ```bash
 mv loom/src/benchmarks/ examples/lambda/src/benchmarks/
@@ -359,16 +347,11 @@ import {
 }
 ```
 
-**Step 7: Update `loom/moon.mod.json` — remove quickcheck dep if only used by lambda**
+**Step 7: Remove quickcheck dep from `loom/moon.mod.json`**
 
-**First, verify** — loom's core tests use `@qc` for property testing. Run this before deciding:
-
-```bash
-grep -r "quickcheck\|@qc" loom/src/core/ loom/src/bridge/ loom/src/pipeline/ loom/src/incremental/ loom/src/viz/
-```
-
-If any hits exist outside `examples/` and `benchmarks/`, keep quickcheck in `loom/moon.mod.json`.
-If no hits, it is safe to remove (lambda-example adds its own quickcheck dep). Target state:
+quickcheck is only used by the lambda example (lexer tests + root package tests).
+No loom framework package (core, bridge, pipeline, incremental, viz) imports it.
+Lambda-example declares its own quickcheck dep, so loom no longer needs it. Target state:
 ```json
 {
   "name": "dowdiness/loom",
@@ -386,7 +369,7 @@ If no hits, it is safe to remove (lambda-example adds its own quickcheck dep). T
 }
 ```
 
-**Step 8: Create `examples/lambda/README.md`**
+**Step 8: Create or update `examples/lambda/README.md`**
 
 Write `examples/lambda/README.md` with this content (note: use real backtick fences,
 not the escaped representation shown here):
@@ -428,7 +411,7 @@ cd ../incr && moon test            # 194
 **Step 10: Commit**
 
 ```bash
-git add -A
+git add examples/ loom/src/ loom/moon.mod.json
 git commit -m "refactor: extract lambda example to examples/lambda/ with own module
 
 Following rabbita pattern: examples are independent modules with path deps
@@ -453,15 +436,38 @@ rm moon.mod.json
 rm -rf _build target .mooncakes
 ```
 
-**Step 3: Commit**
+**Step 3: Update `repository` fields in absorbed modules**
+
+`seam/moon.mod.json` and `incr/moon.mod.json` still point to their old standalone
+repos. Update them to the new monorepo:
+
+In `seam/moon.mod.json`, change:
+```json
+"repository": "https://github.com/dowdiness/seam"
+```
+to:
+```json
+"repository": "https://github.com/dowdiness/loom"
+```
+
+In `incr/moon.mod.json`, change:
+```json
+"repository": "https://github.com/dowdiness/incr"
+```
+to:
+```json
+"repository": "https://github.com/dowdiness/loom"
+```
+
+**Step 4: Commit**
 
 ```bash
-git add moon.mod.json
-git commit -m "refactor: remove root moon.mod.json — no phantom module
+git add moon.mod.json seam/moon.mod.json incr/moon.mod.json
+git commit -m "refactor: remove root moon.mod.json, update repository URLs
 
 Following rabbita pattern: repo root has no moon.mod.json.
 Each subdirectory (loom/, seam/, incr/, examples/lambda/) is an
-independent MoonBit module."
+independent MoonBit module. Repository fields now point to the monorepo."
 ```
 
 ---
