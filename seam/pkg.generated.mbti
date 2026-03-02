@@ -1,0 +1,150 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "dowdiness/seam"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn build_tree(Array[ParseEvent], RawKind, trivia_kind? : RawKind?) -> CstNode
+
+pub fn build_tree_fully_interned(Array[ParseEvent], RawKind, Interner, NodeInterner, trivia_kind? : RawKind?) -> CstNode
+
+pub fn build_tree_interned(Array[ParseEvent], RawKind, Interner, trivia_kind? : RawKind?) -> CstNode
+
+pub fn combine_hash(Int, Int) -> Int
+
+pub fn string_hash(String) -> Int
+
+// Errors
+
+// Types and methods
+pub(all) enum CstElement {
+  Token(CstToken)
+  Node(CstNode)
+}
+pub fn CstElement::kind(Self) -> RawKind
+pub fn CstElement::text_len(Self) -> Int
+pub impl Eq for CstElement
+pub impl Hash for CstElement
+pub impl Show for CstElement
+pub impl @debug.Debug for CstElement
+
+pub(all) struct CstNode {
+  kind : RawKind
+  children : Array[CstElement]
+  text_len : Int
+  hash : Int
+  token_count : Int
+}
+pub fn CstNode::has_errors(Self, RawKind, RawKind) -> Bool
+pub fn CstNode::kind(Self) -> RawKind
+pub fn CstNode::new(RawKind, Array[CstElement], trivia_kind? : RawKind?) -> Self
+pub impl Eq for CstNode
+pub impl Hash for CstNode
+pub impl Show for CstNode
+pub impl @debug.Debug for CstNode
+
+pub(all) struct CstToken {
+  kind : RawKind
+  text : String
+  hash : Int
+}
+pub fn CstToken::new(RawKind, String) -> Self
+pub fn CstToken::text_len(Self) -> Int
+pub impl Eq for CstToken
+pub impl Hash for CstToken
+pub impl Show for CstToken
+pub impl @debug.Debug for CstToken
+
+pub struct EventBuffer {
+  // private fields
+}
+pub fn EventBuffer::build_tree(Self, RawKind, trivia_kind? : RawKind?) -> CstNode
+pub fn EventBuffer::build_tree_fully_interned(Self, RawKind, Interner, NodeInterner, trivia_kind? : RawKind?) -> CstNode
+pub fn EventBuffer::build_tree_interned(Self, RawKind, Interner, trivia_kind? : RawKind?) -> CstNode
+pub fn EventBuffer::mark(Self) -> Int
+pub fn EventBuffer::new() -> Self
+pub fn EventBuffer::push(Self, ParseEvent) -> Unit
+pub fn EventBuffer::start_at(Self, Int, RawKind) -> Unit
+
+pub struct Interner {
+  // private fields
+}
+pub fn Interner::clear(Self) -> Unit
+pub fn Interner::intern_token(Self, RawKind, String) -> CstToken
+pub fn Interner::new() -> Self
+pub fn Interner::size(Self) -> Int
+
+pub struct NodeInterner {
+  // private fields
+}
+pub fn NodeInterner::clear(Self) -> Unit
+pub fn NodeInterner::intern_node(Self, CstNode) -> CstNode
+pub fn NodeInterner::new() -> Self
+pub fn NodeInterner::size(Self) -> Int
+
+pub(all) enum ParseEvent {
+  StartNode(RawKind)
+  FinishNode
+  Token(RawKind, String)
+  Tombstone
+}
+pub impl Eq for ParseEvent
+pub impl Show for ParseEvent
+
+pub(all) struct RawKind(Int)
+#deprecated
+pub fn RawKind::inner(Self) -> Int
+pub impl Compare for RawKind
+pub impl Eq for RawKind
+pub impl Hash for RawKind
+pub impl Show for RawKind
+pub impl @debug.Debug for RawKind
+
+pub(all) enum SyntaxElement {
+  Node(SyntaxNode)
+  Token(SyntaxToken)
+}
+pub fn SyntaxElement::end(Self) -> Int
+pub fn SyntaxElement::start(Self) -> Int
+pub impl Show for SyntaxElement
+pub impl @debug.Debug for SyntaxElement
+
+pub struct SyntaxNode {
+  parent : SyntaxNode?
+  offset : Int
+  // private fields
+}
+pub fn SyntaxNode::all_children(Self) -> Array[SyntaxElement]
+pub fn SyntaxNode::children(Self) -> Array[Self]
+pub fn SyntaxNode::cst_node(Self) -> CstNode
+pub fn SyntaxNode::end(Self) -> Int
+pub fn SyntaxNode::find_at(Self, Int) -> Self
+pub fn SyntaxNode::find_token(Self, RawKind) -> SyntaxToken?
+pub fn SyntaxNode::from_cst(CstNode) -> Self
+pub fn SyntaxNode::kind(Self) -> RawKind
+pub fn SyntaxNode::new(CstNode, Self?, Int) -> Self
+pub fn SyntaxNode::start(Self) -> Int
+pub fn SyntaxNode::tight_span(Self, trivia_kind? : RawKind?) -> (Int, Int)
+pub fn SyntaxNode::tokens(Self) -> Array[SyntaxToken]
+pub fn SyntaxNode::tokens_of_kind(Self, RawKind) -> Array[SyntaxToken]
+pub impl Show for SyntaxNode
+pub impl @debug.Debug for SyntaxNode
+
+pub struct SyntaxToken {
+  cst : CstToken
+  offset : Int
+}
+pub fn SyntaxToken::end(Self) -> Int
+pub fn SyntaxToken::kind(Self) -> RawKind
+pub fn SyntaxToken::new(CstToken, Int) -> Self
+pub fn SyntaxToken::start(Self) -> Int
+pub fn SyntaxToken::text(Self) -> String
+pub impl Show for SyntaxToken
+pub impl @debug.Debug for SyntaxToken
+
+// Type aliases
+
+// Traits
+
