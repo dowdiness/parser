@@ -4,29 +4,46 @@ Guidance for Claude Code when working in this repository.
 
 ## Commands
 
-All source and tests are in `loom/`. Run from there:
+Each module is self-contained. Run `moon` from the module's directory:
 
 ```bash
-cd loom
-moon check              # lint
-moon test               # 366 tests (framework + lambda example)
-moon info && moon fmt   # update .mbti interfaces + format (always before commit)
-moon bench --release    # benchmarks (always --release)
-bash ../check-docs.sh   # validate docs hierarchy
+cd loom && moon check && moon test    # 76 tests (framework only)
+cd seam && moon check && moon test    # 64 tests
+cd incr && moon check && moon test    # 194 tests
+cd examples/lambda && moon check && moon test   # 293 tests
+```
+
+Before every commit (in the module you edited):
+```bash
+moon info && moon fmt   # regenerate .mbti interfaces + format
+```
+
+Validate docs hierarchy from repo root:
+```bash
+bash check-docs.sh
+```
+
+Benchmarks (always `--release`):
+```bash
+cd examples/lambda && moon bench --release
 ```
 
 Run a single package or file:
 ```bash
-moon test -p dowdiness/loom/examples/lambda/lexer
+# From loom/
 moon test -p dowdiness/loom/core
-moon test -p dowdiness/loom/examples/lambda/lexer -f lexer_test.mbt
+moon test -p dowdiness/loom/core -f edit_test.mbt
+
+# From examples/lambda/
+moon test -p dowdiness/lambda/lexer
+moon test -p dowdiness/lambda/lexer -f lexer_test.mbt
 ```
 
 ## Package Map
 
-**`dowdiness/parser`** (this repo) — workspace container only, no source packages.
+**Monorepo** — no root `moon.mod.json`. Each directory is an independent module:
 
-**`dowdiness/loom`** (`loom/`) — parser framework + lambda calculus example:
+**`dowdiness/loom`** (`loom/`) — parser framework:
 
 | Package | Purpose |
 |---------|---------|
@@ -35,7 +52,21 @@ moon test -p dowdiness/loom/examples/lambda/lexer -f lexer_test.mbt
 | `loom/src/pipeline/` | `ParserDb` — reactive incremental pipeline |
 | `loom/src/incremental/` | `IncrementalParser`, damage tracking |
 | `loom/src/viz/` | DOT graph renderer (`DotNode` trait) |
-| `loom/src/examples/lambda/` | Lambda calculus demo: token, syntax, lexer, ast, grammar |
+
+**`dowdiness/seam`** (`seam/`) — language-agnostic CST (`CstNode`, `SyntaxNode`)
+
+**`dowdiness/incr`** (`incr/`) — reactive signals (`Signal`, `Memo`)
+
+**`dowdiness/lambda`** (`examples/lambda/`) — lambda calculus parser example:
+
+| Package | Purpose |
+|---------|---------|
+| `src/token/` | Token kinds |
+| `src/syntax/` | Syntax node kinds |
+| `src/lexer/` | Tokenizer |
+| `src/ast/` | Abstract syntax tree |
+| `src/` (root) | Parser, grammar, CST→AST, tests |
+| `src/benchmarks/` | Performance benchmarks |
 
 ## Architecture
 

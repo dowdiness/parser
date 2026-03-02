@@ -1,37 +1,39 @@
-# Parser Workspace
+# Loom
 
-Development workspace for `dowdiness/loom` — a generic incremental parser framework for MoonBit.
+A generic incremental parser framework for MoonBit.
 
-The lambda calculus parser and all source packages now live in `loom/`.
-This repo holds the git submodules (`loom/`, `seam/`, `incr/`) and documentation.
+## Modules
+
+| Module | Path | Purpose |
+|--------|------|---------|
+| [`dowdiness/loom`](loom/) | `loom/` | Parser framework: incremental parsing, CST building, grammar composition |
+| [`dowdiness/seam`](seam/) | `seam/` | Language-agnostic CST infrastructure |
+| [`dowdiness/incr`](incr/) | `incr/` | Salsa-inspired incremental recomputation |
+
+## Examples
+
+| Example | Path | Purpose |
+|---------|------|---------|
+| [Lambda Calculus](examples/lambda/) | `examples/lambda/` | Full parser for λ-calculus with arithmetic |
 
 ## Quick Start
 
 ```bash
-git clone --recursive https://github.com/dowdiness/parser.git
-cd parser/loom
-moon test              # 369 tests
-moon check             # lint
-moon info && moon fmt  # before commit
-moon bench --release   # benchmarks (always --release)
+git clone https://github.com/dowdiness/loom.git
+cd loom
+
+# Core framework
+cd loom && moon test && cd ..
+
+# Lambda example
+cd examples/lambda && moon test && cd ../..
+
+# Benchmarks
+cd examples/lambda && moon bench --release && cd ../..
 ```
 
 ## Documentation
 
 - [docs/README.md](docs/README.md) — full navigation index
-- [ROADMAP.md](ROADMAP.md) — architecture, phase status, future work
-- [docs/development/managing-modules.md](docs/development/managing-modules.md) — submodule + publish workflow
-
-## Module Map
-
-**`dowdiness/loom`** (`loom/`) — parser framework + lambda calculus example:
-
-| Package | Purpose |
-|---------|---------|
-| `loom/src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable`, `ParserContext[T,K]` |
-| `loom/src/bridge/` | `Grammar[T,K,Ast]`, factory functions for `IncrementalParser` + `ParserDb` |
-| `loom/src/pipeline/` | `ParserDb` — reactive incremental pipeline |
-| `loom/src/incremental/` | `IncrementalParser`, damage tracking |
-| `loom/src/viz/` | DOT graph renderer (`DotNode` trait) |
-| `loom/src/examples/lambda/` | Lambda calculus demo: token, syntax, lexer, ast, grammar |
-| `loom/src/benchmarks/` | Performance benchmarks for all pipeline layers |
+- [ROADMAP.md](ROADMAP.md) — phase status and future work
+- [docs/development/managing-modules.md](docs/development/managing-modules.md) — multi-module workflow

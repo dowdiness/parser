@@ -6,12 +6,6 @@ Navigation map for the incremental parser. Start here, go one level deeper for d
 > (2) When a plan is complete: add `**Status:** Complete` to the file, then `git mv` to `archive/completed-phases/`.
 > (3) Keep `README.md` ≤60 lines and `ROADMAP.md` ≤450 lines — extract details into sub-docs.
 
-## Sibling Modules
-
-- [`../loom/README.md`](../loom/README.md) — `dowdiness/loom` generic parser framework (core, bridge, pipeline, incremental, viz)
-- `seam/` — language-agnostic CST (`CstNode`, `SyntaxNode`)
-- `incr/` — reactive signals (`Signal`, `Memo`)
-
 ## Architecture
 
 Understanding how the layers fit together:
@@ -46,15 +40,11 @@ Understanding how the layers fit together:
 - [decisions/2026-02-27-remove-tokenStage-memo.md](decisions/2026-02-27-remove-tokenStage-memo.md)
 - [decisions/2026-02-28-edit-lengths-not-endpoints.md](decisions/2026-02-28-edit-lengths-not-endpoints.md)
 
-## Active Plans
-
-- [plans/2026-03-02-rabbita-style-monorepo.md](plans/2026-03-02-rabbita-style-monorepo.md) — migrate to rabbita-style multi-module monorepo
-
 ## Development
 
-- [development/managing-modules.md](development/managing-modules.md) — submodule workflow, publishing to mooncakes.io, adding new modules
+- [development/managing-modules.md](development/managing-modules.md) — monorepo workflow, per-module development, publishing to mooncakes.io
 
 ## Archive (Historical / Completed)
 
-- [archive/completed-phases/](archive/completed-phases/) — all completed phase plans (Phases 0–7, SyntaxNode-first layer, NodeInterner, docs reorganization, dead-code audit, loom extraction)
+- [archive/completed-phases/](archive/completed-phases/) — all completed phase plans (Phases 0–7, SyntaxNode-first layer, NodeInterner, docs reorganization, dead-code audit, loom extraction, rabbita monorepo migration)
 - [archive/](archive/) — research notes (Lezer, fragment reuse) and historical status docs
