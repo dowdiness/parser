@@ -47,8 +47,8 @@ moon test -p dowdiness/lambda/lexer -f lexer_test.mbt
 
 | Package | Purpose |
 |---------|---------|
+| `loom/src/` (root) | Public API facade; `Grammar[T,K,Ast]`, `new_incremental_parser`, `new_parser_db` |
 | `loom/src/core/` | `Edit`, `Range`, `ReuseSlot`, `Editable`, `ParserContext[T,K]` — shared primitives |
-| `loom/src/bridge/` | `Grammar[T,K,Ast]`, factory functions for `IncrementalParser` + `ParserDb` |
 | `loom/src/pipeline/` | `ParserDb` — reactive incremental pipeline |
 | `loom/src/incremental/` | `IncrementalParser`, damage tracking |
 | `loom/src/viz/` | DOT graph renderer (`DotNode` trait) |

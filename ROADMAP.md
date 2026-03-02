@@ -1,8 +1,8 @@
 # Roadmap: Stabilized Incremental Parser
 
 **Created:** 2026-02-01
-**Updated:** 2026-03-01
-**Status:** Active — Phases 0-7 + NodeInterner + let bindings + Grammar abstraction (bridge factories) + loom extraction complete; next: Typed SyntaxNode views, Grammar Expansion (type annotations, multi-expression files)
+**Updated:** 2026-03-02
+**Status:** Active — Phases 0-7 + NodeInterner + let bindings + Grammar abstraction (bridge factories) + loom extraction + rabbita monorepo migration complete; next: Typed SyntaxNode views, Grammar Expansion (type annotations, multi-expression files)
 **Goal:** A genuinely incremental, architecturally sound parser for lambda calculus (and beyond) with confidence in every layer.
 
 ---
@@ -335,12 +335,15 @@ Phase 0: Reckoning                  ✅ COMPLETE (2026-02-01)
                 +------ Loom Extraction                 ✅ COMPLETE (2026-03-01)
                 |           (core/bridge/pipeline/incremental/viz → dowdiness/loom)
                 |
+                +------ Rabbita Monorepo Migration      ✅ COMPLETE (2026-03-02)
+                |           (submodules absorbed, lambda → examples/lambda/, no root moon.mod.json)
+                |
                 +------ Grammar Expansion               ⬤ PARTIAL (let bindings ✅; type annotations, multi-expr ← PLANNED)
                 |
                 +------ CRDT Exploration               ← PLANNED (original Phase 6)
 ```
 
-Phases 0-7, SyntaxNode-First Layer (Phase 1+2), NodeInterner, let bindings, Grammar abstraction (bridge factories), and loom extraction are complete.
+Phases 0-7, SyntaxNode-First Layer (Phase 1+2), NodeInterner, let bindings, Grammar abstraction (bridge factories), loom extraction, and rabbita monorepo migration are complete.
 Next candidates: Typed SyntaxNode views, Grammar Expansion (type annotations, multi-expression files).
 
 ---
@@ -369,6 +372,7 @@ Property-based fuzzing with sequences of 10-100 random edits catches state accum
 | Grammar Expansion: let bindings | 2026-02-28 | ✅ Complete |
 | Grammar abstraction (bridge factories) | 2026-03-01 | ✅ Complete |
 | Infrastructure extraction (dowdiness/loom) | 2026-03-01 | ✅ Complete |
+| Rabbita monorepo migration | 2026-03-02 | ✅ Complete |
 | Grammar Expansion: type annotations, multi-expr | Future | Confidence: High |
 | CRDT Exploration | Future | Confidence: Low-Medium (research) |
 

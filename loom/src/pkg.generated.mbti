@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/loom/bridge"
+package "dowdiness/loom"
 
 import {
   "dowdiness/loom/core",
@@ -25,6 +25,31 @@ pub struct Grammar[T, K, Ast] {
 pub fn[T, K, Ast] Grammar::new(spec~ : @core.LanguageSpec[T, K], tokenize~ : (String) -> Array[@core.TokenInfo[T]] raise @core.LexError, to_ast~ : (@seam.SyntaxNode) -> Ast, on_lex_error~ : (String) -> Ast) -> Self[T, K, Ast]
 
 // Type aliases
+pub using @seam {type CstNode}
+
+pub using @core {type Diagnostic}
+
+pub using @core {type Edit}
+
+pub using @incremental {type IncrementalParser}
+
+pub using @core {type LanguageSpec}
+
+pub using @core {type LexError}
+
+pub using @core {type ParserContext}
+
+pub using @pipeline {type ParserDb}
+
+pub using @seam {type SyntaxElement}
+
+pub using @seam {type SyntaxNode}
+
+pub using @seam {type SyntaxToken}
+
+pub using @core {type TextDelta}
+
+pub using @core {type TokenInfo}
 
 // Traits
 

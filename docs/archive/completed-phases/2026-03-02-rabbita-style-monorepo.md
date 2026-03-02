@@ -1,6 +1,6 @@
 # Rabbita-Style Monorepo Migration Plan
 
-**Status:** Complete (Phases 1–4 merged on `refactor/rabbita-monorepo`; Phase 5 = manual GitHub repo rename, pending user action)
+**Status:** Complete (all phases done; GitHub repo renamed to `loom`, `crdt` submodule updated)
 
 **Goal:** Restructure the project from a workspace-container-with-submodules into a rabbita-style multi-module monorepo named `loom`.
 

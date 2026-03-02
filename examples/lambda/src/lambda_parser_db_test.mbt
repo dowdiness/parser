@@ -7,13 +7,13 @@
 /// "@" triggers @core.LexError; is_lex_error must be set on the CstStage
 /// so ParserDb::term routes to on_lex_error rather than to_ast.
 test "ParserDb: lex error sets is_lex_error on CstStage" {
-  let db = @bridge.new_parser_db("@invalid", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("@invalid", @lambda.lambda_grammar)
   inspect(db.cst().is_lex_error, content="true")
 }
 
 ///|
 test "ParserDb: lex error routes term() to AstKind::Error" {
-  let db = @bridge.new_parser_db("@invalid", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("@invalid", @lambda.lambda_grammar)
   match db.term().kind {
     @ast.AstKind::Error(_) => ()
     other => abort("expected AstKind::Error, got: " + other.to_string())
@@ -22,7 +22,7 @@ test "ParserDb: lex error routes term() to AstKind::Error" {
 
 ///|
 test "ParserDb: lex error diagnostic starts with tokenization prefix" {
-  let db = @bridge.new_parser_db("@invalid", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("@invalid", @lambda.lambda_grammar)
   let diags = db.diagnostics()
   assert_eq(diags.length() > 0, true)
   // Convention: first diagnostic is "tokenization: <lexer message>"
@@ -33,13 +33,13 @@ test "ParserDb: lex error diagnostic starts with tokenization prefix" {
 
 ///|
 test "ParserDb: parse error does not set is_lex_error" {
-  let db = @bridge.new_parser_db("λx.", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("λx.", @lambda.lambda_grammar)
   inspect(db.cst().is_lex_error, content="false")
 }
 
 ///|
 test "ParserDb: parse error produces non-empty diagnostics" {
-  let db = @bridge.new_parser_db("λx.", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("λx.", @lambda.lambda_grammar)
   assert_eq(db.diagnostics().length() > 0, true)
 }
 
@@ -47,7 +47,7 @@ test "ParserDb: parse error produces non-empty diagnostics" {
 
 ///|
 test "ParserDb: valid input - integer addition" {
-  let db = @bridge.new_parser_db("1 + 2", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("1 + 2", @lambda.lambda_grammar)
   inspect(
     db.term(),
     content=(
@@ -58,7 +58,7 @@ test "ParserDb: valid input - integer addition" {
 
 ///|
 test "ParserDb: valid input - lambda expression" {
-  let db = @bridge.new_parser_db("λx.x", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("λx.x", @lambda.lambda_grammar)
   match db.term().kind {
     @ast.AstKind::Lam("x") => ()
     other => abort("expected Lam(x), got: " + other.to_string())
@@ -67,7 +67,7 @@ test "ParserDb: valid input - lambda expression" {
 
 ///|
 test "ParserDb: valid input - is_lex_error false" {
-  let db = @bridge.new_parser_db("λf.λx.f x", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("λf.λx.f x", @lambda.lambda_grammar)
   inspect(db.cst().is_lex_error, content="false")
 }
 
@@ -75,7 +75,7 @@ test "ParserDb: valid input - is_lex_error false" {
 
 ///|
 test "ParserDb: set_source updates term" {
-  let db = @bridge.new_parser_db("1", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("1", @lambda.lambda_grammar)
   let t1 = db.term()
   db.set_source("2")
   let t2 = db.term()
@@ -96,7 +96,7 @@ test "ParserDb: set_source updates term" {
 ///|
 test "ParserDb: set_source same value preserves term (Eq)" {
   let source = "λf.λx.f x"
-  let db = @bridge.new_parser_db(source, @lambda.lambda_grammar)
+  let db = @loom.new_parser_db(source, @lambda.lambda_grammar)
   let t1 = db.term()
   db.set_source(source)
   let t2 = db.term()
@@ -106,7 +106,7 @@ test "ParserDb: set_source same value preserves term (Eq)" {
 
 ///|
 test "ParserDb: set_source from lex error to valid clears is_lex_error" {
-  let db = @bridge.new_parser_db("@invalid", @lambda.lambda_grammar)
+  let db = @loom.new_parser_db("@invalid", @lambda.lambda_grammar)
   inspect(db.cst().is_lex_error, content="true")
   db.set_source("1 + 2")
   inspect(db.cst().is_lex_error, content="false")
@@ -125,7 +125,7 @@ test "ParserDb: parity with parse_cst_to_ast_node" {
     "λa.λb.λc. if c then a b else 124321 - 31 + a c", "10 - 3 + 1",
   ]
   for source in sources {
-    let db = @bridge.new_parser_db(source, @lambda.lambda_grammar)
+    let db = @loom.new_parser_db(source, @lambda.lambda_grammar)
     let direct = parse_cst_to_ast_node(source) catch {
       _ => abort("unexpected parse error in valid source: " + source)
     }

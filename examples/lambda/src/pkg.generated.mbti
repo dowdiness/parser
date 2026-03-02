@@ -5,8 +5,9 @@ import {
   "dowdiness/lambda/ast",
   "dowdiness/lambda/syntax",
   "dowdiness/lambda/token",
-  "dowdiness/loom/bridge",
+  "dowdiness/loom",
   "dowdiness/loom/core",
+  "dowdiness/loom/incremental",
   "dowdiness/seam",
 }
 
@@ -19,9 +20,11 @@ pub fn cst_to_term(@seam.CstNode) -> @ast.Term
 
 pub fn has_errors(@ast.AstNode) -> Bool
 
-pub let lambda_grammar : @bridge.Grammar[@token.Token, @syntax.SyntaxKind, @ast.AstNode]
+pub let lambda_grammar : @loom.Grammar[@token.Token, @syntax.SyntaxKind, @ast.AstNode]
 
 pub fn make_reuse_cursor(@seam.CstNode, Int, Int, Array[@core.TokenInfo[@token.Token]]) -> @core.ReuseCursor[@token.Token, @syntax.SyntaxKind]
+
+pub fn new_incremental_parser(String) -> @incremental.IncrementalParser[@ast.AstNode]
 
 pub fn parse(String) -> @ast.Term raise
 
@@ -51,6 +54,19 @@ pub suberror ParseError {
 // Types and methods
 
 // Type aliases
+pub using @ast {type AstKind}
+
+pub using @ast {type AstNode}
+
+pub using @ast {type Bop}
+
+pub using @core {type Edit}
+
+pub using @incremental {type IncrementalParser}
+
+pub using @ast {type Term}
+
+pub type VarName = String
 
 // Traits
 

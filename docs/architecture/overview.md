@@ -58,14 +58,14 @@ See also: [pipeline](pipeline.md) | [seam model](seam-model.md) | [generic parse
 
 ## Module Layout
 
-The implementation is split across three MoonBit modules:
+The implementation is split across four MoonBit modules:
 
 - **`dowdiness/seam`** (`seam/`) — language-agnostic CST: `CstNode`, `SyntaxNode`, `EventBuffer`
 - **`dowdiness/incr`** (`incr/`) — reactive signals: `Signal`, `Memo`
 - **`dowdiness/loom`** (`loom/`) — generic parser framework: `core`, `bridge`, `pipeline`, `incremental`, `viz`
-- **`dowdiness/parser`** (`src/`) — lambda calculus example: tokenizer, grammar, AST, benchmarks
+- **`dowdiness/lambda`** (`examples/lambda/`) — lambda calculus example: tokenizer, grammar, AST, benchmarks
 
-`loom` depends on `seam` and `incr`. `parser` depends on all three plus `loom`.
+`loom` depends on `seam` and `incr`. `dowdiness/lambda` depends on `loom` and `seam` via path deps.
 
 ## Architectural Principles
 
