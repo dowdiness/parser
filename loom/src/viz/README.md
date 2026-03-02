@@ -70,4 +70,4 @@ pub fn to_dot(node : @ast.MyAstNode) -> String {
 }
 ```
 
-See `src/examples/lambda/dot_node.mbt` for the reference implementation.
+See `examples/lambda/src/dot_node.mbt` for the reference implementation.

@@ -95,7 +95,7 @@ Error recovery is left to the grammar function. The framework provides `bump_err
 
 ## Reference Implementation
 
-The Lambda Calculus parser in `src/examples/lambda/` is the reference implementation:
+The Lambda Calculus parser in `examples/lambda/src/` is the reference implementation:
 
 - `lambda_spec.mbt` — defines the `LanguageSpec` for lambda calculus
 - `cst_parser.mbt` — implements the grammar functions that call into `ParserContext`

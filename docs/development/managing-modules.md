@@ -103,9 +103,10 @@ cd examples/lambda && moon publish && cd ../..
 
 ### Path deps → version deps before publishing
 
-`moon publish` requires all deps to be version deps. Before publishing `loom`, edit
-`loom/moon.mod.json` to switch path deps to the just-published versions:
+`moon publish` requires all deps to be version deps. Switch each module's path deps to
+the just-published versions before publishing it, then revert afterward.
 
+**`loom/moon.mod.json`** (before `cd loom && moon publish`):
 ```json
 "deps": {
   "dowdiness/seam": "0.1.0",
@@ -113,10 +114,20 @@ cd examples/lambda && moon publish && cd ../..
 }
 ```
 
-After publishing, revert to path deps for local development:
+**`examples/lambda/moon.mod.json`** (before `cd examples/lambda && moon publish`):
+```json
+"deps": {
+  "dowdiness/loom": "0.1.0",
+  "dowdiness/seam": "0.1.0",
+  "moonbitlang/quickcheck": "0.9.10"
+}
+```
+
+After publishing each module, revert to path deps for local development:
 
 ```bash
 git checkout loom/moon.mod.json
+git checkout examples/lambda/moon.mod.json
 ```
 
 ### Required moon.mod.json fields

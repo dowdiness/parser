@@ -90,7 +90,7 @@ positions and node IDs) for maximum backdating benefit.
 
 ## Reference implementation
 
-`src/examples/lambda/` — `LambdaLanguage` + `LambdaParserDb` show the full pattern,
+`examples/lambda/src/` — `LambdaLanguage` + `LambdaParserDb` show the full pattern,
 including lex-error routing and the `AstNode::Eq` structure-only definition.
 
 ## Full API contract
