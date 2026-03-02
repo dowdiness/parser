@@ -4,8 +4,7 @@
   "source": "src",
   "deps": {
     "dowdiness/seam": { "path": "../seam" },
-    "dowdiness/incr": { "path": "../incr" },
-    "moonbitlang/quickcheck": "0.9.10"
+    "dowdiness/incr": { "path": "../incr" }
   },
   "readme": "README.md",
   "repository": "https://github.com/dowdiness/loom",

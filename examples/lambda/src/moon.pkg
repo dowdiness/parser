@@ -1,9 +1,9 @@
 import {
-  "dowdiness/loom/examples/lambda/lexer",
-  "dowdiness/loom/examples/lambda/ast",
+  "dowdiness/lambda/lexer",
+  "dowdiness/lambda/ast",
   "dowdiness/loom/viz" @viz,
-  "dowdiness/loom/examples/lambda/token",
-  "dowdiness/loom/examples/lambda/syntax",
+  "dowdiness/lambda/token",
+  "dowdiness/lambda/syntax",
   "dowdiness/loom/core" @core,
   "dowdiness/seam" @seam,
   "moonbitlang/core/strconv",

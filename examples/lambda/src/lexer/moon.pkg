@@ -1,5 +1,5 @@
 import {
-  "dowdiness/loom/examples/lambda/token",
+  "dowdiness/lambda/token",
   "dowdiness/loom/core" @core,
 }
 
