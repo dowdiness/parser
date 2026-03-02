@@ -126,9 +126,11 @@ the just-published versions before publishing it, then revert afterward.
 After publishing each module, revert to path deps for local development:
 
 ```bash
-git checkout loom/moon.mod.json
-git checkout examples/lambda/moon.mod.json
+git checkout loom/moon.mod.json examples/lambda/moon.mod.json
 ```
+
+> **Note:** `seam` and `incr` are not yet published to mooncakes.io. The publish
+> sequence above is blocked until they are. Use path deps in the meantime.
 
 ### Required moon.mod.json fields
 

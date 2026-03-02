@@ -22,14 +22,9 @@ A generic incremental parser framework for MoonBit.
 git clone https://github.com/dowdiness/loom.git
 cd loom
 
-# Core framework
-cd loom && moon test && cd ..
-
-# Lambda example
-cd examples/lambda && moon test && cd ../..
-
-# Benchmarks
-cd examples/lambda && moon bench --release && cd ../..
+(cd loom && moon test)                        # 76 tests
+(cd examples/lambda && moon test)             # 293 tests
+(cd examples/lambda && moon bench --release)  # benchmarks
 ```
 
 ## Documentation
