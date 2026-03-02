@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/loom/examples/lambda/syntax"
+package "dowdiness/lambda/syntax"
 
 import {
   "dowdiness/seam",

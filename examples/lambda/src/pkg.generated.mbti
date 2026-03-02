@@ -1,12 +1,12 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/loom/examples/lambda"
+package "dowdiness/lambda"
 
 import {
+  "dowdiness/lambda/ast",
+  "dowdiness/lambda/syntax",
+  "dowdiness/lambda/token",
   "dowdiness/loom/bridge",
   "dowdiness/loom/core",
-  "dowdiness/loom/examples/lambda/ast",
-  "dowdiness/loom/examples/lambda/syntax",
-  "dowdiness/loom/examples/lambda/token",
   "dowdiness/seam",
 }
 

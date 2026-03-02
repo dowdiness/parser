@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/loom/examples/lambda/lexer"
+package "dowdiness/lambda/lexer"
 
 import {
+  "dowdiness/lambda/token",
   "dowdiness/loom/core",
-  "dowdiness/loom/examples/lambda/token",
 }
 
 // Values

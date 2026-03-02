@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "dowdiness/loom/examples/lambda/token"
+package "dowdiness/lambda/token"
 
 import {
   "dowdiness/loom/core",

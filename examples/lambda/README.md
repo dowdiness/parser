@@ -1,4 +1,4 @@
-# `dowdiness/lambda-example`
+# `dowdiness/lambda`
 
 Concrete lambda calculus implementation of the generic parser infrastructure.
 Two responsibilities: **grammar description** and **graphviz visualization**.
